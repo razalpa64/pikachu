@@ -1,0 +1,397 @@
+@import "tailwindcss";
+
+/* ============================================================
+   PIKACHU — "soft arcade" design system
+   Cream paper · butter yellow · blush pink · cocoa ink · mint
+   Rounded, sticker-like, hand-drawn. Built for two people.
+   ============================================================ */
+
+@font-face {
+  font-family: "Baloo";
+  src: url("/fonts/baloo2.woff2") format("woff2");
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Quick";
+  src: url("/fonts/quicksand.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@theme {
+  /* --- butter yellow (was "volt") --- */
+  --color-volt-50:  #fffdf2;
+  --color-volt-100: #fff8dd;
+  --color-volt-200: #ffefb8;
+  --color-volt-300: #ffe27a;
+  --color-volt-400: #ffd24d;
+  --color-volt-500: #fbc02d;
+  --color-volt-600: #e8a21c;
+  --color-volt-700: #c07f0f;
+
+  --color-gold-400: #f2b23c;
+  --color-gold-600: #c98a16;
+
+  /* --- paper surfaces (was "ink", dark → now light) --- */
+  --color-ink-900: #fff8ec;   /* page */
+  --color-ink-850: #fff5e4;
+  --color-ink-800: #fffdf7;   /* card face */
+  --color-ink-700: #fffefb;   /* card face, lighter top */
+  --color-ink-600: #f0dcc2;   /* hairline / divider */
+  --color-ink-500: #e2c6a6;   /* border */
+  --color-ink-400: #c9a888;   /* strong border */
+
+  /* --- cocoa ink (was "cream" text) --- */
+  --color-cream-100: #5c4035;  /* primary text */
+  --color-cream-300: #87675a;  /* secondary */
+  --color-cream-500: #a98a79;  /* muted */
+
+  /* --- blush pink (was "spark" blue) --- */
+  --color-spark-400: #f2779a;
+  --color-spark-600: #d94d77;
+  --color-blush-100: #fff0f4;
+  --color-blush-200: #ffd6e2;
+  --color-blush-300: #ffadc6;
+  --color-blush-400: #f2779a;
+  --color-blush-600: #d9456f;
+
+  /* --- rose / mint --- */
+  --color-ember-400: #ef6a7f;
+  --color-ember-600: #c73f5c;
+  --color-leaf-400:  #6fcfa6;
+  --color-mint-200:  #d6f3e7;
+  --color-mint-400:  #8fdcbb;
+  --color-sky-200:   #d8ecff;
+  --color-sky-400:   #8ec8f6;
+
+  --font-display: "Baloo", "Baloo 2", ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-sans: "Quick", "Quicksand", ui-rounded, "Segoe UI", system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", Menlo, monospace;
+}
+
+:root {
+  --shell-pad: clamp(14px, 3vw, 34px);
+  --hud-h: 66px;
+  --ink: #5c4035;
+  --line: #e0c3a2;
+  --line-strong: #c89b78;
+  --shadow-soft: 0 10px 24px -14px rgba(140, 94, 70, .55);
+  --shadow-pop: 0 4px 0 0 var(--line-strong);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-weight: 600;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  background-color: #fff8ec;
+  /* warm paper with a faint polka wash */
+  background-image:
+    radial-gradient(circle at 12% 8%,  rgba(255, 214, 226, .55), transparent 42%),
+    radial-gradient(circle at 88% 4%,  rgba(255, 233, 170, .55), transparent 40%),
+    radial-gradient(circle at 70% 92%, rgba(214, 243, 231, .5),  transparent 45%),
+    radial-gradient(circle at 2px 2px, rgba(201, 168, 136, .20) 1.4px, transparent 1.6px);
+  background-size: auto, auto, auto, 22px 22px;
+  background-attachment: fixed, fixed, fixed, fixed;
+}
+img { -webkit-user-drag: none; user-select: none; }
+button { font-family: inherit; }
+
+::selection { background: var(--color-blush-300); color: #4a2f27; }
+
+/* --------- scrollbars --------- */
+*::-webkit-scrollbar { width: 12px; height: 12px; }
+*::-webkit-scrollbar-track { background: #fdf0dd; }
+*::-webkit-scrollbar-thumb {
+  background: #f0c9a6; border-radius: 99px; border: 3px solid #fdf0dd;
+}
+*::-webkit-scrollbar-thumb:hover { background: var(--color-blush-300); }
+
+/* --------- focus --------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-blush-400);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+/* ============================================================
+   Surfaces — soft paper cards with a drawn outline
+   ============================================================ */
+.panel {
+  position: relative;
+  background: linear-gradient(180deg, #fffefb, #fff7ea);
+  border: 2px solid var(--line);
+  border-radius: 22px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, var(--shadow-soft);
+}
+.panel-notch { border-radius: 26px; }
+.notch-sm { border-radius: 16px; }
+.notch-tr { border-radius: 20px; }
+.hair { border-color: var(--line); }
+
+/* a sticker: thick outline + hard offset shadow */
+.sticker {
+  border: 2.5px solid var(--line-strong);
+  border-radius: 20px;
+  box-shadow: 0 5px 0 0 var(--line-strong), 0 14px 26px -16px rgba(140,94,70,.6);
+}
+
+.inset-grid {
+  background-image:
+    linear-gradient(rgba(201,168,136,.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(201,168,136,.16) 1px, transparent 1px);
+  background-size: 34px 34px;
+}
+.scanlines::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(180deg, rgba(190,150,120,.05) 0 2px, transparent 2px 5px);
+  opacity: .7; border-radius: inherit;
+}
+.noise::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .035;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* hearts + sparkle confetti layer */
+.hearts::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg fill='%23ffadc6'%3E%3Cpath d='M20 16c-3-4-9-2-9 3 0 5 9 10 9 10s9-5 9-10c0-5-6-7-9-3z'/%3E%3Cpath d='M92 74c-2-3-7-1.5-7 2.2 0 3.8 7 7.8 7 7.8s7-4 7-7.8c0-3.7-5-5.2-7-2.2z' opacity='.75'/%3E%3C/g%3E%3Cg fill='%23ffd24d'%3E%3Cpath d='M66 22l2.2 5.4 5.4 2.2-5.4 2.2L66 37l-2.2-5.2-5.4-2.2 5.4-2.2z'/%3E%3Cpath d='M30 86l1.6 3.9 3.9 1.6-3.9 1.6L30 97l-1.6-3.9-3.9-1.6 3.9-1.6z' opacity='.8'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   Typography
+   ============================================================ */
+.display {
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.02;
+}
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: none;
+  letter-spacing: .01em;
+  color: var(--color-volt-400);
+  -webkit-text-stroke: 2.5px #6b4b3e;
+  paint-order: stroke fill;
+  text-shadow: 0 3px 0 #6b4b3e, 0 5px 0 rgba(107,75,62,.25);
+}
+.title-stroke {
+  -webkit-text-stroke: 3px #6b4b3e;
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 #6b4b3e;
+}
+.eyebrow {
+  font-size: 11px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--color-cream-500); font-weight: 700;
+  font-family: var(--font-sans);
+}
+.tabnum { font-variant-numeric: tabular-nums; }
+
+/* ============================================================
+   Buttons — chunky rounded stickers that press down
+   ============================================================ */
+.btn {
+  --btn-bg: #fffdf7; --btn-fg: var(--ink); --btn-br: var(--line-strong);
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  gap: .5rem; padding: .68rem 1.2rem; font-weight: 700; font-size: 14px;
+  letter-spacing: .01em; text-transform: none; cursor: pointer;
+  font-family: var(--font-display);
+  color: var(--btn-fg); background: var(--btn-bg);
+  border: 2.5px solid var(--btn-br); border-radius: 999px;
+  box-shadow: 0 4px 0 0 var(--btn-br);
+  transition: transform .09s ease, box-shadow .09s ease, filter .15s, background .15s;
+  user-select: none; white-space: nowrap;
+}
+.btn:hover:not(:disabled) { transform: translateY(-1.5px); box-shadow: 0 5.5px 0 0 var(--btn-br); filter: brightness(1.03); }
+.btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 0 var(--btn-br); }
+.btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: 0 4px 0 0 var(--btn-br); }
+
+.btn-primary {
+  --btn-fg: #5a3a12; --btn-br: #e0a21f;
+  background: linear-gradient(180deg, #ffe890, var(--color-volt-400) 60%, #ffc62e);
+}
+.btn-ghost { background: #fffdf7cc; --btn-br: var(--line); }
+.btn-ghost:hover:not(:disabled) { background: #fff6e6; }
+.btn-blue {   /* now the blush "together" button */
+  --btn-fg: #7a2440; --btn-br: #e07b9c;
+  background: linear-gradient(180deg, #ffd3e0, var(--color-blush-300) 60%, #ff9ab8);
+}
+.btn-danger { --btn-fg: #fff3f5; --btn-br: #c73f5c; background: linear-gradient(180deg, #f6869a, #de5273); }
+.btn-mint { --btn-fg: #175c45; --btn-br: #5fbf96; background: linear-gradient(180deg, #d6f3e7, var(--color-mint-400) 65%, #74cfa9); }
+.btn-sm { padding: .4rem .85rem; font-size: 12.5px; border-width: 2px; box-shadow: 0 3px 0 0 var(--btn-br); }
+.btn-sm:hover:not(:disabled) { box-shadow: 0 4.5px 0 0 var(--btn-br); }
+.btn-lg { padding: .95rem 1.9rem; font-size: 17.5px; }
+
+/* ============================================================
+   Effects
+   ============================================================ */
+.volt-ring { box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px var(--color-volt-300), 0 10px 22px -12px rgba(220,160,40,.7); }
+.blush-ring { box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px var(--color-blush-300), 0 10px 22px -12px rgba(230,120,160,.7); }
+.glow-text { text-shadow: 0 2px 0 rgba(255,255,255,.7); }
+.bolt-divider {
+  height: 3px; border-radius: 99px;
+  background: repeating-linear-gradient(90deg, var(--color-blush-300) 0 10px, transparent 10px 20px);
+  opacity: .75;
+}
+.ribbon {
+  background: linear-gradient(180deg, #ffd3e0, #ffadc6);
+  border: 2.5px solid #e07b9c; border-radius: 999px;
+}
+
+@keyframes pk-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-8px) } }
+@keyframes pk-breathe { 0%,100% { transform: scale(1) } 50% { transform: scale(1.03) } }
+@keyframes pk-spark-spin { to { transform: rotate(360deg) } }
+@keyframes pk-pulse { 0%,100% { opacity:.4 } 50% { opacity:1 } }
+@keyframes pk-pop { 0% { transform: scale(.8) rotate(-4deg); opacity:0 } 60% { transform: scale(1.07) rotate(1deg); opacity:1 } 100% { transform: none } }
+@keyframes pk-slide-up { from { transform: translateY(16px); opacity:0 } to { transform: none; opacity:1 } }
+@keyframes pk-shimmer { to { background-position: 200% 0 } }
+@keyframes pk-flash { 0%,100% { opacity:0 } 8% { opacity:.85 } 16% { opacity:.1 } 24% { opacity:.6 } 34% { opacity:0 } }
+@keyframes pk-dash { to { stroke-dashoffset: -1000 } }
+@keyframes pk-rise { from { transform: translateY(0) scale(1); opacity:1 } to { transform: translateY(-54px) scale(1.25); opacity:0 } }
+@keyframes pk-shake { 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+@keyframes pk-wobble { 0%,100%{transform:rotate(-2.5deg)} 50%{transform:rotate(2.5deg)} }
+@keyframes pk-hop { 0%,100%{transform:translateY(0)} 28%{transform:translateY(-14px) scaleY(1.04)} 55%{transform:translateY(0) scaleY(.97)} }
+@keyframes pk-heartbeat { 0%,100%{transform:scale(1)} 14%{transform:scale(1.18)} 28%{transform:scale(1)} 42%{transform:scale(1.12)} }
+
+.a-float { animation: pk-float 3.8s ease-in-out infinite; }
+.a-breathe { animation: pk-breathe 3.2s ease-in-out infinite; }
+.a-pop { animation: pk-pop .36s cubic-bezier(.2,.9,.3,1.4) both; }
+.a-slide-up { animation: pk-slide-up .44s cubic-bezier(.2,.8,.3,1) both; }
+.a-shake { animation: pk-shake .5s both; }
+.a-wobble { animation: pk-wobble 2.6s ease-in-out infinite; }
+.a-hop { animation: pk-hop 1.5s ease-in-out infinite; }
+.a-heartbeat { animation: pk-heartbeat 1.9s ease-in-out infinite; }
+.shimmer {
+  background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.75) 42%, transparent 62%);
+  background-size: 200% 100%; animation: pk-shimmer 2.4s linear infinite;
+}
+
+/* ============================================================
+   Reduced motion + quality tiers
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important; scroll-behavior: auto !important;
+  }
+}
+html[data-motion="off"] *, html[data-motion="off"] *::before, html[data-motion="off"] *::after {
+  animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+  transition-duration: .001ms !important;
+}
+html[data-quality="performance"] .fx-heavy { display: none !important; }
+html[data-quality="performance"] .noise::before { display: none; }
+html[data-quality="performance"] .scanlines::after { display: none; }
+html[data-quality="performance"] .hearts::before { display: none; }
+html[data-quality="performance"] .blur-heavy { backdrop-filter: none !important; }
+html[data-quality="balanced"] .fx-heavy { opacity: .6; }
+
+/* safe areas */
+.safe-b { padding-bottom: max(0px, env(safe-area-inset-bottom)); }
+.safe-t { padding-top: max(0px, env(safe-area-inset-top)); }
+
+/* board helpers */
+.board-shadow {
+  border-radius: 26px;
+  box-shadow: 0 26px 48px -26px rgba(140,94,70,.75), 0 0 0 3px #fff, 0 0 0 5px var(--line-strong);
+}
+.no-tap { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+/* pixel art must stay crisp */
+.pixelated { image-rendering: pixelated; }
+
+/* --------- range sliders ---------
+   The default track renders near-black in several engines, which looked like a
+   hole punched in the paper. Style both vendor tracks explicitly. */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 22px;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--color-blush-100);
+  border: 2px solid var(--color-ink-500);
+}
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--color-blush-100);
+  border: 2px solid var(--color-ink-500);
+}
+input[type="range"]::-moz-range-progress {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--color-volt-400);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 99px;
+  background: var(--color-volt-400);
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 2px 4px rgba(140, 94, 70, .35);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 99px;
+  background: var(--color-volt-400);
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 2px 4px rgba(140, 94, 70, .35);
+}
+input[type="range"]:disabled { opacity: .45; cursor: not-allowed; }
+input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--color-blush-400); outline-offset: 2px; }
+input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--color-blush-400); outline-offset: 2px; }
+
+/* ---------------------------------------------------------------- mobile HUD
+   Every solo game passes its HUD as a wrapping flex Panel. On a phone that
+   wraps into three or four rows and pushes the actual game off the screen, so
+   below `sm` it becomes one horizontally scrollable strip instead. Desktop is
+   untouched. */
+@media (max-width: 639px) {
+  /* A button whose text label is hidden below `sm` still has to be tappable.
+     Collapsing the label took Library/Restart down to 30-31px, under the 32px
+     comfort floor the phone audit enforces. */
+  .btn-iconish {
+    min-height: 36px;
+    min-width: 36px;
+    justify-content: center;
+  }
+  @media (min-width: 640px) {
+    .btn-iconish { min-width: 0; }
+  }
+
+  .hud-strip {
+    overflow-x: auto;
+    overflow-y: hidden;
+    margin-inline: calc(var(--shell-pad) * -1);
+    padding-inline: var(--shell-pad);
+    scrollbar-width: none;
+  }
+  .hud-strip::-webkit-scrollbar { display: none; }
+  .hud-strip > * {
+    flex-wrap: nowrap !important;
+    width: max-content;
+    min-width: 100%;
+    justify-content: flex-start !important;
+  }
+}

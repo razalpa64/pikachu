@@ -1,0 +1,195 @@
+import { Fragment, useMemo, useState, useEffect } from 'react';
+import { FLEET, autoPlace, validPlacement, rcOf, type BSState } from '../../games/battleship/rules';
+import type { BoardProps } from './types';
+import { Button, Icon } from '../ui';
+import { useStore } from '../../lib/store';
+
+const LETTERS = 'ABCDEFGHIJ';
+
+export default function BattleshipBoard({ state, youSlot, onMove, interactive, names }: BoardProps<BSState>) {
+  const { sfx } = useStore();
+  const size = state.size;
+  const opp = youSlot === 0 ? 1 : 0;
+
+  /* ---------------- placement phase ---------------- */
+  const [draft, setDraft] = useState(() => autoPlace((Date.now() ^ 0x9e37) >>> 0, size));
+  const [activeShip, setActiveShip] = useState(0);
+  const [horiz, setHoriz] = useState(true);
+  const [committed, setCommitted] = useState(false);
+
+  useEffect(() => { if (state.phase !== 'placement') setCommitted(false); }, [state.phase]);
+
+  const draftCells = useMemo(() => {
+    const m = new Map<number, string>();
+    draft.forEach((s) => s.cells.forEach((c) => m.set(c, s.id)));
+    return m;
+  }, [draft]);
+
+  const placeAt = (cell: number) => {
+    const spec = FLEET[activeShip];
+    const [r, c] = rcOf(cell, size);
+    const cells: number[] = [];
+    for (let k = 0; k < spec.len; k++) {
+      const rr = horiz ? r : r + k, cc = horiz ? c + k : c;
+      if (rr >= size || cc >= size) return;
+      cells.push(rr * size + cc);
+    }
+    const others = draft.filter((s) => s.id !== spec.id);
+    if (others.some((s) => s.cells.some((x) => cells.includes(x)))) { sfx('error'); return; }
+    sfx('place');
+    setDraft([...others, { id: spec.id, cells }]);
+    setActiveShip((i) => Math.min(FLEET.length - 1, i + 1));
+  };
+
+  const commit = () => {
+    const err = validPlacement(draft, size);
+    if (err) { sfx('error'); return; }
+    sfx('select');
+    setCommitted(true);
+    onMove({ type: 'place', ships: draft });
+    setTimeout(() => onMove({ type: 'ready' }), 40);
+  };
+
+  if (state.phase === 'placement') {
+    const ready = state.ready[youSlot] || committed;
+    return (
+      <div className="flex flex-col lg:flex-row gap-5 items-start">
+        <div>
+          <p className="eyebrow mb-2">Deploy your fleet</p>
+          <Grid size={size} label="Your waters" cellRender={(cell) => {
+            const id = draftCells.get(cell);
+            return id ? <span className="absolute inset-[9%] rounded-[2px]" style={{ background: 'linear-gradient(150deg,#8fd0f2,#4a9fd8)', border: '1.5px solid #2f6f9e', borderRadius: 5 }} /> : null;
+          }} onCell={ready ? undefined : placeAt} />
+        </div>
+        <div className="panel notch-sm p-4 w-full lg:w-[290px]">
+          <p className="eyebrow mb-2">Fleet manifest</p>
+          <div className="flex flex-col gap-1.5 mb-3">
+            {FLEET.map((f, i) => {
+              const placed = draft.some((d) => d.id === f.id);
+              return (
+                <button key={f.id} onClick={() => { setActiveShip(i); sfx('hover'); }} disabled={ready}
+                  className={`flex items-center justify-between gap-2 px-2.5 py-2 border text-left no-tap transition-colors
+                    ${activeShip === i && !ready ? 'border-volt-400 bg-volt-400/10' : 'border-ink-600 bg-ink-800 hover:border-ink-400'}`}>
+                  <span className="min-w-0">
+                    <span className="block text-[12px] font-extrabold text-cream-100 truncate">{f.name}</span>
+                    <span className="block text-[10px] text-cream-500">{f.len} cells</span>
+                  </span>
+                  <span className="flex gap-[2px] shrink-0">
+                    {Array.from({ length: f.len }).map((_, k) => (
+                      <span key={k} className="w-2 h-4 rounded-[1px]" style={{ background: placed ? '#4a9fd8' : '#e3d6c6', border: '1px solid #9cb6c9' }} />
+                    ))}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {!ready ? (
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setHoriz((v) => !v)} icon={<Icon name="rotate" size={13} />}>{horiz ? 'Across' : 'Down'}</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setDraft(autoPlace((Date.now() * 2654435761) >>> 0, size)); setActiveShip(0); sfx('toggle'); }} icon={<Icon name="sparkle" size={13} />}>Auto</Button>
+              </div>
+              <Button variant="primary" onClick={commit} disabled={draft.length < FLEET.length}>Lock in fleet</Button>
+              <p className="text-[11px] text-cream-500 leading-snug">Click a cell to drop the selected ship from that point. Ships may not overlap.</p>
+            </div>
+          ) : (
+            <div className="text-center py-2">
+              <p className="text-[12.5px] font-extrabold text-[#2f9c71]">Fleet locked</p>
+              <p className="text-[11.5px] text-cream-500 mt-1">
+                {state.ready[opp] ? 'Both fleets ready — battle starting.' : `Waiting for ${names[opp]} to deploy…`}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  /* ---------------- battle phase ---------------- */
+  const myShots = new Set(state.shots[youSlot]);
+  const myHits = new Set(state.hits[youSlot]);
+  const theirShots = new Set(state.shots[opp]);
+  const theirHits = new Set(state.hits[opp]);
+  const myShipCells = new Map<number, string>();
+  state.fleets[youSlot].forEach((s) => s.cells.forEach((c) => myShipCells.set(c, s.id)));
+  const sunkOfMine = new Set(state.sunk[opp]);
+  const enemySunkCells = new Set(state.fleets[opp].flatMap((s) => (s.hits.length === s.len ? s.cells : [])));
+
+  return (
+    <div className="flex flex-col xl:flex-row gap-5 items-start">
+      <div>
+        <p className="eyebrow mb-2 text-blush-600">Enemy waters — fire here</p>
+        <Grid size={size} label="Enemy radar" radar onCell={interactive ? (c) => { if (!myShots.has(c)) { onMove({ type: 'fire', cell: c }); } } : undefined}
+          disabledCell={(c) => myShots.has(c)}
+          cellRender={(cell) => {
+            if (!myShots.has(cell)) return null;
+            const hit = myHits.has(cell);
+            const sunk = enemySunkCells.has(cell);
+            return hit
+              ? <span className={`absolute inset-[14%] grid place-items-center ${sunk ? 'opacity-100' : ''}`}>
+                  <svg viewBox="0 0 24 24" className="w-full h-full" stroke={sunk ? '#ff8a6b' : '#e05a74'} strokeWidth="3.4" strokeLinecap="round" fill="none">
+                    <path d="M4 4 20 20M20 4 4 20" />
+                  </svg>
+                </span>
+              : <span className="absolute w-[26%] h-[26%] rounded-full bg-spark-400/55" />;
+          }} />
+      </div>
+      <div>
+        <p className="eyebrow mb-2 text-volt-700">Your waters</p>
+        <Grid size={size} label="Your fleet" small
+          cellRender={(cell) => {
+            const ship = myShipCells.get(cell);
+            const hit = theirHits.has(cell);
+            const shot = theirShots.has(cell);
+            return (
+              <>
+                {ship && <span className="absolute inset-[9%] rounded-[2px]"
+                  style={{ background: sunkOfMine.has(ship) ? 'linear-gradient(150deg,#ffb3c4,#e05a74)' : 'linear-gradient(150deg,#8fd0f2,#4a9fd8)', borderRadius: 5, border: `1.5px solid ${sunkOfMine.has(ship) ? '#c73f5c' : '#2f6f9e'}` }} />}
+                {hit && <span className="absolute inset-[22%]"><svg viewBox="0 0 24 24" className="w-full h-full" stroke="#e05a74" strokeWidth="4" strokeLinecap="round" fill="none"><path d="M4 4 20 20M20 4 4 20" /></svg></span>}
+                {shot && !hit && <span className="absolute w-[22%] h-[22%] rounded-full bg-cream-500/50" />}
+              </>
+            );
+          }} />
+      </div>
+    </div>
+  );
+}
+
+function Grid({
+  size, label, onCell, cellRender, radar, small, disabledCell,
+}: {
+  size: number; label: string; onCell?: (c: number) => void;
+  cellRender: (c: number) => React.ReactNode; radar?: boolean; small?: boolean; disabledCell?: (c: number) => boolean;
+}) {
+  const cw = small ? `min(6.4vw, 27px)` : `min(8.2vw, 38px)`;
+  return (
+    <div className="relative inline-block p-2.5"
+      style={{ background: 'linear-gradient(170deg,#eaf4fb,#d9ebf7)', border: '3px solid #9cc4de', borderRadius: 20, boxShadow: '0 22px 48px -26px rgba(90,110,130,.6), inset 0 2px 0 rgba(255,255,255,.8)' }}>
+      {radar && <div className="absolute inset-2.5 pointer-events-none fx-heavy" aria-hidden
+        style={{ background: 'conic-gradient(from 0deg, rgba(111,182,232,.26), transparent 28%)', animation: 'pk-spark-spin 4.4s linear infinite' }} />}
+      <div className="relative grid" style={{ gridTemplateColumns: `${small ? '14px' : '18px'} repeat(${size}, ${cw})` }} role="grid" aria-label={label}>
+        <span />
+        {Array.from({ length: size }).map((_, c) => (
+          <span key={c} className="grid place-items-center text-[8.5px] font-extrabold text-[#5f87a3]">{LETTERS[c]}</span>
+        ))}
+        {Array.from({ length: size }).map((_, r) => (
+          <Fragment key={`row-${r}`}>
+            <span className="grid place-items-center text-[8.5px] font-extrabold text-[#5f87a3]">{r + 1}</span>
+            {Array.from({ length: size }).map((__, c) => {
+              const cell = r * size + c;
+              const dis = disabledCell?.(cell);
+              return (
+                <button key={cell} role="gridcell" disabled={!onCell || dis} onClick={() => onCell?.(cell)}
+                  aria-label={`${LETTERS[c]}${r + 1}`}
+                  className={`relative border border-[#b9d6e8] transition-colors ${onCell && !dis ? 'hover:bg-[#bfe0f5] cursor-crosshair' : ''}`}
+                  style={{ width: cw, height: cw, background: 'rgba(255,255,255,.72)' }}>
+                  {cellRender(cell)}
+                </button>
+              );
+            })}
+          </Fragment>
+        ))}
+      </div>
+    </div>
+  );
+}

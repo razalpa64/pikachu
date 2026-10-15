@@ -1,0 +1,12 @@
+import { chromium } from 'playwright';
+const B='http://127.0.0.1:5173';
+const [route, name, w=1440, h=900] = process.argv.slice(2);
+const b = await chromium.launch({ args:['--no-sandbox','--disable-gpu','--force-color-profile=srgb'] });
+const p = await (await b.newContext({ viewport:{width:+w,height:+h}, reducedMotion:'reduce', deviceScaleFactor:1 })).newPage();
+await p.goto(B+'/'); await p.evaluate(()=>sessionStorage.setItem('pikachu.intro.v1','1'));
+await p.goto(B+route, { waitUntil:'domcontentloaded' }); await p.waitForTimeout(2600);
+await p.evaluate(()=>{ window.requestAnimationFrame=()=>0; document.getAnimations().forEach(a=>{try{a.pause()}catch{}});
+  const s=document.createElement('style'); s.textContent='*,*::before,*::after{animation:none!important;transition:none!important}'; document.head.appendChild(s); });
+await p.waitForTimeout(250);
+await p.screenshot({ path:`.shots/${name}.png`, animations:'disabled', caret:'hide' });
+console.log('shot', name); await b.close();

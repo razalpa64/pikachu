@@ -1,0 +1,46 @@
+{
+  "name": "pikachu",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "start": "tsx server/index.ts",
+    "relay": "tsx server/index.ts",
+    "dev:all": "concurrently -n web,relay -c yellow,cyan \"vite\" \"tsx server/index.ts\"",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "oxlint src server",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "e2e": "node scripts/e2e/audio.mjs && node scripts/e2e/routes.mjs && node scripts/e2e/play.mjs && node scripts/e2e/reconnect.mjs && node scripts/e2e/audit-games.mjs && node scripts/e2e/_new5.mjs && node scripts/e2e/online-cards.mjs && node scripts/e2e/online-quiz.mjs && node scripts/e2e/online-audio.mjs && node scripts/e2e/online-close.mjs && node scripts/e2e/online-sketch.mjs && node scripts/e2e/runner.mjs && node scripts/e2e/runner.mjs --phone && node scripts/e2e/close.mjs && node scripts/e2e/mobile.mjs",
+    "smoke": "tsx scripts/smoke.ts && tsx scripts/smoke-cards.ts && tsx scripts/smoke-quiz.ts && tsx scripts/smoke-online-lifecycle.ts",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
+    "chess.js": "^1.4.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4",
+    "tsx": "^4.23.15",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@types/ws": "^8.18.2",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^4.1.11",
+    "concurrently": "^9.2.5",
+    "oxlint": "^1.81.0",
+    "playwright": "^1.49.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^4.1.11"
+  }
+}

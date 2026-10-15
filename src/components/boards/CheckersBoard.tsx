@@ -1,0 +1,91 @@
+import { useMemo, useState, useEffect } from 'react';
+import { checkersRules as R, isDark, type CKState } from '../../games/checkers/rules';
+import type { BoardProps } from './types';
+import { useStore } from '../../lib/store';
+
+export default function CheckersBoard({ state, youSlot, onMove, interactive, hint = true }: BoardProps<CKState>) {
+  const { sfx } = useStore();
+  const [sel, setSel] = useState<number | null>(null);
+  const legal = useMemo(() => (interactive ? R.legalMoves(state, youSlot) : []), [state, youSlot, interactive]);
+
+  useEffect(() => {
+    if (state.mustContinueFrom !== null) setSel(state.mustContinueFrom);
+    else setSel(null);
+  }, [state.mustContinueFrom, state.board]);
+
+  const froms = useMemo(() => new Set(legal.map((m) => m.from)), [legal]);
+  const targets = useMemo(() => legal.filter((m) => m.from === sel).map((m) => m.to), [legal, sel]);
+  const flipped = youSlot === 1;
+
+  const cells = Array.from({ length: 64 }, (_, i) => i);
+  const ordered = flipped ? [...cells].reverse() : cells;
+
+  const tap = (i: number) => {
+    if (!interactive) return;
+    if (sel !== null && targets.includes(i)) {
+      const jump = Math.abs(i - sel) > 9;
+      sfx(jump ? 'capture' : 'move');
+      onMove({ from: sel, to: i });
+      if (!jump) setSel(null);
+      return;
+    }
+    if (froms.has(i)) { setSel(i === sel ? null : i); sfx('hover'); return; }
+    if (state.mustContinueFrom === null) setSel(null);
+  };
+
+  return (
+    <div className="relative inline-block">
+      <div className="relative p-2.5 sm:p-3.5"
+        style={{ background: 'linear-gradient(170deg,#f6e0c0,#e8c9a0)', border: '3px solid #c99b78', borderRadius: 22, boxShadow: '0 26px 54px -28px rgba(140,94,70,.65), inset 0 2px 0 rgba(255,255,255,.7)' }}>
+        <div className="grid board-shadow" style={{ gridTemplateColumns: 'repeat(8, min(10.2vw, 62px))' }} role="grid" aria-label="Checkers board">
+          {ordered.map((i) => {
+            const dark = isDark(i);
+            const pc = state.board[i];
+            const isSel = sel === i;
+            const isTarget = targets.includes(i);
+            const isLast = state.lastMove?.includes(i);
+            return (
+              <button key={i} role="gridcell" onClick={() => tap(i)} disabled={!dark}
+                aria-label={`Square ${i}${pc ? `, ${pc.p === 0 ? 'gold' : 'charcoal'}${pc.king ? ' king' : ''}` : ', empty'}`}
+                className="relative grid place-items-center no-tap"
+                style={{
+                  aspectRatio: '1', width: '100%',
+                  background: !dark ? '#fff6e6' : isSel ? '#ffd24d' : isTarget ? '#b7e6cf' : isLast ? '#f0bfa0' : '#dcb38a',
+                  cursor: interactive && dark && (froms.has(i) || isTarget) ? 'pointer' : 'default',
+                }}>
+                {pc && (
+                  <span className="relative grid place-items-center rounded-full transition-transform"
+                    style={{
+                      width: '78%', height: '78%',
+                      boxShadow: isSel ? '0 0 0 3px rgba(217,69,111,.55)' : undefined,
+                      borderRadius: 999,
+                      transform: isSel ? 'translateY(-2px) scale(1.04)' : undefined,
+                    }}>
+                    <img
+                      src={pc.p === 0 ? '/art/piece/checker-gold.webp' : '/art/piece/checker-blush.webp'}
+                      alt="" aria-hidden draggable={false}
+                      className="absolute inset-0 w-full h-full select-none"
+                      style={{ filter: 'drop-shadow(0 3px 4px rgba(140,94,70,.4))' }}
+                    />
+                    {pc.king && (
+                      <svg className="absolute" width="48%" viewBox="0 0 24 18" aria-hidden>
+                        <path d="M2,16 L4,3 L9,9 L12,1 L15,9 L20,3 L22,16 Z" fill={pc.p === 0 ? '#fffdf2' : '#fff2f6'} stroke={pc.p === 0 ? '#b87c12' : '#c75f85'} strokeWidth="1.6" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                )}
+                {hint && isTarget && !pc && <span className="absolute w-[30%] h-[30%] rounded-full bg-volt-300/80" />}
+                {hint && isTarget && pc && <span className="absolute inset-[8%] rounded-full border-[3px] border-volt-300/85" />}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      {state.mustContinueFrom !== null && (
+        <p className="absolute -bottom-7 left-0 right-0 text-center text-[11.5px] font-extrabold uppercase tracking-wider text-volt-700">
+          Chain jump — keep capturing
+        </p>
+      )}
+    </div>
+  );
+}

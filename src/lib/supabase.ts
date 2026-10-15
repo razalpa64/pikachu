@@ -1,0 +1,138 @@
+/**
+ * Optional Supabase layer.
+ *
+ * The app is fully playable with no credentials: the bundled relay handles online
+ * rooms and progress lives in localStorage. When VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+ * are provided, profiles, match results and per-game stats are mirrored to Postgres
+ * under Row Level Security (see supabase/migrations).
+ *
+ * Only the public anon key is ever referenced here. A service-role key must never
+ * appear in browser code.
+ *
+ * The SDK itself (~200 kB) is loaded with a dynamic import and only when both env
+ * vars are present, so the default credential-free setup never downloads it.
+ */
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Identity } from './identity';
+import type { MatchRecord, ProgressState } from './progress';
+
+const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+
+/* Accept either the current publishable key or the legacy anon JWT. */
+const RAW_KEY =
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
+
+/**
+ * Hard stop on a secret key reaching the browser.
+ *
+ * Vite inlines every VITE_* variable into the client bundle, so putting a
+ * `sb_secret_…` key (or a service_role JWT, whose payload contains
+ * `"role":"service_role"`) in .env would publish full database access to every
+ * visitor. Rather than quietly using it, refuse and say so loudly.
+ */
+function isSecretKey(k: string): boolean {
+  if (k.startsWith('sb_secret_')) return true;
+  if (k.startsWith('eyJ')) {
+    try {
+      const body = JSON.parse(atob(k.split('.')[1] ?? ''));
+      if (body?.role === 'service_role') return true;
+    } catch { /* not a readable JWT — treat as publishable */ }
+  }
+  return false;
+}
+
+const ANON = RAW_KEY && isSecretKey(RAW_KEY) ? undefined : RAW_KEY;
+
+if (RAW_KEY && !ANON) {
+  console.error(
+    '[supabase] REFUSING to start: a secret / service_role key is set in VITE_SUPABASE_*. ' +
+    'That key would be bundled into the browser. Rotate it immediately in your Supabase ' +
+    'dashboard and use the publishable (anon) key instead. Cloud sync stays disabled.',
+  );
+}
+
+let client: SupabaseClient | null = null;
+let booting: Promise<SupabaseClient | null> | null = null;
+let warned = false;
+
+export function supabaseEnabled(): boolean {
+  return Boolean(URL && ANON && /^https?:\/\//.test(URL));
+}
+
+/**
+ * Resolve the client, importing the SDK on first use. Returns null when cloud
+ * sync is not configured — every caller must handle that, because the no-cloud
+ * path is the normal one.
+ */
+export function supabase(): Promise<SupabaseClient | null> {
+  if (!supabaseEnabled()) return Promise.resolve(null);
+  if (client) return Promise.resolve(client);
+  if (!booting) {
+    booting = import('@supabase/supabase-js')
+      .then(({ createClient }) => {
+        client = createClient(URL!, ANON!, { auth: { persistSession: true, autoRefreshToken: true } });
+        return client;
+      })
+      .catch((e) => {
+        if (!warned) { warned = true; console.warn('[supabase] SDK failed to load', e); }
+        booting = null;
+        return null;
+      });
+  }
+  return booting;
+}
+
+async function currentUserId(): Promise<string | null> {
+  const sb = await supabase();
+  if (!sb) return null;
+  const { data } = await sb.auth.getUser();
+  return data.user?.id ?? null;
+}
+
+export async function signInWithEmail(email: string) {
+  const sb = await supabase();
+  if (!sb) throw new Error('Cloud sync is not configured.');
+  const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin } });
+  if (error) throw error;
+}
+
+export async function signOut() {
+  await (await supabase())?.auth.signOut();
+}
+
+export async function upsertRemoteProfile(identity: Identity) {
+  const sb = await supabase();
+  if (!sb) return;
+  try {
+    const uid = await currentUserId();
+    if (!uid) return;
+    await sb.from('profiles').upsert({
+      id: uid, display_name: identity.name || 'Trainer', mascot: identity.mascot, updated_at: new Date().toISOString(),
+    });
+  } catch (e) {
+    if (!warned) { warned = true; console.warn('[supabase] profile sync unavailable', e); }
+  }
+}
+
+export async function pushRemoteMatch(rec: MatchRecord, progress: ProgressState) {
+  const sb = await supabase();
+  if (!sb) return;
+  try {
+    const uid = await currentUserId();
+    if (!uid) return;
+    await sb.from('match_results').insert({
+      user_id: uid, game_id: rec.gameId, mode: rec.mode, result: rec.result,
+      score: rec.score ?? null, metadata: rec.meta ?? {},
+    });
+    const st = progress.stats[rec.gameId];
+    if (st) {
+      await sb.from('player_stats').upsert({
+        user_id: uid, game_id: rec.gameId, matches_played: st.played, wins: st.wins,
+        losses: st.losses, draws: st.draws, best_score: st.best, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,game_id' });
+    }
+  } catch (e) {
+    if (!warned) { warned = true; console.warn('[supabase] match sync unavailable', e); }
+  }
+}

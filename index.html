@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+    <meta name="theme-color" content="#fff8ec" />
+    <meta name="description" content="A soft little arcade built for two — ten games, private rooms, and one very enthusiastic Pikachu." />
+    <title>Pikachu — an arcade for two</title>
+    <link rel="icon" href="/art/pika/cap.webp" />
+
+    <!-- fonts are self-hosted, so first paint never waits on a CDN -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/baloo2.woff2" crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/quicksand.woff2" crossorigin />
+    <!-- everything above the fold on the home screen -->
+    <link rel="preload" as="image" href="/art/scene/hero.webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/art/pika/hello.webp" fetchpriority="high" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

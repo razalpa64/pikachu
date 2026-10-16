@@ -553,6 +553,50 @@ wss.on('connection', (ws, req) => {
           return;
         }
 
+        /* ---------------------------------------------------------- changeGame */
+        case 'changeGame': {
+          const ctx = memberOf(ws);
+          if (!ctx) return fail(ws, 'not_in_room', 'You are not in an arena.');
+          const { room } = ctx;
+          if (room.status === 'STARTING') return fail(ws, 'in_progress', 'Match is starting.');
+          const newGameId = msg.gameId;
+          const rules = RULES[newGameId];
+          if (!rules) return fail(ws, 'unknown_game', 'Unknown game.');
+
+          room.gameId = newGameId;
+          if (msg.settings && typeof msg.settings === 'object') {
+            room.settings = msg.settings;
+          }
+          room.match = null;
+          room.status = room.members.size === 2 ? 'READY_CHECK' : 'WAITING';
+          room.startsAt = null;
+          for (const m of room.members.values()) {
+            m.ready = false;
+            m.rematchVote = false;
+          }
+          touch(room);
+          broadcastRoom(room);
+          return;
+        }
+
+        /* ---------------------------------------------------------- returnToLobby */
+        case 'returnToLobby': {
+          const ctx = memberOf(ws);
+          if (!ctx) return fail(ws, 'not_in_room', 'You are not in an arena.');
+          const { room } = ctx;
+          if (room.status === 'STARTING') return;
+          room.match = null;
+          room.status = room.members.size === 2 ? 'READY_CHECK' : 'WAITING';
+          room.startsAt = null;
+          for (const m of room.members.values()) {
+            m.ready = false;
+            m.rematchVote = false;
+          }
+          touch(room);
+          broadcastRoom(room);
+          return;
+        }
+
         /* ---------------------------------------------------------- misc */
         case 'nudge': {
           const ctx = memberOf(ws);

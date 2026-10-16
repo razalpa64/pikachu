@@ -204,3 +204,14 @@ export const GENRE_LABEL: Record<string, string> = {
 export const MODE_LABEL: Record<string, string> = {
   solo: 'Solo', ai: 'vs AI', online: 'Online', local: 'Same device', coop: 'Co-op',
 };
+
+export function defaultGameSettings(g: GameMeta | undefined): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const s of g?.settings ?? []) out[s.key] = s.default;
+  if (g?.id === 'memory') {
+    const [c, r] = String(out.size ?? '4x4').split('x').map(Number);
+    out.cols = c; out.rows = r;
+  }
+  return out;
+}
+

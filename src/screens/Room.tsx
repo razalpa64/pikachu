@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useRoom } from '../lib/useRoom';
 import { useStore, useAmbience } from '../lib/store';
 import { useMatchCues } from '../lib/matchCues';
-import { gameById } from '../games/registry';
+import { gameById, onlineGames, defaultGameSettings } from '../games/registry';
+import { GameArtwork } from '../components/GameArtwork';
 import { Button, ConfirmDialog, ConnectionIndicator, CopyField, EmptyState, ErrorState, Icon, Panel, Stat } from '../components/ui';
 import { PikachuMascot, ElectricLoader, BoltRule } from '../mascot';
 import { ResultOverlay, MatchCountdown, type Verdict } from '../components/Overlays';
@@ -26,12 +27,13 @@ const BOARDS: Record<string, React.LazyExoticComponent<React.ComponentType<Board
 export default function Room() {
   const { code = '' } = useParams();
   const nav = useNavigate();
-  const { room, you, match, finished, conn, rtt, error, clearError, join, ready, start, act, leave, rematch, resign, offerDraw, respondDraw, nudge, connect } = useRoom();
+  const { room, you, match, finished, conn, rtt, error, clearError, join, ready, start, act, leave, rematch, resign, offerDraw, respondDraw, nudge, connect, changeGame, returnToLobby } = useRoom();
   const { sfx, finishMatch, visit } = useStore();
   useAmbience(room?.status === 'IN_GAME' ? 'match' : 'hub');
 
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmResign, setConfirmResign] = useState(false);
+  const [confirmReturnLobby, setConfirmReturnLobby] = useState(false);
   const recorded = useRef<string | null>(null);
   const joinAttempted = useRef(false);
 
@@ -120,6 +122,11 @@ export default function Room() {
           <button onClick={() => setConfirmLeave(true)} className="btn btn-sm btn-ghost btn-iconish" aria-label="Leave room">
             <Icon name="back" size={14} /><span className="hidden sm:inline">Leave</span>
           </button>
+          {room.status === 'IN_GAME' && (
+            <button onClick={() => setConfirmReturnLobby(true)} className="btn btn-sm btn-ghost btn-iconish text-volt-700" aria-label="Return to lobby">
+              <Icon name="spark" size={14} /><span className="hidden sm:inline">Lobby</span>
+            </button>
+          )}
           <div className="min-w-0">
             <p className="hidden sm:block text-[13px] font-extrabold text-cream-100 truncate leading-tight">{room.roomName}</p>
             <p className="text-[10.5px] text-cream-500 truncate">
@@ -153,7 +160,7 @@ export default function Room() {
         )}
 
         {(room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)) && (
-          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} />
+          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} />
         )}
 
         {room.status === 'STARTING' && room.startsAt && (
@@ -190,6 +197,8 @@ export default function Room() {
                 rows={[{ label: 'Series', a: room.series.wins[0], b: room.series.wins[1] }, { label: 'Draws', a: room.series.draws, b: room.series.draws }]}
                 rematchPending={!!me?.rematchVote && !opp?.rematchVote}
                 onRematch={() => { sfx('select'); rematch(!me?.rematchVote); }}
+                onChangeGame={() => { sfx('select'); returnToLobby(); }}
+                changeGameLabel="Change Game"
                 onExit={() => setConfirmLeave(true)}
                 extra={<p className="text-[11.5px] text-cream-500">{opp?.rematchVote ? `${opp.name} wants a rematch!` : 'Both trainers must vote to run it back.'}</p>}
               />
@@ -203,6 +212,9 @@ export default function Room() {
         )}
       </div>
 
+      <ConfirmDialog open={confirmReturnLobby} title="Return to lobby?"
+        body="This will stop the active match and return both players to the lobby so you can pick a different game together."
+        confirmLabel="Return to lobby" onConfirm={() => { returnToLobby(); setConfirmReturnLobby(false); }} onCancel={() => setConfirmReturnLobby(false)} />
       <ConfirmDialog open={confirmLeave} title="Leave this arena?"
         body={room.status === 'IN_GAME' ? 'The match is still running. Your opponent will be told you left.' : 'You can rejoin any time with the same code.'}
         confirmLabel="Leave room" danger onConfirm={doLeave} onCancel={() => setConfirmLeave(false)} />
@@ -213,14 +225,16 @@ export default function Room() {
 }
 
 /* ------------------------------------------------------------------ lobby */
-function Lobby({ room, slot, inviteLink, onReady, onStart }: any) {
+function Lobby({ room, slot, inviteLink, onReady, onStart, onChangeGame }: any) {
   const { sfx } = useStore();
+  const [pickerOpen, setPickerOpen] = useState(false);
   const members = [...room.members].sort((a: any, b: any) => a.slot - b.slot);
   const me = members.find((m: any) => m.slot === slot);
   const opp = members.find((m: any) => m.slot !== slot);
   const game = gameById(room.gameId);
   const bothReady = members.length === 2 && members.every((m: any) => m.ready && m.connected);
   const isHost = me?.isHost;
+  const games = onlineGames();
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-5 items-start">
@@ -230,7 +244,12 @@ function Lobby({ room, slot, inviteLink, onReady, onStart }: any) {
           <div className="relative">
             <p className="eyebrow text-volt-700 mb-1">Private arena</p>
             <h1 className="display text-[26px] sm:text-[32px] text-cream-100 mb-1">{room.roomName}</h1>
-            <p className="text-[13px] text-cream-500 mb-6">{game?.title} · {game?.tagline}</p>
+            <div className="flex items-center gap-3 mb-6 flex-wrap">
+              <p className="text-[13px] text-cream-500">{game?.title} · {game?.tagline}</p>
+              <Button size="sm" variant="blue" onClick={() => { sfx('toggle'); setPickerOpen(true); }} icon={<Icon name="spark" size={13} />}>
+                Change game
+              </Button>
+            </div>
 
             <div className="grid sm:grid-cols-[1fr_auto_1fr] gap-4 items-center">
               <PlayerSeat member={members[0]} you={slot === 0} colour="#f0b429" />
@@ -311,6 +330,51 @@ function Lobby({ room, slot, inviteLink, onReady, onStart }: any) {
           </div>
         </Panel>
       </div>
+
+      {pickerOpen && (
+        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-ink-900/80 backdrop-blur-sm"
+          role="dialog" aria-modal="true" aria-label="Select a game">
+          <div className="relative panel panel-notch w-full max-w-[640px] p-5 sm:p-6 max-h-[85vh] flex flex-col a-pop">
+            <div className="flex items-center justify-between pb-3 border-b border-ink-600 mb-4">
+              <div>
+                <p className="eyebrow text-volt-700">Multiplayer</p>
+                <h3 className="display text-[22px] text-cream-100">Choose a Game</h3>
+              </div>
+              <Button size="sm" variant="ghost" onClick={() => setPickerOpen(false)}>Close</Button>
+            </div>
+            <div className="overflow-y-auto flex-1 pr-1 grid gap-2.5 sm:grid-cols-2">
+              {games.map((g) => {
+                const isCurrent = g.id === room.gameId;
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => {
+                      sfx('select');
+                      onChangeGame?.(g.id, defaultGameSettings(g));
+                      setPickerOpen(false);
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all no-tap
+                      ${isCurrent
+                        ? 'border-volt-400 bg-volt-400/15'
+                        : 'border-ink-600 bg-ink-800/80 hover:border-cream-300 hover:bg-ink-700'
+                      }`}
+                  >
+                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-ink-900 grid place-items-center">
+                      <GameArtwork artKey={g.artKey} className="w-full h-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13.5px] font-extrabold text-cream-100 truncate">{g.title}</p>
+                      <p className="text-[11px] text-cream-500 truncate">{g.tagline}</p>
+                      <span className="text-[10px] text-volt-700 uppercase font-bold tracking-wider">{g.duration}m · {g.genre}</span>
+                    </div>
+                    {isCurrent && <span className="text-volt-700 font-extrabold text-[12px] shrink-0">Active</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

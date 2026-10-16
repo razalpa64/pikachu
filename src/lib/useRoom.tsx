@@ -29,6 +29,8 @@ interface RoomCtx {
   offerDraw: () => void;
   respondDraw: (accept: boolean) => void;
   rematch: (vote: boolean) => void;
+  changeGame: (gameId: string, settings?: Record<string, unknown>) => void;
+  returnToLobby: () => void;
   leave: () => void;
   nudge: (text: string) => void;
   connect: () => void;
@@ -105,6 +107,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     offerDraw: () => relayRef.current?.send({ t: 'offerDraw' }),
     respondDraw: (accept) => relayRef.current?.send({ t: 'respondDraw', accept }),
     rematch: (vote) => relayRef.current?.send({ t: 'rematch', vote }),
+    changeGame: (gameId, settings) => relayRef.current?.send({ t: 'changeGame', gameId, settings }),
+    returnToLobby: () => relayRef.current?.send({ t: 'returnToLobby' }),
     leave: () => { relayRef.current?.send({ t: 'leave' }); try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ } },
     nudge: (text) => relayRef.current?.send({ t: 'nudge', text }),
   }), [conn, rtt, room, you, match, finished, error, connect]);

@@ -15,7 +15,8 @@ export interface ScoreRow { label: string; a: ReactNode; b: ReactNode }
 
 export function ResultOverlay({
   verdict, reason, playerA, playerB, rows, onRematch, onExit,
-  rematchLabel = 'Rematch', exitLabel = 'Back to lobby', rematchPending, extra,
+  rematchLabel = 'Rematch', exitLabel = 'Leave room', rematchPending, extra,
+  onChangeGame, changeGameLabel = 'Change Game',
 }: {
   verdict: Verdict; reason?: string;
   playerA: { name: string; score?: ReactNode; you?: boolean };
@@ -24,6 +25,7 @@ export function ResultOverlay({
   onRematch?: () => void; onExit?: () => void;
   rematchLabel?: string; exitLabel?: string; rematchPending?: boolean;
   extra?: ReactNode;
+  onChangeGame?: () => void; changeGameLabel?: string;
 }) {
   const { sfx } = useStore();
   const c = COPY[verdict];
@@ -112,6 +114,11 @@ export function ResultOverlay({
             {onRematch && (
               <Button variant="primary" size="lg" onClick={onRematch} disabled={rematchPending} icon={<Icon name="rotate" size={16} />}>
                 {rematchPending ? 'Waiting for rival…' : rematchLabel}
+              </Button>
+            )}
+            {onChangeGame && (
+              <Button variant="blue" size="lg" onClick={onChangeGame} icon={<Icon name="spark" size={16} />}>
+                {changeGameLabel}
               </Button>
             )}
             {onExit && <Button variant="ghost" size="lg" onClick={onExit} cue="back" icon={<Icon name="back" size={16} />}>{exitLabel}</Button>}

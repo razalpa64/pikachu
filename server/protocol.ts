@@ -42,6 +42,8 @@ export type ClientMsg =
   | { t: 'offerDraw' }
   | { t: 'respondDraw'; accept: boolean }
   | { t: 'rematch'; vote: boolean }
+  | { t: 'changeGame'; gameId: string; settings?: Record<string, unknown> }
+  | { t: 'returnToLobby' }
   | { t: 'leave' }
   | { t: 'nudge'; text: string }
   | { t: 'ping'; ts: number };

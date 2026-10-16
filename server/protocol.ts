@@ -45,6 +45,7 @@ export type ClientMsg =
   | { t: 'changeGame'; gameId: string; settings?: Record<string, unknown> }
   | { t: 'returnToLobby' }
   | { t: 'leave' }
+  | { t: 'chat'; text: string }
   | { t: 'nudge'; text: string }
   | { t: 'ping'; ts: number };
 
@@ -53,6 +54,7 @@ export type ServerMsg =
   | { t: 'room'; room: RoomView; you: { slot: 0 | 1; id: string } }
   | { t: 'state'; matchId: string; seq: number; state: unknown; yourSlot: 0 | 1; lastAction: string | null; serverTime: number }
   | { t: 'finished'; matchId: string; winnerSlot: 0 | 1 | null; reason: string; state: unknown }
+  | { t: 'chat'; id: string; senderId: string; from: string; slot: 0 | 1; text: string; ts: number }
   | { t: 'error'; code: string; message: string; recovery?: string }
   | { t: 'nudge'; from: string; text: string }
   | { t: 'left' }

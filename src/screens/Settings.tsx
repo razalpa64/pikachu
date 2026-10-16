@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../lib/store';
 import { DEFAULT_SETTINGS, suggestQuality, type Quality, type MusicMode } from '../lib/settings';
-import { signInWithEmail, signOut, supabase, supabaseEnabled } from '../lib/supabase';
+import {
+  signInWithEmail, signUpWithPassword, signInWithPassword, signOut,
+  fetchRemoteUserData, supabase, supabaseEnabled,
+} from '../lib/supabase';
 import { Button, ConfirmDialog, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
 import { PikachuMascot } from '../mascot';
 import * as jukebox from '../lib/jukebox';
@@ -13,9 +16,14 @@ const QUALITY_COPY: Record<Quality, string> = {
 };
 
 export default function Settings() {
-  const { settings, setSettings, sfx, toast, cloud, identity } = useStore();
+  const { settings, setSettings, sfx, toast, cloud, identity, setIdentity } = useStore();
+  const [authMode, setAuthMode] = useState<'signup' | 'signin' | 'magic'>('signup');
+  const [username, setUsername] = useState(identity.name || '');
+  const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [sending, setSending] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [session, setSession] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -26,13 +34,79 @@ export default function Settings() {
     let unsub: (() => void) | undefined;
     void supabase().then((sb) => {
       if (!sb || !alive) return;
-      void sb.auth.getUser().then(({ data }) => { if (alive) setSession(data.user?.email ?? null); });
-      const sub = sb.auth.onAuthStateChange((_e, s) => setSession(s?.user?.email ?? null));
+      void sb.auth.getUser().then(({ data }) => {
+        if (alive) {
+          const u = data.user;
+          setSession(u ? (u.user_metadata?.display_name || u.user_metadata?.username || u.email || 'Trainer') : null);
+        }
+      });
+      const sub = sb.auth.onAuthStateChange((_e, s) => {
+        const u = s?.user;
+        setSession(u ? (u.user_metadata?.display_name || u.user_metadata?.username || u.email || 'Trainer') : null);
+      });
       unsub = () => sub.data.subscription.unsubscribe();
       if (!alive) unsub();
     });
     return () => { alive = false; unsub?.(); };
   }, []);
+
+  const handleSignUp = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const cleanUser = username.trim();
+    if (!cleanUser || cleanUser.length < 2) {
+      toast({ kind: 'error', title: 'Username required', body: 'Please choose a username with at least 2 characters.' });
+      return;
+    }
+    if (!password || password.length < 6) {
+      toast({ kind: 'error', title: 'Password too short', body: 'Password must be at least 6 characters.' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await signUpWithPassword(cleanUser, password, email.trim() || undefined);
+      setIdentity({ name: cleanUser });
+      setSession(cleanUser);
+      setPassword('');
+      sfx('victory');
+      toast({ kind: 'success', title: `Welcome, ${cleanUser}!`, body: 'Your account is ready and synced.' });
+    } catch (err: any) {
+      toast({ kind: 'error', title: 'Sign-up failed', body: err?.message || 'Could not create account.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSignIn = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const cleanUser = username.trim();
+    if (!cleanUser) {
+      toast({ kind: 'error', title: 'Username or email required' });
+      return;
+    }
+    if (!password) {
+      toast({ kind: 'error', title: 'Password required' });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await signInWithPassword(cleanUser, password);
+      const remote = await fetchRemoteUserData();
+      const displayName = remote?.name || cleanUser;
+      if (remote?.name) {
+        setIdentity({ name: remote.name, mascot: remote.mascot || identity.mascot });
+      } else {
+        setIdentity({ name: cleanUser });
+      }
+      setSession(displayName);
+      setPassword('');
+      sfx('victory');
+      toast({ kind: 'success', title: 'Signed in!', body: `Welcome back, ${displayName}!` });
+    } catch (err: any) {
+      toast({ kind: 'error', title: 'Sign-in failed', body: err?.message || 'Incorrect username or password.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const sendLink = async () => {
     if (!email.includes('@')) { toast({ kind: 'error', title: 'That does not look like an email' }); return; }
@@ -124,25 +198,155 @@ export default function Settings() {
         ) : session ? (
           <>
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-leaf-400" />
-              <p className="text-[13px] text-cream-200 font-semibold">Signed in as {session}</p>
+              <span className="w-2.5 h-2.5 rounded-full bg-leaf-400 animate-pulse" />
+              <p className="text-[13px] text-cream-100 font-bold">Signed in as <span className="text-volt-700">{session}</span></p>
             </div>
-            <p className="text-[12.5px] text-cream-400">Match results and per-game stats are mirrored to your Supabase project under row-level security.</p>
-            <Button variant="ghost" size="sm" onClick={async () => { await signOut(); setSession(null); toast({ kind: 'info', title: 'Signed out' }); }}>Sign out</Button>
+            <p className="text-[12px] text-cream-400">Match results, XP, achievements and career stats are mirrored to Supabase under row-level security.</p>
+            <div className="pt-1">
+              <Button variant="ghost" size="sm" onClick={async () => { await signOut(); setSession(null); toast({ kind: 'info', title: 'Signed out' }); }}>Sign out</Button>
+            </div>
           </>
         ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-volt-400" />
-              <p className="text-[13px] text-cream-200 font-semibold">Configured — sign in to start syncing</p>
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-volt-400" />
+                <p className="text-[13px] text-cream-200 font-semibold">Account & Cloud Sync</p>
+              </div>
+              <Segmented
+                value={authMode}
+                onChange={(v) => setAuthMode(v as 'signup' | 'signin' | 'magic')}
+                label="Auth mode"
+                options={[
+                  { value: 'signup', label: 'Create Account' },
+                  { value: 'signin', label: 'Sign In' },
+                  { value: 'magic', label: 'Magic Link' },
+                ]}
+              />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="you@example.com" autoComplete="email"
-                className="flex-1 min-w-[220px] bg-ink-800 border border-ink-600 px-3 py-2 text-[13px] text-cream-100 focus:border-volt-400 outline-none notch-sm" />
-              <Button onClick={sendLink} disabled={sending} icon={<Icon name="bolt" size={14} />}>{sending ? 'Sending…' : 'Email magic link'}</Button>
-            </div>
-            <p className="text-[11.5px] text-ink-400">A one-time link is emailed by Supabase. No password is stored, and no credentials are hardcoded in this app.</p>
-          </>
+
+            {authMode === 'signup' && (
+              <form onSubmit={handleSignUp} className="space-y-2.5">
+                <div className="grid sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Username</label>
+                    <input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      type="text"
+                      placeholder="e.g. AshKetchum"
+                      autoComplete="username"
+                      required
+                      className="w-full bg-ink-800 border border-ink-600 px-3 py-2 text-[13px] text-cream-100 placeholder-ink-400 focus:border-volt-400 outline-none notch-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Password</label>
+                    <div className="relative">
+                      <input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Min. 6 characters"
+                        autoComplete="new-password"
+                        required
+                        className="w-full bg-ink-800 border border-ink-600 px-3 py-2 pr-12 text-[13px] text-cream-100 placeholder-ink-400 focus:border-volt-400 outline-none notch-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cream-500 hover:text-cream-200 text-[11px] font-bold cursor-pointer"
+                      >
+                        {showPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Email <span className="text-ink-400 font-normal lowercase">(optional, for account recovery)</span></label>
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    className="w-full bg-ink-800 border border-ink-600 px-3 py-2 text-[13px] text-cream-100 placeholder-ink-400 focus:border-volt-400 outline-none notch-sm"
+                  />
+                </div>
+                <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+                  <p className="text-[11px] text-ink-400">Creates your profile with username & password in Supabase.</p>
+                  <Button type="submit" variant="primary" disabled={submitting} icon={<Icon name="bolt" size={14} />}>
+                    {submitting ? 'Creating…' : 'Create Account'}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {authMode === 'signin' && (
+              <form onSubmit={handleSignIn} className="space-y-2.5">
+                <div className="grid sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Username or Email</label>
+                    <input
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      type="text"
+                      placeholder="Username or you@example.com"
+                      autoComplete="username"
+                      required
+                      className="w-full bg-ink-800 border border-ink-600 px-3 py-2 text-[13px] text-cream-100 placeholder-ink-400 focus:border-volt-400 outline-none notch-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Password</label>
+                    <div className="relative">
+                      <input
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Your password"
+                        autoComplete="current-password"
+                        required
+                        className="w-full bg-ink-800 border border-ink-600 px-3 py-2 pr-12 text-[13px] text-cream-100 placeholder-ink-400 focus:border-volt-400 outline-none notch-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cream-500 hover:text-cream-200 text-[11px] font-bold cursor-pointer"
+                      >
+                        {showPassword ? 'Hide' : 'Show'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+                  <p className="text-[11px] text-ink-400">Sign in to restore your remote stats and career history.</p>
+                  <Button type="submit" variant="primary" disabled={submitting} icon={<Icon name="user" size={14} />}>
+                    {submitting ? 'Signing in…' : 'Sign In'}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {authMode === 'magic' && (
+              <div className="space-y-2.5">
+                <div className="flex gap-2 flex-wrap">
+                  <input
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    type="email"
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    className="flex-1 min-w-[220px] bg-ink-800 border border-ink-600 px-3 py-2 text-[13px] text-cream-100 placeholder-ink-400 focus:border-volt-400 outline-none notch-sm"
+                  />
+                  <Button onClick={sendLink} disabled={sending} icon={<Icon name="bolt" size={14} />}>
+                    {sending ? 'Sending…' : 'Email magic link'}
+                  </Button>
+                </div>
+                <p className="text-[11.5px] text-ink-400">A passwordless login link is sent to your inbox.</p>
+              </div>
+            )}
+          </div>
         )}
       </Panel>
 

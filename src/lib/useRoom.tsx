@@ -4,12 +4,23 @@ import {
 import { Relay, type ConnState } from './net/relay';
 import type { RoomView } from '../../server/protocol';
 import { useStore } from './store';
+import { logRoomMessage } from './supabase';
 
 export interface MatchSnapshot {
   matchId: string; seq: number; state: any; yourSlot: 0 | 1;
   lastAction: string | null; serverTime: number;
 }
 export interface RoomError { code: string; message: string; recovery?: string; at: number }
+
+export interface ChatMessage {
+  id: string;
+  senderId: string;
+  from: string;
+  slot: 0 | 1;
+  text: string;
+  ts: number;
+  isSelf: boolean;
+}
 
 interface RoomCtx {
   conn: ConnState;
@@ -19,7 +30,10 @@ interface RoomCtx {
   match: MatchSnapshot | null;
   finished: { matchId: string; winnerSlot: 0 | 1 | null; reason: string } | null;
   error: RoomError | null;
+  messages: ChatMessage[];
   clearError: () => void;
+  sendChat: (text: string) => void;
+  clearMessages: () => void;
   create: (gameId: string, settings: Record<string, unknown>, roomName: string, mode?: 'online' | 'coop') => void;
   join: (code: string) => void;
   ready: (v: boolean) => void;
@@ -48,6 +62,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [match, setMatch] = useState<MatchSnapshot | null>(null);
   const [finished, setFinished] = useState<RoomCtx['finished']>(null);
   const [error, setError] = useState<RoomError | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const relayRef = useRef<Relay | null>(null);
   const seqRef = useRef(0);
 
@@ -62,17 +77,32 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       room: (r, y) => {
         setRoom(r); setYou(y);
         try { localStorage.setItem(RESUME_KEY, r.code); } catch { /* ignore */ }
-        if (r.status !== 'IN_GAME' && r.status !== 'STARTING') setFinished((f) => (r.status === 'COMPLETED' ? f : null));
+        // If the room has no active match or returned to lobby/ready check, clear stale game match state
+        if (!r.matchId || r.status === 'WAITING' || r.status === 'READY_CHECK') {
+          setMatch(null);
+          setFinished(null);
+        } else if (r.status !== 'IN_GAME' && r.status !== 'STARTING') {
+          setFinished((f) => (r.status === 'COMPLETED' ? f : null));
+        }
       },
       state: (p) => { setMatch(p); if (p.seq === 0) setFinished(null); },
       finished: (p) => { setFinished(p); setMatch((m) => (m ? { ...m, state: p.state } : m)); },
+      chat: (p) => {
+        setMessages((prev) => [...prev.slice(-99), { ...p, isSelf: p.senderId === ident.playerId }]);
+        if (p.senderId !== ident.playerId) {
+          sfx('spark');
+        }
+      },
       error: (p) => {
         setError({ ...p, at: Date.now() });
         sfx('error');
         toast({ kind: 'error', title: p.message, body: p.recovery });
       },
       nudge: (p) => { sfx('spark'); toast({ kind: 'info', title: `${p.from} says`, body: p.text }); },
-      left: () => { setRoom(null); setYou(null); setMatch(null); setFinished(null); try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ } },
+      left: () => {
+        setRoom(null); setYou(null); setMatch(null); setFinished(null); setMessages([]);
+        try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
+      },
     });
     try { relay.resumeCode = localStorage.getItem(RESUME_KEY); } catch { /* ignore */ }
     relayRef.current = relay;
@@ -84,8 +114,17 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const connect = useCallback(() => relayRef.current?.connect(), []);
   const api = useMemo<RoomCtx>(() => ({
-    conn, rtt, room, you, match, finished, error,
+    conn, rtt, room, you, match, finished, error, messages,
     clearError: () => setError(null),
+    clearMessages: () => setMessages([]),
+    sendChat: (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      relayRef.current?.send({ t: 'chat', text: trimmed });
+      if (room && you) {
+        void logRoomMessage(room.code, you.id, ident.name, trimmed);
+      }
+    },
     connect,
     create: (gameId, settings, roomName, mode = 'online') => {
       relayRef.current?.connect();
@@ -107,11 +146,25 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     offerDraw: () => relayRef.current?.send({ t: 'offerDraw' }),
     respondDraw: (accept) => relayRef.current?.send({ t: 'respondDraw', accept }),
     rematch: (vote) => relayRef.current?.send({ t: 'rematch', vote }),
-    changeGame: (gameId, settings) => relayRef.current?.send({ t: 'changeGame', gameId, settings }),
-    returnToLobby: () => relayRef.current?.send({ t: 'returnToLobby' }),
-    leave: () => { relayRef.current?.send({ t: 'leave' }); try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ } },
+    changeGame: (gameId, settings) => {
+      setMatch(null);
+      setFinished(null);
+      relayRef.current?.send({ t: 'changeGame', gameId, settings });
+    },
+    returnToLobby: () => {
+      setMatch(null);
+      setFinished(null);
+      relayRef.current?.send({ t: 'returnToLobby' });
+    },
+    leave: () => {
+      relayRef.current?.send({ t: 'leave' });
+      setMatch(null);
+      setFinished(null);
+      setMessages([]);
+      try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
+    },
     nudge: (text) => relayRef.current?.send({ t: 'nudge', text }),
-  }), [conn, rtt, room, you, match, finished, error, connect]);
+  }), [conn, rtt, room, you, match, finished, error, messages, connect, ident.name]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

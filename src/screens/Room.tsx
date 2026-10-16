@@ -27,13 +27,14 @@ const BOARDS: Record<string, React.LazyExoticComponent<React.ComponentType<Board
 export default function Room() {
   const { code = '' } = useParams();
   const nav = useNavigate();
-  const { room, you, match, finished, conn, rtt, error, clearError, join, ready, start, act, leave, rematch, resign, offerDraw, respondDraw, nudge, connect, changeGame, returnToLobby } = useRoom();
+  const { room, you, match, finished, conn, rtt, error, clearError, join, ready, start, act, leave, rematch, resign, offerDraw, respondDraw, nudge, connect, changeGame, returnToLobby, messages, sendChat } = useRoom();
   const { sfx, finishMatch, visit } = useStore();
   useAmbience(room?.status === 'IN_GAME' ? 'match' : 'hub');
 
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [confirmResign, setConfirmResign] = useState(false);
   const [confirmReturnLobby, setConfirmReturnLobby] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const recorded = useRef<string | null>(null);
   const joinAttempted = useRef(false);
 
@@ -122,6 +123,9 @@ export default function Room() {
           <button onClick={() => setConfirmLeave(true)} className="btn btn-sm btn-ghost btn-iconish" aria-label="Leave room">
             <Icon name="back" size={14} /><span className="hidden sm:inline">Leave</span>
           </button>
+          <button onClick={() => { sfx('select'); setPickerOpen(true); }} className="btn btn-sm btn-ghost btn-iconish text-cream-200 hover:text-volt-700" aria-label="Change game">
+            <Icon name="sparkle" size={14} /><span className="hidden sm:inline">Change Game</span>
+          </button>
           {room.status === 'IN_GAME' && (
             <button onClick={() => setConfirmReturnLobby(true)} className="btn btn-sm btn-ghost btn-iconish text-volt-700" aria-label="Return to lobby">
               <Icon name="spark" size={14} /><span className="hidden sm:inline">Lobby</span>
@@ -160,7 +164,7 @@ export default function Room() {
         )}
 
         {(room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)) && (
-          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} />
+          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} />
         )}
 
         {room.status === 'STARTING' && room.startsAt && (
@@ -197,7 +201,7 @@ export default function Room() {
                 rows={[{ label: 'Series', a: room.series.wins[0], b: room.series.wins[1] }, { label: 'Draws', a: room.series.draws, b: room.series.draws }]}
                 rematchPending={!!me?.rematchVote && !opp?.rematchVote}
                 onRematch={() => { sfx('select'); rematch(!me?.rematchVote); }}
-                onChangeGame={() => { sfx('select'); returnToLobby(); }}
+                onChangeGame={() => { sfx('select'); setPickerOpen(true); }}
                 changeGameLabel="Change Game"
                 onExit={() => setConfirmLeave(true)}
                 extra={<p className="text-[11.5px] text-cream-500">{opp?.rematchVote ? `${opp.name} wants a rematch!` : 'Both trainers must vote to run it back.'}</p>}
@@ -220,21 +224,258 @@ export default function Room() {
         confirmLabel="Leave room" danger onConfirm={doLeave} onCancel={() => setConfirmLeave(false)} />
       <ConfirmDialog open={confirmResign} title="Resign this match?" body="Your opponent takes the win and the result is recorded."
         confirmLabel="Resign" danger onConfirm={() => { resign(); setConfirmResign(false); }} onCancel={() => setConfirmResign(false)} />
+
+      {/* In-game and lobby live chat */}
+      <RoomChatWidget
+        messages={messages}
+        sendChat={sendChat}
+        oppName={opp?.name ?? ''}
+      />
+
+      {/* Seamless game switcher */}
+      <GamePickerModal
+        open={pickerOpen}
+        currentGameId={room.gameId}
+        onClose={() => setPickerOpen(false)}
+        onSelect={(gameId, settings) => changeGame(gameId, settings)}
+      />
     </div>
   );
 }
 
-/* ------------------------------------------------------------------ lobby */
-function Lobby({ room, slot, inviteLink, onReady, onStart, onChangeGame }: any) {
+/* ------------------------------------------------------------------ game picker modal */
+function GamePickerModal({
+  open,
+  currentGameId,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  currentGameId: string;
+  onClose: () => void;
+  onSelect: (gameId: string, settings: Record<string, unknown>) => void;
+}) {
   const { sfx } = useStore();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const games = onlineGames();
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-ink-900/80 backdrop-blur-sm"
+      role="dialog" aria-modal="true" aria-label="Select a game">
+      <div className="relative panel panel-notch w-full max-w-[640px] p-5 sm:p-6 max-h-[85vh] flex flex-col a-pop">
+        <div className="flex items-center justify-between pb-3 border-b border-ink-600 mb-4">
+          <div>
+            <p className="eyebrow text-volt-700">Multiplayer</p>
+            <h3 className="display text-[22px] text-cream-100">Choose a Game</h3>
+          </div>
+          <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
+        </div>
+        <div className="overflow-y-auto flex-1 pr-1 grid gap-2.5 sm:grid-cols-2">
+          {games.map((g) => {
+            const isCurrent = g.id === currentGameId;
+            return (
+              <button
+                key={g.id}
+                onClick={() => {
+                  sfx('select');
+                  onSelect(g.id, defaultGameSettings(g));
+                  onClose();
+                }}
+                className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all no-tap cursor-pointer
+                  ${isCurrent
+                    ? 'border-volt-400 bg-volt-400/15'
+                    : 'border-ink-600 bg-ink-800/80 hover:border-cream-300 hover:bg-ink-700'
+                  }`}
+              >
+                <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-ink-900 grid place-items-center">
+                  <GameArtwork artKey={g.artKey} className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13.5px] font-extrabold text-cream-100 truncate">{g.title}</p>
+                  <p className="text-[11px] text-cream-500 truncate">{g.tagline}</p>
+                  <span className="text-[10px] text-volt-700 uppercase font-bold tracking-wider">{g.duration}m · {g.genre}</span>
+                </div>
+                {isCurrent && <span className="text-volt-700 font-extrabold text-[12px] shrink-0">Active</span>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ live room chat widget */
+const QUICK_CHIPS = ['⚡ GG!', 'Nice move!', 'Pikachu! ⚡', 'Thinking...', 'Rematch?', 'Good luck!', 'Oops!'];
+
+function RoomChatWidget({
+  messages,
+  sendChat,
+  oppName,
+}: {
+  messages: any[];
+  sendChat: (text: string) => void;
+  oppName: string;
+}) {
+  const { sfx } = useStore();
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState('');
+  const readCountRef = useRef(0);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const unreadCount = !open ? Math.max(0, (messages?.length ?? 0) - readCountRef.current) : 0;
+
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next) {
+      readCountRef.current = messages?.length ?? 0;
+      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }
+  };
+
+  useEffect(() => {
+    if (open) {
+      readCountRef.current = messages?.length ?? 0;
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages?.length, open]);
+
+  const onSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    sendChat(text);
+    setDraft('');
+    sfx('place');
+  };
+
+  const onChip = (chip: string) => {
+    sendChat(chip);
+    sfx('place');
+  };
+
+  return (
+    <>
+      {/* Floating launcher button */}
+      {!open && (
+        <button
+          onClick={toggle}
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full bg-volt-400 text-ink-950 font-bold shadow-xl hover:bg-volt-300 transition-all border-2 border-ink-900 focus:outline-none no-tap a-pop cursor-pointer"
+          aria-label="Open arena chat"
+        >
+          <Icon name="chat" size={17} />
+          <span className="text-[13px] font-extrabold tracking-wide">Chat</span>
+          {unreadCount > 0 && (
+            <span className="w-5 h-5 rounded-full bg-ember-600 text-white text-[10.5px] font-black grid place-items-center animate-pulse">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      )}
+
+      {/* Expanded chat window */}
+      {open && (
+        <div className="fixed bottom-4 right-4 z-40 w-[92vw] sm:w-[350px] h-[460px] max-h-[80vh] panel panel-notch p-0 flex flex-col shadow-2xl bg-ink-900/95 border-2 border-ink-600 backdrop-blur-md a-pop overflow-hidden">
+          {/* Header */}
+          <div className="p-3 bg-ink-850 border-b border-ink-600 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-full bg-volt-400/20 border border-volt-400 text-volt-700 grid place-items-center shrink-0">
+                <Icon name="chat" size={14} />
+              </span>
+              <div>
+                <p className="text-[12.5px] font-extrabold text-cream-100 leading-tight">Arena Chat</p>
+                <p className="text-[10px] text-cream-500 truncate">{oppName ? `with ${oppName}` : 'In arena'}</p>
+              </div>
+            </div>
+            <button
+              onClick={toggle}
+              className="w-7 h-7 rounded-lg bg-ink-750 hover:bg-ink-700 text-cream-300 flex items-center justify-center transition-colors cursor-pointer"
+              aria-label="Close chat"
+            >
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+
+          {/* Quick chips */}
+          <div className="px-2.5 py-1.5 bg-ink-950/60 border-b border-ink-700/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {QUICK_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                onClick={() => onChip(chip)}
+                className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-ink-800 hover:bg-volt-400 hover:text-ink-950 text-cream-300 border border-ink-600 transition-colors cursor-pointer"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+
+          {/* Messages list */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+            {!messages || messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center p-4">
+                <PikachuMascot state="idle" size={60} />
+                <p className="text-[12px] font-bold text-cream-200 mt-2">No messages yet</p>
+                <p className="text-[10.5px] text-cream-500 mt-0.5">Say hi or tap a quick reaction above!</p>
+              </div>
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex flex-col ${m.isSelf ? 'items-end' : 'items-start'}`}
+                >
+                  <span className="text-[9.5px] text-cream-500 mb-0.5 px-1 font-semibold">
+                    {m.isSelf ? 'You' : m.from} · {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <div
+                    className={`max-w-[82%] px-3 py-1.5 rounded-xl text-[12.5px] break-words ${
+                      m.isSelf
+                        ? 'bg-volt-400 text-ink-950 font-medium rounded-tr-none shadow-sm'
+                        : 'bg-ink-800 text-cream-100 border border-ink-600 rounded-tl-none'
+                    }`}
+                  >
+                    {m.text}
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={scrollRef} />
+          </div>
+
+          {/* Input form */}
+          <form onSubmit={onSend} className="p-2 bg-ink-850 border-t border-ink-600 flex items-center gap-1.5">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Send a message..."
+              maxLength={200}
+              className="flex-1 bg-ink-800 border border-ink-600 px-3 py-1.5 text-[12px] text-cream-100 placeholder-ink-400 rounded-lg focus:border-volt-400 focus:outline-none"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              disabled={!draft.trim()}
+              icon={<Icon name="send" size={13} />}
+              className="!px-3 !py-1.5 shrink-0"
+            />
+          </form>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ------------------------------------------------------------------ lobby */
+function Lobby({ room, slot, inviteLink, onReady, onStart, onOpenPicker }: any) {
+  const { sfx } = useStore();
   const members = [...room.members].sort((a: any, b: any) => a.slot - b.slot);
   const me = members.find((m: any) => m.slot === slot);
   const opp = members.find((m: any) => m.slot !== slot);
   const game = gameById(room.gameId);
   const bothReady = members.length === 2 && members.every((m: any) => m.ready && m.connected);
   const isHost = me?.isHost;
-  const games = onlineGames();
 
   return (
     <div className="grid lg:grid-cols-[1fr_360px] gap-5 items-start">
@@ -246,7 +487,7 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, onChangeGame }: any) 
             <h1 className="display text-[26px] sm:text-[32px] text-cream-100 mb-1">{room.roomName}</h1>
             <div className="flex items-center gap-3 mb-6 flex-wrap">
               <p className="text-[13px] text-cream-500">{game?.title} · {game?.tagline}</p>
-              <Button size="sm" variant="blue" onClick={() => { sfx('toggle'); setPickerOpen(true); }} icon={<Icon name="spark" size={13} />}>
+              <Button size="sm" variant="blue" onClick={() => { sfx('toggle'); onOpenPicker?.(); }} icon={<Icon name="spark" size={13} />}>
                 Change game
               </Button>
             </div>
@@ -330,51 +571,6 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, onChangeGame }: any) 
           </div>
         </Panel>
       </div>
-
-      {pickerOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-ink-900/80 backdrop-blur-sm"
-          role="dialog" aria-modal="true" aria-label="Select a game">
-          <div className="relative panel panel-notch w-full max-w-[640px] p-5 sm:p-6 max-h-[85vh] flex flex-col a-pop">
-            <div className="flex items-center justify-between pb-3 border-b border-ink-600 mb-4">
-              <div>
-                <p className="eyebrow text-volt-700">Multiplayer</p>
-                <h3 className="display text-[22px] text-cream-100">Choose a Game</h3>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => setPickerOpen(false)}>Close</Button>
-            </div>
-            <div className="overflow-y-auto flex-1 pr-1 grid gap-2.5 sm:grid-cols-2">
-              {games.map((g) => {
-                const isCurrent = g.id === room.gameId;
-                return (
-                  <button
-                    key={g.id}
-                    onClick={() => {
-                      sfx('select');
-                      onChangeGame?.(g.id, defaultGameSettings(g));
-                      setPickerOpen(false);
-                    }}
-                    className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all no-tap
-                      ${isCurrent
-                        ? 'border-volt-400 bg-volt-400/15'
-                        : 'border-ink-600 bg-ink-800/80 hover:border-cream-300 hover:bg-ink-700'
-                      }`}
-                  >
-                    <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-ink-900 grid place-items-center">
-                      <GameArtwork artKey={g.artKey} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[13.5px] font-extrabold text-cream-100 truncate">{g.title}</p>
-                      <p className="text-[11px] text-cream-500 truncate">{g.tagline}</p>
-                      <span className="text-[10px] text-volt-700 uppercase font-bold tracking-wider">{g.duration}m · {g.genre}</span>
-                    </div>
-                    {isCurrent && <span className="text-volt-700 font-extrabold text-[12px] shrink-0">Active</span>}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

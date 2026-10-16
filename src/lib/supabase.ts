@@ -97,8 +97,111 @@ export async function signInWithEmail(email: string) {
   if (error) throw error;
 }
 
+export function usernameToEmail(username: string): string {
+  const clean = username.trim().toLowerCase().replace(/[^a-z0-9_\-\.]/g, '');
+  return `${clean || 'trainer'}@pikachu.arcade`;
+}
+
+export async function signUpWithPassword(username: string, password: string, email?: string) {
+  const sb = await supabase();
+  if (!sb) throw new Error('Cloud sync is not configured.');
+  const cleanUser = username.trim();
+  if (!cleanUser || cleanUser.length < 2) throw new Error('Username must be at least 2 characters.');
+  if (!password || password.length < 6) throw new Error('Password must be at least 6 characters.');
+
+  const authEmail = email && email.includes('@') ? email.trim() : usernameToEmail(cleanUser);
+  const { data, error } = await sb.auth.signUp({
+    email: authEmail,
+    password,
+    options: {
+      data: {
+        display_name: cleanUser,
+        username: cleanUser.toLowerCase(),
+      },
+    },
+  });
+  if (error) throw error;
+
+  if (data.user) {
+    try {
+      await sb.from('profiles').upsert({
+        id: data.user.id,
+        display_name: cleanUser,
+        mascot: 'classic',
+        updated_at: new Date().toISOString(),
+      });
+    } catch { /* trigger also handles this */ }
+  }
+  return data;
+}
+
+export async function signInWithPassword(usernameOrEmail: string, password: string) {
+  const sb = await supabase();
+  if (!sb) throw new Error('Cloud sync is not configured.');
+  const input = usernameOrEmail.trim();
+  if (!input) throw new Error('Please enter your username or email.');
+  if (!password) throw new Error('Please enter your password.');
+
+  const authEmail = input.includes('@') ? input : usernameToEmail(input);
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: authEmail,
+    password,
+  });
+  if (error) {
+    if (error.message.toLowerCase().includes('invalid login credentials')) {
+      throw new Error('Incorrect username or password.');
+    }
+    throw error;
+  }
+  return data;
+}
+
 export async function signOut() {
   await (await supabase())?.auth.signOut();
+}
+
+export async function fetchRemoteUserData(): Promise<{ name?: string; mascot?: string; stats?: Record<string, any> } | null> {
+  const sb = await supabase();
+  if (!sb) return null;
+  const uid = await currentUserId();
+  if (!uid) return null;
+  try {
+    const { data: profile } = await sb.from('profiles').select('display_name, mascot').eq('id', uid).maybeSingle();
+    const { data: statsRows } = await sb.from('player_stats').select('*').eq('user_id', uid);
+    const stats: Record<string, any> = {};
+    if (statsRows) {
+      for (const row of statsRows) {
+        stats[row.game_id] = {
+          played: row.matches_played,
+          wins: row.wins,
+          losses: row.losses,
+          draws: row.draws,
+          best: row.best_score,
+        };
+      }
+    }
+    return {
+      name: profile?.display_name,
+      mascot: profile?.mascot,
+      stats: Object.keys(stats).length ? stats : undefined,
+    };
+  } catch (e) {
+    if (!warned) { warned = true; console.warn('[supabase] data fetch unavailable', e); }
+    return null;
+  }
+}
+
+export async function logRoomMessage(roomCode: string, senderId: string, senderName: string, message: string) {
+  const sb = await supabase();
+  if (!sb) return;
+  try {
+    await sb.from('room_messages').insert({
+      room_code: roomCode.toUpperCase(),
+      sender_id: senderId,
+      sender_name: senderName,
+      message: message.slice(0, 300),
+    });
+  } catch { /* best effort */ }
 }
 
 export async function upsertRemoteProfile(identity: Identity) {

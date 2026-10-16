@@ -191,13 +191,13 @@ export default function Profile() {
           )}
 
           <Panel className="p-4">
-            <p className="eyebrow mb-1.5">Cloud sync</p>
+            <p className="eyebrow mb-1.5">Trainer Account</p>
             <p className="text-[12.5px] text-cream-400">
               {cloud
-                ? 'Supabase is configured. Sign in from Settings to mirror results across devices.'
-                : 'Running fully offline on this device. Add Supabase keys to .env to sync.'}
+                ? 'Create a trainer account with username & password in Settings to sync your badges and career stats.'
+                : 'Running locally on this device. Configure your Supabase project in Settings to sync your account.'}
             </p>
-            <Link to="/settings" className="inline-block mt-2.5 text-[12px] text-volt-700 hover:underline">Open settings →</Link>
+            <Link to="/settings" className="inline-block mt-2.5 text-[12px] text-volt-700 font-bold hover:underline">Manage account & sync →</Link>
           </Panel>
 
           <Button variant="ghost" className="w-full" onClick={() => setResetOpen(true)} icon={<Icon name="rotate" size={14} />}>

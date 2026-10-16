@@ -564,9 +564,7 @@ wss.on('connection', (ws, req) => {
           if (!rules) return fail(ws, 'unknown_game', 'Unknown game.');
 
           room.gameId = newGameId;
-          if (msg.settings && typeof msg.settings === 'object') {
-            room.settings = msg.settings;
-          }
+          room.settings = sanitiseSettings(msg.settings ?? {});
           room.match = null;
           room.status = room.members.size === 2 ? 'READY_CHECK' : 'WAITING';
           room.startsAt = null;
@@ -594,6 +592,31 @@ wss.on('connection', (ws, req) => {
           }
           touch(room);
           broadcastRoom(room);
+          return;
+        }
+
+        /* ---------------------------------------------------------- chat */
+        case 'chat': {
+          const ctx = memberOf(ws);
+          if (!ctx) return;
+          if (!allow(`chat:${ctx.me.id}`, 60)) return fail(ws, 'rate_limited', 'Chatting too fast.', 'Wait a few seconds.');
+          const raw = String(msg.text ?? '').trim();
+          if (!raw) return;
+          const text = raw.slice(0, 240);
+          const out = {
+            t: 'chat' as const,
+            id: randomUUID(),
+            senderId: ctx.me.id,
+            from: ctx.me.name,
+            slot: ctx.me.slot,
+            text,
+            ts: Date.now(),
+          };
+          for (const m of ctx.room.members.values()) {
+            for (const sock of m.sockets) {
+              send(sock, out);
+            }
+          }
           return;
         }
 

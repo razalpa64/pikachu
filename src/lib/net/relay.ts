@@ -12,6 +12,7 @@ export interface RelayEvents {
   room?: (room: RoomView, you: { slot: 0 | 1; id: string }) => void;
   state?: (p: { matchId: string; seq: number; state: unknown; yourSlot: 0 | 1; lastAction: string | null; serverTime: number }) => void;
   finished?: (p: { matchId: string; winnerSlot: 0 | 1 | null; reason: string; state: unknown }) => void;
+  chat?: (p: { id: string; senderId: string; from: string; slot: 0 | 1; text: string; ts: number }) => void;
   error?: (p: { code: string; message: string; recovery?: string }) => void;
   nudge?: (p: { from: string; text: string }) => void;
   left?: () => void;
@@ -103,6 +104,7 @@ export class Relay {
           this.events.state?.(msg);
           break;
         case 'finished': this.events.finished?.(msg); break;
+        case 'chat': this.events.chat?.(msg); break;
         case 'error': this.events.error?.(msg); break;
         case 'nudge': this.events.nudge?.(msg); break;
         case 'left': this.resumeCode = null; this.lastMatchId = null; this.lastSeq = -1; this.events.left?.(); break;

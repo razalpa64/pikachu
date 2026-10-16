@@ -59,6 +59,8 @@ export const Icon = ({ name, size = 18, className = '' }: { name: string; size?:
     shield: <path d="M12 3 20 6v6c0 5-3.4 8.2-8 9.5C7.4 20.2 4 17 4 12V6z" />,
     moon: <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z" />,
     pause: <><path d="M8.5 4.5v15M15.5 4.5v15" /></>,
+    chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
+    send: <><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>,
     'chevron-up': <path d="m5 15 7-7 7 7" />,
     'chevron-down': <path d="m5 9 7 7 7-7" />,
     'chevron-left': <path d="m15 5-7 7 7 7" />,

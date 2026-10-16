@@ -67,7 +67,7 @@ export default function Settings() {
       setIdentity({ name: cleanUser });
       setSession(cleanUser);
       setPassword('');
-      sfx('victory');
+      sfx('win');
       toast({ kind: 'success', title: `Welcome, ${cleanUser}!`, body: 'Your account is ready and synced.' });
     } catch (err: any) {
       toast({ kind: 'error', title: 'Sign-up failed', body: err?.message || 'Could not create account.' });
@@ -99,7 +99,7 @@ export default function Settings() {
       }
       setSession(displayName);
       setPassword('');
-      sfx('victory');
+      sfx('win');
       toast({ kind: 'success', title: 'Signed in!', body: `Welcome back, ${displayName}!` });
     } catch (err: any) {
       toast({ kind: 'error', title: 'Sign-in failed', body: err?.message || 'Incorrect username or password.' });

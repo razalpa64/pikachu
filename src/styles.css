@@ -45,6 +45,7 @@
   /* --- cocoa ink (was "cream" text) --- */
   --color-cream-100: #5c4035;  /* primary text */
   --color-cream-300: #87675a;  /* secondary */
+  --color-cream-400: #987869;  /* medium secondary */
   --color-cream-500: #a98a79;  /* muted */
 
   /* --- blush pink (was "spark" blue) --- */
@@ -113,6 +114,8 @@ button { font-family: inherit; }
   background: #f0c9a6; border-radius: 99px; border: 3px solid #fdf0dd;
 }
 *::-webkit-scrollbar-thumb:hover { background: var(--color-blush-300); }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* --------- focus --------- */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {

@@ -164,7 +164,7 @@ export default function Room() {
         )}
 
         {(room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)) && (
-          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} />
+          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} messages={messages} sendChat={sendChat} />
         )}
 
         {room.status === 'STARTING' && room.startsAt && (
@@ -230,6 +230,9 @@ export default function Room() {
         messages={messages}
         sendChat={sendChat}
         oppName={opp?.name ?? ''}
+        oppMascot={opp?.mascot}
+        oppConnected={opp?.connected ?? false}
+        isLobbyDesktop={room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)}
       />
 
       {/* Seamless game switcher */}
@@ -257,20 +260,54 @@ function GamePickerModal({
 }) {
   const { sfx } = useStore();
   const games = onlineGames();
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center p-4 bg-ink-900/80 backdrop-blur-sm"
-      role="dialog" aria-modal="true" aria-label="Select a game">
-      <div className="relative panel panel-notch w-full max-w-[640px] p-5 sm:p-6 max-h-[85vh] flex flex-col a-pop">
-        <div className="flex items-center justify-between pb-3 border-b border-ink-600 mb-4">
-          <div>
-            <p className="eyebrow text-volt-700">Multiplayer</p>
-            <h3 className="display text-[22px] text-cream-100">Choose a Game</h3>
+    <div
+      className="fixed inset-0 z-50 grid place-items-center p-3 sm:p-5 bg-ink-900/85 backdrop-blur-md"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose a game"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          sfx('toggle');
+          onClose();
+        }
+      }}
+    >
+      <div className="relative panel panel-notch w-full max-w-[680px] p-4 sm:p-6 max-h-[88vh] flex flex-col shadow-2xl a-pop overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3.5 border-b-2 border-ink-600 mb-4 shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-2xl bg-volt-300/40 border-2 border-volt-500 text-volt-700 grid place-items-center shadow-xs">
+              <Icon name="spark" size={19} />
+            </span>
+            <div>
+              <p className="eyebrow text-volt-700 leading-none mb-1">Switch Arena</p>
+              <h3 className="display text-[22px] sm:text-[25px] text-cream-100 leading-none">Choose a Game</h3>
+            </div>
           </div>
-          <Button size="sm" variant="ghost" onClick={onClose}>Close</Button>
+          <button
+            onClick={() => { sfx('toggle'); onClose(); }}
+            className="w-8 h-8 rounded-full bg-white hover:bg-blush-100 border-2 border-ink-500 text-cream-400 hover:text-blush-600 grid place-items-center transition-colors cursor-pointer"
+            aria-label="Close dialog"
+          >
+            <Icon name="x" size={15} />
+          </button>
         </div>
-        <div className="overflow-y-auto flex-1 pr-1 grid gap-2.5 sm:grid-cols-2">
+
+        {/* Scrollable grid of games */}
+        <div className="overflow-y-auto flex-1 pr-1.5 grid gap-3 sm:grid-cols-2">
           {games.map((g) => {
             const isCurrent = g.id === currentGameId;
             return (
@@ -281,21 +318,36 @@ function GamePickerModal({
                   onSelect(g.id, defaultGameSettings(g));
                   onClose();
                 }}
-                className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all no-tap cursor-pointer
+                className={`group relative flex items-center gap-3.5 p-3 rounded-2xl border-2 text-left transition-all no-tap cursor-pointer shadow-xs
                   ${isCurrent
-                    ? 'border-volt-400 bg-volt-400/15'
-                    : 'border-ink-600 bg-ink-800/80 hover:border-cream-300 hover:bg-ink-700'
+                    ? 'border-volt-500 bg-volt-200/50 ring-2 ring-volt-400/40'
+                    : 'border-ink-500 bg-white hover:border-blush-300 hover:bg-blush-100/60 hover:-translate-y-0.5 hover:shadow-sm'
                   }`}
               >
-                <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 bg-ink-900 grid place-items-center">
-                  <GameArtwork artKey={g.artKey} className="w-full h-full object-cover" />
+                {/* Fixed thumbnail container with relative positioning so artwork cannot bleed out */}
+                <div className="relative w-14 h-14 rounded-2xl overflow-hidden shrink-0 bg-ink-850 border-2 border-ink-500 shadow-xs grid place-items-center">
+                  <GameArtwork
+                    artKey={g.artKey}
+                    className="w-full h-full object-cover pointer-events-none group-hover:scale-108 transition-transform duration-300"
+                  />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[13.5px] font-extrabold text-cream-100 truncate">{g.title}</p>
-                  <p className="text-[11px] text-cream-500 truncate">{g.tagline}</p>
-                  <span className="text-[10px] text-volt-700 uppercase font-bold tracking-wider">{g.duration}m · {g.genre}</span>
+                  <p className="font-display text-[15px] font-bold text-cream-100 truncate group-hover:text-blush-600 transition-colors">
+                    {g.title}
+                  </p>
+                  <p className="text-[11.5px] text-cream-400 truncate">{g.tagline}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[9.5px] font-extrabold px-2 py-0.5 rounded-full bg-ink-850 border border-ink-500 text-cream-300 uppercase tracking-wider">
+                      {g.genre}
+                    </span>
+                    <span className="text-[10.5px] text-volt-700 font-extrabold">~{g.duration}m</span>
+                  </div>
                 </div>
-                {isCurrent && <span className="text-volt-700 font-extrabold text-[12px] shrink-0">Active</span>}
+                {isCurrent && (
+                  <span className="px-2.5 py-1 rounded-full bg-volt-400 border border-volt-600 text-[#4a2e18] text-[10.5px] font-extrabold shrink-0 shadow-xs flex items-center gap-1">
+                    <Icon name="check" size={11} /> Active
+                  </span>
+                )}
               </button>
             );
           })}
@@ -305,32 +357,172 @@ function GamePickerModal({
   );
 }
 
-/* ------------------------------------------------------------------ live room chat widget */
-const QUICK_CHIPS = ['⚡ GG!', 'Nice move!', 'Pikachu! ⚡', 'Thinking...', 'Rematch?', 'Good luck!', 'Oops!'];
+/* ------------------------------------------------------------------ live room chat components */
+const QUICK_CHIPS = ['⚡ GG!', '🔥 Nice move!', '⚡ Pika Pika!', '🤔 Thinking...', '🎯 Rematch?', '👋 Good luck!', '😅 Oops!', '✨ Wow!'];
+
+function QuickChipsBar({ onChip }: { onChip: (chip: string) => void }) {
+  return (
+    <div className="px-2.5 py-1.5 bg-ink-850 border-b border-ink-600 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+      {QUICK_CHIPS.map((chip) => (
+        <button
+          key={chip}
+          type="button"
+          onClick={() => onChip(chip)}
+          className="shrink-0 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-white hover:bg-volt-200 text-cream-100 hover:text-[#4a2e18] border-2 border-ink-500 hover:border-volt-500 transition-all shadow-xs cursor-pointer active:scale-95"
+        >
+          {chip}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ChatInputBar({
+  draft,
+  setDraft,
+  onSend,
+}: {
+  draft: string;
+  setDraft: (v: string) => void;
+  onSend: (e?: React.FormEvent) => void;
+}) {
+  return (
+    <form onSubmit={onSend} className="p-2 sm:p-2.5 bg-ink-850 border-t-2 border-ink-600 flex items-center gap-2 shrink-0">
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder="Send message to arena..."
+        maxLength={200}
+        className="flex-1 min-w-0 bg-white border-2 border-ink-500 px-3.5 py-1.5 text-[12.5px] font-semibold text-cream-100 placeholder:text-cream-500 rounded-full focus:border-volt-500 focus:outline-none transition-colors shadow-inner"
+      />
+      <Button
+        type="submit"
+        size="sm"
+        variant="primary"
+        disabled={!draft.trim()}
+        icon={<Icon name="send" size={13} />}
+        className="!w-8 !h-8 !p-0 !rounded-full shrink-0 grid place-items-center"
+      />
+    </form>
+  );
+}
+
+function ChatMessagesList({
+  messages,
+  oppName,
+  oppMascot,
+  scrollRef,
+}: {
+  messages: any[];
+  oppName: string;
+  oppMascot?: string;
+  scrollRef: React.RefObject<HTMLDivElement | null>;
+}) {
+  if (!messages || messages.length === 0) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center text-center p-5 select-none min-h-[160px]">
+        <div className="w-14 h-14 rounded-full bg-volt-200/50 border-2 border-volt-400/60 grid place-items-center mb-2.5">
+          <PikachuMascot state="idle" size={48} />
+        </div>
+        <p className="font-display text-[14.5px] font-extrabold text-cream-100">
+          Say hi to {oppName || 'your rival'}!
+        </p>
+        <p className="text-[11px] text-cream-500 max-w-[210px] mt-0.5 leading-relaxed">
+          Tap a reaction above or type a message below.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {messages.map((m) => {
+        const timeStr = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        if (m.isSelf) {
+          return (
+            <div key={m.id} className="flex flex-col items-end text-right">
+              <span className="text-[9.5px] font-bold text-cream-500 mb-0.5 px-1 tracking-tight">
+                You · {timeStr}
+              </span>
+              <div className="max-w-[82%] px-3.5 py-1.5 rounded-2xl rounded-tr-xs bg-gradient-to-br from-volt-300 to-volt-400 text-[#4a2e18] text-[13px] font-bold border-2 border-volt-600 shadow-xs break-words leading-relaxed text-left">
+                {m.text}
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={m.id} className="flex items-end gap-2 text-left">
+            <div className="w-7 h-7 rounded-full bg-white border-2 border-ink-500 overflow-hidden shrink-0 grid place-items-center mb-0.5 shadow-xs">
+              <img
+                src={MASCOT_ART[oppMascot ?? 'classic'] ?? MASCOT_ART.classic}
+                alt=""
+                className="w-5 h-5 object-contain"
+              />
+            </div>
+            <div className="max-w-[80%] flex flex-col items-start">
+              <span className="text-[9.5px] font-bold text-cream-500 mb-0.5 px-1 tracking-tight">
+                {m.from || oppName || 'Rival'} · {timeStr}
+              </span>
+              <div className="px-3.5 py-1.5 rounded-2xl rounded-tl-xs bg-white text-cream-100 text-[13px] font-semibold border-2 border-ink-500 shadow-xs break-words leading-relaxed">
+                {m.text}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      <div ref={scrollRef} />
+    </div>
+  );
+}
 
 function RoomChatWidget({
   messages,
   sendChat,
   oppName,
+  oppMascot,
+  oppConnected,
+  isLobbyDesktop,
 }: {
   messages: any[];
   sendChat: (text: string) => void;
   oppName: string;
+  oppMascot?: string;
+  oppConnected?: boolean;
+  isLobbyDesktop?: boolean;
 }) {
   const { sfx } = useStore();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [toastSnippet, setToastSnippet] = useState<string | null>(null);
   const readCountRef = useRef(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const prevMsgCount = useRef(0);
 
   const unreadCount = !open ? Math.max(0, (messages?.length ?? 0) - readCountRef.current) : 0;
+
+  // Show quick incoming message preview when chat is closed
+  useEffect(() => {
+    const curLen = messages?.length ?? 0;
+    if (curLen > prevMsgCount.current) {
+      const last = messages[curLen - 1];
+      if (last && !last.isSelf && !open) {
+        setToastSnippet(last.text);
+        const timer = setTimeout(() => setToastSnippet(null), 4500);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevMsgCount.current = curLen;
+  }, [messages, open]);
 
   const toggle = () => {
     const next = !open;
     setOpen(next);
     if (next) {
+      setToastSnippet(null);
       readCountRef.current = messages?.length ?? 0;
-      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
     }
   };
 
@@ -357,118 +549,171 @@ function RoomChatWidget({
 
   return (
     <>
+      {/* Toast snippet for incoming messages when chat is closed */}
+      {toastSnippet && !open && (
+        <div
+          onClick={toggle}
+          className={`fixed bottom-16 right-3 sm:bottom-18 sm:right-5 z-40 max-w-[280px] p-2.5 rounded-2xl bg-white border-2 border-volt-500 shadow-xl cursor-pointer a-pop flex items-center gap-2 hover:bg-volt-50 transition-all ${isLobbyDesktop ? 'lg:hidden' : ''}`}
+        >
+          <span className="w-6 h-6 rounded-full bg-volt-300 border border-volt-500 text-[11px] grid place-items-center shrink-0">⚡</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-extrabold text-volt-700 leading-tight truncate">{oppName || 'Rival'}</p>
+            <p className="text-[12px] font-bold text-cream-100 truncate">{toastSnippet}</p>
+          </div>
+        </div>
+      )}
+
       {/* Floating launcher button */}
       {!open && (
         <button
           onClick={toggle}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full bg-volt-400 text-ink-950 font-bold shadow-xl hover:bg-volt-300 transition-all border-2 border-ink-900 focus:outline-none no-tap a-pop cursor-pointer"
+          className={`fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full bg-volt-400 text-[#4a2e18] font-bold shadow-xl hover:bg-volt-300 active:scale-95 transition-all border-2 border-ink-600 focus:outline-none no-tap a-pop cursor-pointer ${isLobbyDesktop ? 'lg:hidden' : ''}`}
           aria-label="Open arena chat"
         >
           <Icon name="chat" size={17} />
           <span className="text-[13px] font-extrabold tracking-wide">Chat</span>
           {unreadCount > 0 && (
-            <span className="w-5 h-5 rounded-full bg-ember-600 text-white text-[10.5px] font-black grid place-items-center animate-pulse">
+            <span className="w-5 h-5 rounded-full bg-ember-600 text-white text-[10.5px] font-black grid place-items-center animate-bounce shadow-xs">
               {unreadCount}
             </span>
           )}
         </button>
       )}
 
-      {/* Expanded chat window */}
+      {/* Expanded chat window - perfectly centered & padded on mobile, cleanly pinned on desktop */}
       {open && (
-        <div className="fixed bottom-4 right-4 z-40 w-[92vw] sm:w-[350px] h-[460px] max-h-[80vh] panel panel-notch p-0 flex flex-col shadow-2xl bg-ink-900/95 border-2 border-ink-600 backdrop-blur-md a-pop overflow-hidden">
+        <div
+          className={`fixed bottom-3 inset-x-3 sm:inset-x-auto sm:right-5 sm:bottom-5 z-40 w-auto sm:w-[370px] h-[490px] max-h-[82vh] panel panel-notch p-0 flex flex-col shadow-2xl bg-[#fffefb] border-2 border-ink-500 backdrop-blur-md a-pop overflow-hidden ${isLobbyDesktop ? 'lg:hidden' : ''}`}
+        >
           {/* Header */}
-          <div className="p-3 bg-ink-850 border-b border-ink-600 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-full bg-volt-400/20 border border-volt-400 text-volt-700 grid place-items-center shrink-0">
-                <Icon name="chat" size={14} />
+          <div className="p-3 bg-gradient-to-r from-ink-850 via-[#fff8ec] to-ink-850 border-b-2 border-ink-600 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="w-8 h-8 rounded-full bg-white border-2 border-ink-500 overflow-hidden grid place-items-center shrink-0 shadow-xs">
+                <img
+                  src={MASCOT_ART[oppMascot ?? 'classic'] ?? MASCOT_ART.classic}
+                  alt=""
+                  className="w-6 h-6 object-contain"
+                />
               </span>
-              <div>
-                <p className="text-[12.5px] font-extrabold text-cream-100 leading-tight">Arena Chat</p>
-                <p className="text-[10px] text-cream-500 truncate">{oppName ? `with ${oppName}` : 'In arena'}</p>
+              <div className="min-w-0">
+                <p className="font-display text-[13.5px] font-extrabold text-cream-100 leading-tight">Arena Chat</p>
+                <div className="flex items-center gap-1.5">
+                  <span className={`w-1.5 h-1.5 rounded-full ${oppConnected ? 'bg-mint-400' : 'bg-cream-400'}`} />
+                  <p className="text-[10px] font-bold text-cream-500 truncate">
+                    {oppName ? (oppConnected ? `with ${oppName}` : `${oppName} (idle)`) : 'Waiting for rival'}
+                  </p>
+                </div>
               </div>
             </div>
-            <button
-              onClick={toggle}
-              className="w-7 h-7 rounded-lg bg-ink-750 hover:bg-ink-700 text-cream-300 flex items-center justify-center transition-colors cursor-pointer"
-              aria-label="Close chat"
-            >
-              <Icon name="x" size={14} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={toggle}
+                className="w-7 h-7 rounded-full bg-white hover:bg-blush-100 border-2 border-ink-500 text-cream-400 hover:text-blush-600 flex items-center justify-center transition-colors cursor-pointer"
+                aria-label="Close chat"
+              >
+                <Icon name="x" size={13} />
+              </button>
+            </div>
           </div>
 
-          {/* Quick chips */}
-          <div className="px-2.5 py-1.5 bg-ink-950/60 border-b border-ink-700/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-            {QUICK_CHIPS.map((chip) => (
-              <button
-                key={chip}
-                onClick={() => onChip(chip)}
-                className="shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-ink-800 hover:bg-volt-400 hover:text-ink-950 text-cream-300 border border-ink-600 transition-colors cursor-pointer"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
+          {/* Quick chips bar */}
+          <QuickChipsBar onChip={onChip} />
 
           {/* Messages list */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-            {!messages || messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4">
-                <PikachuMascot state="idle" size={60} />
-                <p className="text-[12px] font-bold text-cream-200 mt-2">No messages yet</p>
-                <p className="text-[10.5px] text-cream-500 mt-0.5">Say hi or tap a quick reaction above!</p>
-              </div>
-            ) : (
-              messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={`flex flex-col ${m.isSelf ? 'items-end' : 'items-start'}`}
-                >
-                  <span className="text-[9.5px] text-cream-500 mb-0.5 px-1 font-semibold">
-                    {m.isSelf ? 'You' : m.from} · {new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  <div
-                    className={`max-w-[82%] px-3 py-1.5 rounded-xl text-[12.5px] break-words ${
-                      m.isSelf
-                        ? 'bg-volt-400 text-ink-950 font-medium rounded-tr-none shadow-sm'
-                        : 'bg-ink-800 text-cream-100 border border-ink-600 rounded-tl-none'
-                    }`}
-                  >
-                    {m.text}
-                  </div>
-                </div>
-              ))
-            )}
-            <div ref={scrollRef} />
+          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-[#fffcf5]">
+            <ChatMessagesList
+              messages={messages}
+              oppName={oppName}
+              oppMascot={oppMascot}
+              scrollRef={scrollRef}
+            />
           </div>
 
           {/* Input form */}
-          <form onSubmit={onSend} className="p-2 bg-ink-850 border-t border-ink-600 flex items-center gap-1.5">
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Send a message..."
-              maxLength={200}
-              className="flex-1 bg-ink-800 border border-ink-600 px-3 py-1.5 text-[12px] text-cream-100 placeholder-ink-400 rounded-lg focus:border-volt-400 focus:outline-none"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              variant="primary"
-              disabled={!draft.trim()}
-              icon={<Icon name="send" size={13} />}
-              className="!px-3 !py-1.5 shrink-0"
-            />
-          </form>
+          <ChatInputBar draft={draft} setDraft={setDraft} onSend={onSend} />
         </div>
       )}
     </>
   );
 }
 
+/* ------------------------------------------------------------------ desktop lobby inline chat */
+function LobbyInlineChat({
+  messages,
+  sendChat,
+  oppName,
+  oppMascot,
+  oppConnected,
+}: {
+  messages: any[];
+  sendChat: (text: string) => void;
+  oppName: string;
+  oppMascot?: string;
+  oppConnected?: boolean;
+}) {
+  const { sfx } = useStore();
+  const [draft, setDraft] = useState('');
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages?.length]);
+
+  const onSend = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    const text = draft.trim();
+    if (!text) return;
+    sendChat(text);
+    setDraft('');
+    sfx('place');
+  };
+
+  const onChip = (chip: string) => {
+    sendChat(chip);
+    sfx('place');
+  };
+
+  return (
+    <Panel className="p-0 flex flex-col h-[360px] overflow-hidden shadow-sm">
+      {/* Header */}
+      <div className="p-3 bg-gradient-to-r from-ink-850 via-[#fff8ec] to-ink-850 border-b-2 border-ink-600 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-full bg-volt-300/40 border-2 border-volt-500 text-volt-700 grid place-items-center shrink-0">
+            <Icon name="chat" size={13} />
+          </span>
+          <div>
+            <p className="font-display text-[13px] font-extrabold text-cream-100 leading-tight">Arena Chat</p>
+            <p className="text-[10px] text-cream-500 truncate">
+              {oppName ? (oppConnected ? `Live with ${oppName}` : `${oppName} (waiting)`) : 'Chat with your rival'}
+            </p>
+          </div>
+        </div>
+        <span className="text-[9.5px] font-extrabold px-2 py-0.5 rounded-full bg-white border border-ink-500 text-cream-300 uppercase tracking-wider">
+          Lobby
+        </span>
+      </div>
+
+      {/* Quick chips bar */}
+      <QuickChipsBar onChip={onChip} />
+
+      {/* Messages list */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-[#fffcf5]">
+        <ChatMessagesList
+          messages={messages}
+          oppName={oppName}
+          oppMascot={oppMascot}
+          scrollRef={scrollRef}
+        />
+      </div>
+
+      {/* Input form */}
+      <ChatInputBar draft={draft} setDraft={setDraft} onSend={onSend} />
+    </Panel>
+  );
+}
+
 /* ------------------------------------------------------------------ lobby */
-function Lobby({ room, slot, inviteLink, onReady, onStart, onOpenPicker }: any) {
+function Lobby({ room, slot, inviteLink, onReady, onStart, onChangeGame, onOpenPicker, messages, sendChat }: any) {
   const { sfx } = useStore();
   const members = [...room.members].sort((a: any, b: any) => a.slot - b.slot);
   const me = members.find((m: any) => m.slot === slot);
@@ -564,12 +809,23 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, onOpenPicker }: any) 
         </Panel>
 
         <Panel className="p-4 flex items-center gap-3">
-          <PikachuMascot state={opp ? 'excited' : 'waiting'} size={84} />
+          <PikachuMascot state={opp ? 'excited' : 'waiting'} size={opp ? 64 : 84} />
           <div className="min-w-0">
             <p className="text-[13px] font-extrabold text-cream-100">{opp ? `${opp.name} is here!` : 'Waiting for your rival'}</p>
             <p className="text-[11.5px] text-cream-500 mt-0.5">{opp ? 'Ready up and the host can start.' : 'Send them the code above.'}</p>
           </div>
         </Panel>
+
+        {/* Embedded Arena Chat for Lobby */}
+        <div className="hidden lg:block">
+          <LobbyInlineChat
+            messages={messages}
+            sendChat={sendChat}
+            oppName={opp?.name ?? ''}
+            oppMascot={opp?.mascot}
+            oppConnected={opp?.connected ?? false}
+          />
+        </div>
       </div>
     </div>
   );

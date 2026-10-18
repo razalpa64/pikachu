@@ -46,7 +46,7 @@ export const GameArtwork = memo(function GameArtwork({
       decoding="async"
       loading={priority ? 'eager' : 'lazy'}
       sizes={sizes}
-      className={`absolute inset-0 w-full h-full object-cover ${className}`}
+      className={`absolute inset-0 w-full h-full object-cover pointer-events-none ${className}`}
       style={{ objectPosition: art.pos ?? 'center' }}
     />
   );

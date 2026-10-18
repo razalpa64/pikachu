@@ -5,7 +5,7 @@ import { RoomProvider } from './lib/useRoom';
 import { ToastStack } from './components/ui';
 import { ElectricLoader } from './mascot';
 import AppShell from './components/AppShell';
-import { idlePrefetch, prefetchRoute } from './lib/prefetch';
+import { idlePrefetch } from './lib/prefetch';
 import Intro from './screens/Intro';
 import Home from './screens/Home';
 

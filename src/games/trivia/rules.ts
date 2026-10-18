@@ -207,7 +207,7 @@ export function answer(
   const streak = right ? state.streak + 1 : 0;
 
   const points = scoreAnswer(right, tookMs, state.config.perQuestion, state.streak);
-  const rivalPoints = rivalRight ? 100 + Math.round(Math.random() * 0) + 30 : 0;
+  const rivalPoints = rivalRight ? 100 + Math.round(Math.random() * 50) + 10 : 0;
 
   const asked: Asked = { question, order, picked: pickedSlot, rivalPicked: rivalSlot, tookMs, points, rivalPoints };
   const index = state.index + 1;

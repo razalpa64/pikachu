@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Difficulty, GameMeta } from '../types';
-import SoloShell, { DIFFS, ModeRail } from '../../components/SoloShell';
+import SoloShell, { ModeRail } from '../../components/SoloShell';
 import { Button, Icon, Panel, Segmented, Stat, Toggle } from '../../components/ui';
 import { ResultOverlay } from '../../components/Overlays';
 import { useStore } from '../../lib/store';

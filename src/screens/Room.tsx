@@ -496,18 +496,21 @@ function RoomChatWidget({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [toastSnippet, setToastSnippet] = useState<string | null>(null);
-  const readCountRef = useRef(0);
+  const [readCount, setReadCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const prevMsgCount = useRef(0);
 
-  const unreadCount = !open ? Math.max(0, (messages?.length ?? 0) - readCountRef.current) : 0;
+  const unreadCount = !open ? Math.max(0, (messages?.length ?? 0) - readCount) : 0;
 
-  // Show quick incoming message preview when chat is closed
+  // Show quick incoming message preview when chat is closed, or auto-scroll when open
   useEffect(() => {
     const curLen = messages?.length ?? 0;
     if (curLen > prevMsgCount.current) {
       const last = messages[curLen - 1];
-      if (last && !last.isSelf && !open) {
+      if (open) {
+        setReadCount(curLen);
+        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+      } else if (last && !last.isSelf) {
         setToastSnippet(last.text);
         const timer = setTimeout(() => setToastSnippet(null), 4500);
         return () => clearTimeout(timer);
@@ -519,19 +522,12 @@ function RoomChatWidget({
   const toggle = () => {
     const next = !open;
     setOpen(next);
+    setToastSnippet(null);
+    setReadCount(messages?.length ?? 0);
     if (next) {
-      setToastSnippet(null);
-      readCountRef.current = messages?.length ?? 0;
       setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
     }
   };
-
-  useEffect(() => {
-    if (open) {
-      readCountRef.current = messages?.length ?? 0;
-      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages?.length, open]);
 
   const onSend = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -713,7 +709,7 @@ function LobbyInlineChat({
 }
 
 /* ------------------------------------------------------------------ lobby */
-function Lobby({ room, slot, inviteLink, onReady, onStart, onChangeGame, onOpenPicker, messages, sendChat }: any) {
+function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpenPicker, messages, sendChat }: any) {
   const { sfx } = useStore();
   const members = [...room.members].sort((a: any, b: any) => a.slot - b.slot);
   const me = members.find((m: any) => m.slot === slot);

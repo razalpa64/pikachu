@@ -69,6 +69,20 @@ const NOISE: Record<Difficulty, number> = { beginner: 0.55, casual: 0.22, interm
 export function pickC4Move(s: C4State, me: Slot, diff: Difficulty = 'intermediate', budgetMs = 650): C4Move | null {
   const cols = order(s);
   if (!cols.length) return null;
+
+  // Immediate win takes top priority
+  for (const col of cols) {
+    const child = R.applyMove(s, me, { col });
+    if (child.over && child.winner === me) return { col };
+  }
+
+  // Immediate block of opponent's win
+  const opp = me === 0 ? 1 : 0;
+  for (const col of cols) {
+    const probe = R.applyMove({ ...s, turn: opp }, opp, { col });
+    if (probe.over && probe.winner === opp) return { col };
+  }
+
   if (Math.random() < NOISE[diff]) return { col: cols[Math.floor(Math.random() * cols.length)] };
 
   const deadline = Date.now() + budgetMs;

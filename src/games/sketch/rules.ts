@@ -71,8 +71,10 @@ export type SketchMove =
   | { t: 'skip' }
   | { t: 'next' };
 
-export const PALETTE = ['#5c4035', '#f2779a', '#ffb703', '#2f9c71', '#37a0d6', '#9b7ad6', '#e05a74', '#b08968'];
-export const BRUSHES = [3, 7, 14];
+export const CANVAS_BG = '#fffdf7';
+export const PALETTE = ['#5c4035', '#f2779a', '#ffb703', '#2f9c71', '#37a0d6', '#9b7ad6', '#e05a74', '#b08968', CANVAS_BG];
+export const ERASER_COLOR_INDEX = 8;
+export const BRUSHES = [3, 7, 14, 26];
 export const DRAW_MS = 90_000;
 export const REVEAL_MS = 6_000;
 export const MAX_STROKES = 400;
@@ -313,7 +315,7 @@ export const sketchRules: TurnGameRules<SketchState, SketchMove> = {
 
   describeMove(s, p, m) {
     switch (m.t) {
-      case 'stroke': return 'drew a stroke';
+      case 'stroke': return m.c === ERASER_COLOR_INDEX ? 'erased a stroke' : 'drew a stroke';
       case 'undo': return 'undid a stroke';
       case 'clear': return 'cleared the canvas';
       case 'skip': return 'gave up on the word';

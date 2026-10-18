@@ -189,6 +189,16 @@ describe('Guess & Draw — legality is server-side', () => {
     expect(R.isLegal(drawn, drawn.drawer, { t: 'undo' })).toBe(true);
     expect(R.applyMove(drawn, drawn.drawer, { t: 'clear' }).strokes).toEqual([]);
   });
+
+  it('supports eraser strokes with background color', () => {
+    const s = mk();
+    const eraserStroke = { t: 'stroke' as const, p: [50, 50, 60, 60], c: 8, w: 2 };
+    expect(R.isLegal(s, s.drawer, eraserStroke)).toBe(true);
+    const after = R.applyMove(s, s.drawer, eraserStroke);
+    expect(after.strokes).toHaveLength(1);
+    expect(after.strokes[0].c).toBe(8);
+    expect(R.describeMove!(s, s.drawer, eraserStroke)).toBe('erased a stroke');
+  });
 });
 
 describe('Guess & Draw — scoring and flow', () => {

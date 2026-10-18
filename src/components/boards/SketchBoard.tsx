@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BoardProps } from './types';
 import { Button, Icon, Panel } from '../ui';
 import {
-  BRUSHES, PALETTE, DRAW_MS, MAX_POINTS,
+  BRUSHES, PALETTE, DRAW_MS, MAX_POINTS, ERASER_COLOR_INDEX, CANVAS_BG,
   type SketchState, type Stroke,
 } from '../../games/sketch/rules';
 
@@ -57,13 +57,42 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
   const flushAt = useRef(0);
   const [colour, setColour] = useState(0);
   const [brush, setBrush] = useState(1);
+  const [tool, setTool] = useState<'pen' | 'eraser'>('pen');
   const [guess, setGuess] = useState('');
   const [left, setLeft] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const activeColor = tool === 'eraser' ? ERASER_COLOR_INDEX : colour;
+
   const amDrawer = state.drawer === youSlot;
   const canDraw = amDrawer && state.phase === 'draw' && interactive !== false;
   const canGuess = !amDrawer && state.phase === 'draw' && interactive !== false;
+
+  /* Reset tool to pen on new round */
+  useEffect(() => {
+    setTool('pen');
+  }, [state.round]);
+
+  /* Keyboard shortcuts for drawer (E = eraser, B/P = pen, Ctrl+Z = undo) */
+  useEffect(() => {
+    if (!canDraw) return;
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'e' || e.key === 'E') {
+        e.preventDefault();
+        setTool((t) => (t === 'eraser' ? 'pen' : 'eraser'));
+      } else if (e.key === 'p' || e.key === 'P' || e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        setTool('pen');
+      } else if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (state.strokes.length) onMove({ t: 'undo' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [canDraw, state.strokes.length, onMove]);
 
   /* ---------- countdown ---------- */
   useEffect(() => {
@@ -86,12 +115,12 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = '#fffdf7';
+    ctx.fillStyle = CANVAS_BG;
     ctx.fillRect(0, 0, w, h);
     const sx = w / VB, sy = h / VB;
     for (const s of state.strokes) drawStroke(ctx, s, sx, sy);
-    if (live.current.length >= 2) drawStroke(ctx, { p: live.current, c: colour, w: brush }, sx, sy);
-  }, [state.strokes, colour, brush]);
+    if (live.current.length >= 2) drawStroke(ctx, { p: live.current, c: activeColor, w: brush }, sx, sy);
+  }, [state.strokes, activeColor, brush]);
 
   useEffect(() => { paint(); }, [paint]);
   useEffect(() => {
@@ -112,9 +141,9 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
 
   const commit = useCallback(() => {
     const pts = live.current;
-    if (pts.length >= 2) onMove({ t: 'stroke', p: pts.slice(0, MAX_POINTS * 2), c: colour, w: brush });
+    if (pts.length >= 2) onMove({ t: 'stroke', p: pts.slice(0, MAX_POINTS * 2), c: activeColor, w: brush });
     live.current = [];
-  }, [onMove, colour, brush]);
+  }, [onMove, activeColor, brush]);
 
   const onDown = (e: React.PointerEvent) => {
     if (!canDraw) return;
@@ -197,7 +226,9 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
             onPointerUp={onUp}
             onPointerCancel={onUp}
             onPointerLeave={onUp}
-            className={`block w-full aspect-[4/3] border-2 border-ink-500 bg-ink-800 touch-none select-none ${canDraw ? 'cursor-crosshair' : ''}`}
+            className={`block w-full aspect-[4/3] border-2 border-ink-500 bg-ink-800 touch-none select-none ${
+              canDraw ? (tool === 'eraser' ? 'cursor-cell' : 'cursor-crosshair') : ''
+            }`}
             role="img"
             aria-label={amDrawer
               ? `Your drawing canvas for the word ${state.word ?? ''}. ${state.strokes.length} strokes so far.`
@@ -208,23 +239,67 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
         {/* ---------------- drawer tools ---------------- */}
         {canDraw && (
           <Panel className="p-3 flex items-center gap-3 flex-wrap">
-            <div className="flex gap-1.5" role="radiogroup" aria-label="Pen colour">
-              {PALETTE.map((hex, i) => (
-                <button key={hex} role="radio" aria-checked={colour === i} aria-label={`Colour ${i + 1}`}
-                  onClick={() => setColour(i)}
-                  className={`w-8 h-8 rounded-full border-2 transition-transform ${colour === i ? 'border-cream-100 scale-110' : 'border-ink-500'}`}
+            {/* Tool mode: Pen vs Eraser */}
+            <div className="flex gap-1 bg-blush-100 p-1 border-2 border-ink-500 rounded-full shrink-0">
+              <button
+                type="button"
+                onClick={() => setTool('pen')}
+                aria-pressed={tool === 'pen'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-all no-tap ${
+                  tool === 'pen'
+                    ? 'bg-volt-400 text-[#5a3a12] shadow-[0_2px_0_0_#e0a21f]'
+                    : 'text-cream-500 hover:text-cream-100'
+                }`}
+                title="Pen tool (B or P)"
+              >
+                <Icon name="pen" size={13} />
+                <span>Pen</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (tool === 'eraser') {
+                    setTool('pen');
+                  } else {
+                    setTool('eraser');
+                    if (brush === 0) setBrush(2);
+                  }
+                }}
+                aria-pressed={tool === 'eraser'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold transition-all no-tap ${
+                  tool === 'eraser'
+                    ? 'bg-ember-600 text-white shadow-[0_2px_0_0_#9a2b43]'
+                    : 'text-cream-500 hover:text-cream-100'
+                }`}
+                title="Eraser tool (E)"
+              >
+                <Icon name="eraser" size={13} />
+                <span>Eraser</span>
+              </button>
+            </div>
+
+            {/* Colour palette (8 colours) */}
+            <div className={`flex gap-1.5 transition-opacity ${tool === 'eraser' ? 'opacity-40 hover:opacity-100' : ''}`} role="radiogroup" aria-label="Pen colour">
+              {PALETTE.slice(0, 8).map((hex, i) => (
+                <button key={hex} role="radio" aria-checked={tool === 'pen' && colour === i} aria-label={`Colour ${i + 1}`}
+                  onClick={() => { setTool('pen'); setColour(i); }}
+                  className={`w-8 h-8 rounded-full border-2 transition-transform ${tool === 'pen' && colour === i ? 'border-cream-100 scale-110 shadow-sm ring-2 ring-volt-400' : 'border-ink-500 hover:scale-105'}`}
                   style={{ background: hex }} />
               ))}
             </div>
-            <div className="flex gap-1.5" role="radiogroup" aria-label="Brush size">
+
+            {/* Brush & Eraser sizes */}
+            <div className="flex gap-1.5" role="radiogroup" aria-label={tool === 'eraser' ? 'Eraser size' : 'Brush size'}>
               {BRUSHES.map((px, i) => (
-                <button key={px} role="radio" aria-checked={brush === i} aria-label={`Brush size ${i + 1}`}
+                <button key={px} role="radio" aria-checked={brush === i} aria-label={`${tool === 'eraser' ? 'Eraser' : 'Brush'} size ${i + 1}`}
                   onClick={() => setBrush(i)}
-                  className={`w-8 h-8 grid place-items-center border-2 notch-sm ${brush === i ? 'border-volt-400 bg-volt-50' : 'border-ink-500'}`}>
-                  <span className="rounded-full bg-cream-100 block" style={{ width: px + 2, height: px + 2 }} />
+                  title={`${tool === 'eraser' ? 'Eraser' : 'Brush'} size ${i + 1}`}
+                  className={`w-8 h-8 grid place-items-center border-2 notch-sm ${brush === i ? 'border-volt-400 bg-volt-50' : 'border-ink-500 hover:border-ink-400'}`}>
+                  <span className={`rounded-full block ${tool === 'eraser' ? 'bg-ember-600' : 'bg-cream-100'}`} style={{ width: Math.min(px + 2, 22), height: Math.min(px + 2, 22) }} />
                 </button>
               ))}
             </div>
+
             <div className="flex gap-1.5 ml-auto">
               <Button size="sm" variant="ghost" onClick={() => onMove({ t: 'undo' })}
                 disabled={!state.strokes.length} icon={<Icon name="undo" size={13} />}>Undo</Button>

@@ -61,6 +61,8 @@ export const Icon = ({ name, size = 18, className = '' }: { name: string; size?:
     pause: <><path d="M8.5 4.5v15M15.5 4.5v15" /></>,
     chat: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />,
     send: <><path d="m22 2-7 20-4-9-9-4z" /><path d="M22 2 11 13" /></>,
+    pen: <><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></>,
+    eraser: <><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21" /><path d="M22 21H7" /><path d="m5 11 9 9" /></>,
     'chevron-up': <path d="m5 15 7-7 7 7" />,
     'chevron-down': <path d="m5 9 7 7 7-7" />,
     'chevron-left': <path d="m15 5-7 7 7 7" />,

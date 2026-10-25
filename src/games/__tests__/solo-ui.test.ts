@@ -187,7 +187,10 @@ describe('pass-and-play curtain (Wild Eights)', () => {
        eight asks for a suit and a Skip hands the *opponent* the skip, so the same
        player moves again — both are correct, and neither should raise a curtain. */
     let curtainUp = false;
-    for (let attempt = 0; attempt < 4 && !curtainUp; attempt++) {
+    /* The deck is shuffled from the clock, so a short run can legitimately draw
+       four turn-preserving cards in a row. Ten attempts keeps the test honest —
+       it still fails if the curtain never appears — without failing on a shuffle. */
+    for (let attempt = 0; attempt < 10 && !curtainUp; attempt++) {
       const hand = host.querySelector('[role="group"][aria-label="Your hand"]');
       expect(hand, 'the hand is on screen').toBeTruthy();
       const playable = [...hand!.querySelectorAll<HTMLElement>('button')]

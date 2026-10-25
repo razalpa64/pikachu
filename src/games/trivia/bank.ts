@@ -9,7 +9,7 @@
  * Answer convention: `a[0]` is always the correct answer. The view shuffles.
  */
 
-export type Category = 'science' | 'history' | 'general' | 'maths' | 'geography' | 'nature';
+export type Category = 'science' | 'history' | 'general' | 'maths' | 'geography' | 'nature' | 'philippines' | 'society';
 export type Tier = 1 | 2 | 3;
 
 export interface Question {
@@ -29,6 +29,8 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   maths: 'Mental maths',
   geography: 'Geography',
   nature: 'Animals & nature',
+  philippines: 'Filipino general knowledge',
+  society: 'People & society',
 };
 
 export const BANK: Question[] = [
@@ -208,8 +210,61 @@ export const BANK: Question[] = [
   { q: 'How many degrees are there in a full circle?', a: ['360', '180', '270', '400'], cat: 'general', tier: 1 },
   { q: 'Which fruit is traditionally used to make wine?', a: ['Grapes', 'Apples', 'Plums', 'Cherries'], cat: 'general', tier: 1 },
   { q: 'What is the hardest working muscle in the human body, by total work done?', a: ['The heart', 'The tongue', 'The jaw muscle', 'The calf'], cat: 'general', tier: 3 },
-  { q: 'Which sea is the saltiest major body of water?', a: ['The Dead Sea', 'The Red Sea', 'The Black Sea', 'The Caspian Sea'], cat: 'general', tier: 2 },
   { q: 'How many squares are there on a chessboard?', a: ['64', '72', '81', '56'], cat: 'general', tier: 1 },
+
+  /* ──────────────────── Filipino general knowledge ──────────────────── */
+  { q: 'What is the capital city of the Philippines?', a: ['Manila', 'Quezon City', 'Cebu City', 'Davao City'], cat: 'philippines', tier: 1,
+    note: 'Quezon City is the most populous city, but the capital has been Manila since 1976.' },
+  { q: 'Which is the largest island in the Philippines?', a: ['Luzon', 'Mindanao', 'Samar', 'Palawan'], cat: 'philippines', tier: 1 },
+  { q: 'The Philippine national language, Filipino, is primarily based on which language?', a: ['Tagalog', 'Cebuano', 'Ilocano', 'Hiligaynon'], cat: 'philippines', tier: 2,
+    note: 'The 1987 constitution names Filipino as the national language and lets it keep growing from the country\'s other languages.' },
+  { q: 'Who is recognised as the national hero of the Philippines?', a: ['Jose Rizal', 'Andres Bonifacio', 'Emilio Aguinaldo', 'Apolinario Mabini'], cat: 'philippines', tier: 1,
+    note: 'Rizal\'s novels Noli Me Tangere and El Filibusterismo are still read in Philippine schools.' },
+  { q: 'What is the currency of the Philippines?', a: ['The Philippine peso', 'The ringgit', 'The baht', 'The rupiah'], cat: 'philippines', tier: 1 },
+  { q: 'Which is the highest mountain in the Philippines?', a: ['Mount Apo', 'Mount Pulag', 'Mount Mayon', 'Mount Banahaw'], cat: 'philippines', tier: 2,
+    note: 'Mount Apo rises to about 2,954 m on the island of Mindanao.' },
+  { q: 'The near-perfect cone of Mayon volcano is in which province?', a: ['Albay', 'Batangas', 'Camarines Sur', 'Sorsogon'], cat: 'philippines', tier: 2 },
+  { q: 'The Chocolate Hills, hundreds of grassy domes, are found on which island?', a: ['Bohol', 'Cebu', 'Leyte', 'Negros'], cat: 'philippines', tier: 1 },
+  { q: 'The Banaue Rice Terraces were carved into the mountains of which province?', a: ['Ifugao', 'Benguet', 'Mountain Province', 'Kalinga'], cat: 'philippines', tier: 2 },
+  { q: 'The Philippine eagle, the national bird, is also known as what?', a: ['The monkey-eating eagle', 'The sea eagle', 'The crested hawk', 'The jungle falcon'], cat: 'philippines', tier: 3,
+    note: 'It is one of the largest and rarest eagles in the world, and is critically endangered.' },
+  { q: 'The tiny tarsier, one of the smallest primates, is most associated with which island?', a: ['Bohol', 'Palawan', 'Mindoro', 'Panay'], cat: 'philippines', tier: 2 },
+  { q: 'The preserved Spanish colonial town of Vigan is a UNESCO World Heritage Site in which province?', a: ['Ilocos Sur', 'Ilocos Norte', 'La Union', 'Pangasinan'], cat: 'philippines', tier: 3 },
+  { q: 'Boracay, the white-sand resort island, belongs to which province?', a: ['Aklan', 'Antique', 'Capiz', 'Iloilo'], cat: 'philippines', tier: 2 },
+  { q: 'What do the three stars on the Philippine flag represent?', a: ['Luzon, the Visayas and Mindanao', 'The three branches of government', 'The first three provinces to revolt', 'Past, present and future'], cat: 'philippines', tier: 2,
+    note: 'The eight rays of the sun stand for the first eight provinces placed under martial law in 1896.' },
+  { q: 'Philippine independence was proclaimed on 12 June 1898 in which town?', a: ['Kawit, Cavite', 'Malolos, Bulacan', 'Biak-na-Bato, Bulacan', 'Imus, Cavite'], cat: 'philippines', tier: 3 },
+  { q: 'What is the smallest unit of local government in the Philippines?', a: ['The barangay', 'The municipality', 'The province', 'The district'], cat: 'philippines', tier: 2 },
+  { q: 'The longest river in the Philippines is which one?', a: ['The Cagayan River', 'The Pasig River', 'The Agno River', 'The Pampanga River'], cat: 'philippines', tier: 3,
+    note: 'The Cagayan River runs about 505 km through northern Luzon.' },
+  { q: 'The jeepney, the country\'s best-known form of public transport, began as what?', a: ['Converted surplus military jeeps', 'Imported London buses', 'Rebuilt tram carriages', 'Wooden horse carts'], cat: 'philippines', tier: 2,
+    note: 'They were built from jeeps left behind after the Second World War, then decorated and stretched to carry passengers.' },
+  { q: 'Which city was the capital of the Philippines from 1948 until 1976?', a: ['Quezon City', 'Cebu City', 'Baguio', 'Makati'], cat: 'philippines', tier: 3 },
+  { q: 'Mount Pinatubo, whose 1991 eruption cooled global temperatures for a year, sits on which island?', a: ['Luzon', 'Mindanao', 'Negros', 'Panay'], cat: 'philippines', tier: 3 },
+
+  /* ──────────────────── people & society ──────────────────── */
+  { q: 'The international body founded in 1945 to keep peace between countries is called what?', a: ['The United Nations', 'The League of Nations', 'The World Court', 'The Atlantic Council'], cat: 'society', tier: 1 },
+  { q: 'In which year was the Universal Declaration of Human Rights adopted?', a: ['1948', '1919', '1966', '1975'], cat: 'society', tier: 2,
+    note: 'The UN General Assembly adopted it in Paris on 10 December 1948.' },
+  { q: 'The movement of people from the countryside into cities is called what?', a: ['Urbanisation', 'Irrigation', 'Emigration', 'Suburban sprawl'], cat: 'society', tier: 2 },
+  { q: 'Which of these is a renewable source of electricity?', a: ['Wind', 'Coal', 'Diesel', 'Natural gas'], cat: 'society', tier: 1 },
+  { q: 'What is a census?', a: ['An official count of a population', 'A tax on imported goods', 'A vote held in parliament', 'A survey of company profits'], cat: 'society', tier: 2 },
+  { q: 'What does GDP measure?', a: ['The value of goods and services a country produces', 'The number of people in work', 'A country\'s foreign debt', 'Average household savings'], cat: 'society', tier: 3,
+    note: 'Gross domestic product counts what is produced inside a country in a given period. It says nothing about how evenly it is shared.' },
+  { q: 'What was the Kyoto Protocol mainly about?', a: ['Reducing greenhouse-gas emissions', 'Banning nuclear testing', 'Regulating international shipping', 'Protecting endangered species'], cat: 'society', tier: 3,
+    note: 'Agreed in 1997, it set binding emission targets for developed countries.' },
+  { q: 'Which organisation publishes the Human Development Index?', a: ['The United Nations Development Programme', 'The World Bank', 'The World Trade Organization', 'The International Monetary Fund'], cat: 'society', tier: 3 },
+  { q: 'What is a referendum?', a: ['A direct public vote on a single question', 'A debate in a parliament', 'A petition to change a law', 'An appointment to a court'], cat: 'society', tier: 2 },
+  { q: 'What is the main purpose of a constitution?', a: ['To set out how a state is governed and what it may not do', 'To list every law a country has', 'To record the results of elections', 'To set the annual budget'], cat: 'society', tier: 2 },
+  { q: 'What does the word suffrage mean?', a: ['The right to vote', 'The right to own land', 'Freedom of movement', 'Protection from unfair trials'], cat: 'society', tier: 1 },
+  { q: 'Which of these is a primary source for a historian?', a: ['A diary written at the time', 'A textbook written last year', 'A documentary made in 2010', 'An encyclopaedia entry'], cat: 'society', tier: 2 },
+  { q: 'What is inflation?', a: ['A general rise in prices over time', 'A fall in the value of housing', 'An increase in wages only', 'A rise in the value of a currency'], cat: 'society', tier: 2 },
+  { q: 'What is the World Health Organization best known for doing?', a: ['Coordinating international public health', 'Setting global interest rates', 'Settling trade disputes', 'Running peacekeeping troops'], cat: 'society', tier: 2 },
+  { q: 'What makes an organisation an NGO?', a: ['It is independent of any government', 'It is funded only by donations', 'It must be run by volunteers', 'It operates in more than one country'], cat: 'society', tier: 3 },
+  { q: 'Which language has the most native speakers in the world?', a: ['Mandarin Chinese', 'English', 'Spanish', 'Hindi'], cat: 'society', tier: 2,
+    note: 'English has more total speakers once second-language speakers are counted.' },
+  { q: 'What is a trade union?', a: ['A group of workers who bargain collectively', 'A company that imports goods', 'A government department for industry', 'An association of employers'], cat: 'society', tier: 2 },
+  { q: 'In most countries, including the Philippines, at what age may people first vote?', a: ['18', '16', '21', '25'], cat: 'society', tier: 1 },
 ];
 
 /** Sanity: the bank must never ship a question with duplicate options. */

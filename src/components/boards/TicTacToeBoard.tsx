@@ -22,12 +22,16 @@ export default function TicTacToeBoard({ state, youSlot, onMove, interactive, hi
           return (
             <button key={i} role="gridcell" disabled={!playable} onClick={() => onMove({ cell: i })}
               aria-label={`Row ${Math.floor(i / n) + 1}, column ${(i % n) + 1}${v === null ? ', empty' : v === 0 ? ', Volt' : ', Spark'}`}
-              className={`relative grid place-items-center rounded-2xl border-[2.5px] transition-all duration-150 no-tap
+              className={`group relative grid place-items-center rounded-2xl border-[2.5px] transition-all duration-150 no-tap
                 ${win ? 'border-blush-600 bg-blush-200' : last ? 'border-blush-300 bg-blush-100' : 'border-ink-500 bg-white'}
                 ${playable ? 'hover:border-blush-300 hover:bg-blush-100 hover:-translate-y-[2px] cursor-pointer' : 'cursor-default'}`}
               style={{ width: cell, height: cell }}>
               {v === null ? (
-                playable && hint ? <span className="opacity-0 hover:opacity-35 transition-opacity">{youSlot === 0 ? <VoltMark size={n <= 3 ? 52 : 38} /> : <SparkMark size={n <= 3 ? 52 : 38} />}</span> : null
+                /* A ghost of your mark on a legal square. It used to appear on hover
+                   only, which meant a phone — where there is no hover — never saw the
+                   hint at all despite the setting being on. Now it is faintly there
+                   from the start and darkens on hover or keyboard focus. */
+                playable && hint ? <span className="opacity-[.14] group-hover:opacity-35 group-focus-visible:opacity-40 transition-opacity">{youSlot === 0 ? <VoltMark size={n <= 3 ? 52 : 38} /> : <SparkMark size={n <= 3 ? 52 : 38} />}</span> : null
               ) : v === 0 ? <VoltMark size={n <= 3 ? 58 : n === 4 ? 44 : 36} glow={win} /> : <SparkMark size={n <= 3 ? 58 : n === 4 ? 44 : 36} glow={win} />}
               {win && <span className="absolute inset-0 rounded-2xl border-[3px] border-blush-600 animate-pulse pointer-events-none" />}
             </button>

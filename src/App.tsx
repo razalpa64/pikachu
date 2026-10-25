@@ -21,6 +21,7 @@ const Achievements = lazy(() => import('./screens/Achievements'));
 const Profile = lazy(() => import('./screens/Profile'));
 const SettingsScreen = lazy(() => import('./screens/Settings'));
 const Feedback = lazy(() => import('./screens/Feedback'));
+const Privacy = lazy(() => import('./screens/Privacy'));
 
 function RouteFallback() {
   return <div className="min-h-[58vh] grid place-items-center"><ElectricLoader status="Just a moment" detail="Loading this part of the arcade for the first time." /></div>;
@@ -34,7 +35,16 @@ function ScrollTop() {
 
 function Shell() {
   const { introSeen, setIntroSeen } = useStore();
-  const [booted, setBooted] = useState(introSeen);
+  const { pathname } = useLocation();
+  /**
+   * The intro belongs to the front door only.
+   *
+   * It used to run on every route, so somebody following a shared link to
+   * /solo/chess-arena — or arriving from a search result — waited out a splash
+   * before seeing the thing they asked for. Deep links now render immediately;
+   * the intro is the welcome you get when you arrive at the arcade itself.
+   */
+  const [booted, setBooted] = useState(() => introSeen || pathname !== '/');
 
   /* Warm the route + game chunks in the background once the hub is interactive,
      so the first click into a game is instant instead of a cold network fetch. */
@@ -60,6 +70,7 @@ function Shell() {
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<SettingsScreen />} />
             <Route path="/feedback" element={<Feedback />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

@@ -15,7 +15,7 @@ import { GAMES } from '../games/registry';
 
 export interface SitemapEntry {
   path: string;
-  changefreq: 'daily' | 'weekly' | 'monthly';
+  changefreq: 'daily' | 'weekly' | 'monthly' | 'yearly';
   priority: string;
 }
 
@@ -28,6 +28,7 @@ export const STATIC_ENTRIES: SitemapEntry[] = [
   { path: '/achievements', changefreq: 'monthly', priority: '0.5' },
   { path: '/music', changefreq: 'monthly', priority: '0.4' },
   { path: '/feedback', changefreq: 'monthly', priority: '0.5' },
+  { path: '/privacy', changefreq: 'yearly', priority: '0.3' },
 ];
 
 export function sitemapEntries(): SitemapEntry[] {

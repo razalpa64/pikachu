@@ -7,13 +7,23 @@ import { Panel, Segmented, Stat } from '../../components/ui';
 import { useStore } from '../../lib/store';
 import type { Difficulty, GameMeta } from '../types';
 
-/** Calibrated AI reflexes — a plausible human distribution per difficulty, never superhuman. */
+/**
+ * Calibrated AI reflexes — a plausible human distribution per difficulty, never
+ * superhuman.
+ *
+ * The two hardest rungs used to mean 255 ms and 205 ms. A real adult reacts to a
+ * visual cue in about 250 ms with a mouse (keyboard a little faster), so "expert"
+ * was faster than nearly every person who would ever play it: the ladder ended in
+ * a rung that could not be won, only survived. They now sit at 300 ms and 250 ms —
+ * still fast, still a proper challenge, but a level a good player can trade blows
+ * with. `falseStart` keeps the machine fallible in the same way a person is.
+ */
 const PROFILE: Record<Difficulty, { mean: number; sd: number; falseStart: number }> = {
-  beginner: { mean: 520, sd: 130, falseStart: 0.1 },
-  casual: { mean: 400, sd: 95, falseStart: 0.07 },
-  intermediate: { mean: 320, sd: 70, falseStart: 0.05 },
-  advanced: { mean: 255, sd: 48, falseStart: 0.04 },
-  expert: { mean: 205, sd: 34, falseStart: 0.03 },
+  beginner: { mean: 560, sd: 130, falseStart: 0.1 },
+  casual: { mean: 430, sd: 95, falseStart: 0.07 },
+  intermediate: { mean: 350, sd: 70, falseStart: 0.05 },
+  advanced: { mean: 300, sd: 52, falseStart: 0.04 },
+  expert: { mean: 250, sd: 38, falseStart: 0.03 },
 };
 const gauss = (m: number, sd: number) => {
   let u = 0, v = 0;

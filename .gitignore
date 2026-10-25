@@ -29,6 +29,11 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Large painting masters — keep them out of the repo; the WebP in public/ is the art
+art-src/game/
+art-src/piece/
+art-src/run/
+
 # Relay match history
 .pikachu-data
 .shots

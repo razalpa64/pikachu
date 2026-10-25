@@ -1123,7 +1123,9 @@ registry, with a fallback for keys that have no painting yet. `GameArtwork.tsx` 
 `catalog.test.ts` fails if a key is missing from the manifest or points at a file that is absent,
 empty or absurdly large. The four newest covers (Reversi's lanterns, Gomoku's river stones, the
 pencil-drawn Dots grid, the carved Mancala board) were painted to the same brief as the rest and
-encoded to 640×640 WebP from a 1024 px master kept in `art/game/_src/`.
+encoded to 640×640 WebP from a 1024 px master kept in `art-src/game/` — outside
+`public/`, because masters are working files and every deployed byte should be art the
+site actually serves.
 
 The Memory Match set is **all 18 painted**. `PAINTED_CARDS` in `MemoryBoard.tsx` is the single
 source of truth: an id in that set renders its painted face, anything else falls back to the

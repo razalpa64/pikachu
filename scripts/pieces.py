@@ -3,7 +3,8 @@ up and re-encode. Boards used hand-written SVG paths before these."""
 from PIL import Image
 import os
 
-SRC = 'public/art/piece/_src'
+# masters live outside public/ so deploys do not carry them
+SRC = 'art-src/piece'
 OUT = 'public/art/piece'
 
 for name, size in [('volt', 192), ('spark', 192), ('checker-gold', 192), ('checker-blush', 192)]:

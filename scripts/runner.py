@@ -73,7 +73,7 @@ SPRITES = [
     ('wall.png',   200),
 ]
 for name, h in SPRITES:
-    src = f'{OUT}/_src/{name}'
+    src = f'art-src/run/{name}'   # masters, kept out of the deploy
     if not os.path.exists(src):
         print(f'  !! missing {src}'); continue
     im = Image.open(src).convert('RGBA')

@@ -155,13 +155,13 @@ describe('the library', () => {
 
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'chess');
     await act(async () => { search.dispatchEvent(new Event('input', { bubbles: true })); });
-    const shown = Number(/Showing (\d+) of 20/.exec(host.textContent ?? '')?.[1]);
+    const shown = Number(new RegExp(`Showing (\\d+) of ${GAMES.length}`).exec(host.textContent ?? '')?.[1]);
     expect(shown).toBeGreaterThan(0);
     expect(host.querySelectorAll('article')).toHaveLength(shown);
 
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(search, 'zzzznothing');
     await act(async () => { search.dispatchEvent(new Event('input', { bubbles: true })); });
-    expect(host.textContent).toMatch(/Showing 0 of 20/);
+    expect(host.textContent).toMatch(new RegExp(`Showing 0 of ${GAMES.length}`));
     expect(host.textContent).toMatch(/Nothing matches that yet/);
   });
 });

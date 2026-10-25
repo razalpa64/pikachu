@@ -40,9 +40,13 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
   const live = state.phase === 'signal';
   const need = Math.floor(state.bestOf / 2) + 1;
 
+  /* Four pad states, four unmistakable colours. The waiting state used to be a
+     lavender gradient, which was the one cool note in a warm palette and read as
+     "the signal" to more than one person; it is now paper-shadow, so the only
+     saturated thing on the screen is the cue itself. */
   const bg = live ? 'linear-gradient(160deg,#ffe98f,#ffd24d)'
     : myFalse ? 'linear-gradient(160deg,#ffc2d3,#f2779a)'
-    : armed ? 'linear-gradient(160deg,#efe1ff,#d9c7f5)'
+    : armed ? 'linear-gradient(160deg,#f3e7d6,#e6d2b8)'
     : 'linear-gradient(160deg,#fff4e2,#f6e3c9)';
 
   return (
@@ -65,15 +69,25 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
         className="relative w-full aspect-[16/9] sm:aspect-[2/1] grid place-items-center border-2 overflow-hidden no-tap transition-[background] duration-75"
         style={{ background: bg, borderColor: live ? '#e8a21c' : myFalse ? '#d9456f' : '#c9a888', borderRadius: 26, cursor: interactive ? 'pointer' : 'default' }}>
 
-        {live && <span key={flashKey} className="absolute inset-0 bg-white" style={{ animation: 'pk-flash .4s ease-out forwards' }} />}
+        {/* The cue must never be covered. This used to be a full-pad white flash,
+            which blanked the word "STRIKE" for the 400 ms the player is supposed
+            to be reacting in. It is now a ring on the border: the padding still
+            flashes, the thing you have to read does not. */}
+        {live && (
+          <span key={flashKey} aria-hidden className="absolute inset-0 pointer-events-none rounded-[26px]"
+            style={{ boxShadow: 'inset 0 0 0 9px rgba(255,255,255,.92)', animation: 'pk-flash .4s ease-out forwards' }} />
+        )}
 
-        {/* radiating guides */}
-        <div className="absolute inset-0 opacity-25 pointer-events-none fx-heavy" aria-hidden>
-          {[...Array(14)].map((_, i) => (
-            <span key={i} className="absolute left-1/2 top-1/2 h-px w-[60%] origin-left"
-              style={{ background: live ? 'rgba(146,95,10,.55)' : 'rgba(146,110,86,.35)', transform: `rotate(${(i / 14) * 360}deg)` }} />
-          ))}
-        </div>
+        {/* radiating guides — only while the pad is waiting; nothing decorative
+            sits in the field once the signal is live */}
+        {!live && (
+          <div className="absolute inset-0 opacity-25 pointer-events-none fx-heavy" aria-hidden>
+            {[...Array(14)].map((_, i) => (
+              <span key={i} className="absolute left-1/2 top-1/2 h-px w-[60%] origin-left"
+                style={{ background: 'rgba(146,110,86,.35)', transform: `rotate(${(i / 14) * 360}deg)` }} />
+            ))}
+          </div>
+        )}
 
         <div className="relative text-center px-4">
           {state.phase === 'countdown' && (
@@ -92,7 +106,7 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
           )}
           {state.phase === 'signal' && (
             <>
-              <p className="wordmark text-[52px] sm:text-[82px] leading-none" style={{ filter: 'none', background: 'linear-gradient(177deg,#2a1d00,#5c3f00)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>STRIKE</p>
+              <p className="wordmark text-[52px] sm:text-[82px] leading-none text-[#2a1d00]">STRIKE</p>
               <p className="text-[13px] font-extrabold uppercase tracking-[.2em] text-ink-800 mt-1">
                 {mine !== null ? `${mine} ms — logged` : touch ? 'Tap the pad' : 'Click or press space'}
               </p>

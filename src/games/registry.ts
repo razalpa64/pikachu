@@ -37,7 +37,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
-    id: 'connect4', slug: 'connect-four', title: 'Drop Four',
+    id: 'connect4', slug: 'connect-four', title: 'Four in a Row',
     tagline: 'Drop, stack, sneak a win',
     description: 'Four in a row with satisfying, weighty falling discs. Every win direction is checked properly, and the alpha-beta engine reads nine moves ahead when you ask it to.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 6,
@@ -45,7 +45,7 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
-    id: 'memory', slug: 'memory-match', title: 'Memory Match',
+    id: 'memory', slug: 'memory-match', title: 'Pika Pairs',
     tagline: 'Who remembers better?',
     description: 'Eighteen hand-drawn cards to turn over. Flip, remember, chain a streak. Play alone against the clock, race each other, or clear the whole board together as a team.',
     genre: 'puzzle', modes: ['solo', 'ai', 'online', 'coop'], players: [1, 2], duration: 5,
@@ -60,7 +60,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
-    id: 'reaction', slug: 'reaction-duel', title: 'Reaction Duel',
+    id: 'reaction', slug: 'reaction-duel', title: 'Spark Reflex',
     tagline: 'Blink and you lose',
     description: 'A server-timed reflex duel. The panel hums, waits a random moment, then lights up — first honest press takes the round. Jump the gun and it is a false start.',
     genre: 'party', modes: ['online', 'ai', 'local'], players: [1, 2], duration: 2,
@@ -223,6 +223,43 @@ export const GAMES: GameMeta[] = [
       { key: 'decoy', label: 'Decoy word', type: 'toggle', default: false },
       { key: 'clueRounds', label: 'Clue rounds', type: 'select', default: 1, options: [
         { value: 1, label: 'One round' }, { value: 2, label: 'Two rounds' }, { value: 3, label: 'Three rounds' },
+      ] },
+    ],
+  },
+  {
+    id: 'daily', slug: 'daily-puzzle', title: 'Daily Puzzle',
+    tagline: 'One warm-up a day',
+    description: 'A 5×5 nonogram, the same grid for everyone, generated from the date — no server, no cache, no peeking. Solve it, keep the streak alive, and share a result that spoils nothing.',
+    genre: 'puzzle', modes: ['solo'], players: [1, 1], duration: 3,
+    accent: '#1d5f70', artKey: 'daily', status: 'live', serverRefereed: false,
+    difficulties: ['beginner'],
+  },
+  {
+    id: 'wordbomb', slug: 'word-bomb', title: 'Word Bomb',
+    tagline: 'Keep the fuse moving',
+    description: 'A letter is lit and a fuse is burning. Answer with a word that starts with that letter — the last letter of your word becomes the next light — before the clock runs out. Two strikes and it goes off.',
+    genre: 'puzzle', modes: ['ai', 'online'], players: [1, 2], duration: 4,
+    accent: '#28759c', artKey: 'wordbomb', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'turnMs', label: 'Fuse', type: 'select', default: 20000, options: [
+        { value: 30000, label: 'Gentle · 30s' }, { value: 20000, label: 'Normal · 20s' }, { value: 12000, label: 'Cruel · 12s' },
+      ] },
+      { key: 'rounds', label: 'Turns', type: 'select', default: 12, options: [
+        { value: 8, label: 'Eight turns' }, { value: 12, label: 'Twelve turns' }, { value: 20, label: 'Twenty turns' },
+      ] },
+    ],
+  },
+  {
+    id: 'wyr', slug: 'would-you-rather', title: 'Would You Rather',
+    tagline: 'Guess what they would pick',
+    description: 'One of you answers honestly, the other bets on the answer, and the roles swap every round. Forty dilemmas, no third option, and a point for every read that lands.',
+    genre: 'party', modes: ['ai', 'online'], players: [1, 2], duration: 6,
+    accent: '#8f4a2b', artKey: 'wyr', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'rounds', label: 'Rounds', type: 'select', default: 10, options: [
+        { value: 6, label: 'Six rounds' }, { value: 10, label: 'Ten rounds' }, { value: 14, label: 'Fourteen rounds' },
       ] },
     ],
   },

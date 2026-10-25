@@ -38,8 +38,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   { slug: 'two-of-us', name: 'Two of Us', description: 'Complete an online match against a real opponent.', icon: 'heart' },
   { slug: 'checkmate', name: 'Checkmate', description: 'Win a game of Chess Arena.', icon: 'crown' },
   { slug: 'unbeatable', name: 'Hold the Line', description: 'Draw the Expert tic-tac-toe AI.', icon: 'shield' },
-  { slug: 'four-strike', name: 'Four Strike', description: 'Win Drop Four with a diagonal four.', icon: 'diagonal' },
-  { slug: 'elephant', name: 'Elephant Memory', description: 'Clear a Memory Match board with a streak of 4+.', icon: 'brain' },
+  { slug: 'four-strike', name: 'Four Strike', description: 'Win Four in a Row with a diagonal four.', icon: 'diagonal' },
+  { slug: 'elephant', name: 'Elephant Memory', description: 'Clear a Pika Pairs board with a streak of 4+.', icon: 'brain' },
   { slug: 'reflex', name: 'Lightning Reflex', description: 'React in under 220 ms.', icon: 'flash' },
   { slug: 'admiral', name: 'Admiral', description: 'Win Paper Fleet without losing a ship.', icon: 'anchor' },
   { slug: 'crowned', name: 'Crowned', description: 'Promote three kings in one Checkers match.', icon: 'king' },
@@ -124,8 +124,8 @@ export function dailyChallenges(seed = todaySeed()): DailyChallenge[] {
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   const pool: DailyChallenge[] = [
     { id: 'win-any', title: 'Storm Warm-up', detail: 'Win any two matches today.', goal: 2, xp: 60, gameId: 'any' },
-    { id: 'memory-streak', title: 'Perfect Recall', detail: 'Hit a 3-match streak in Memory Match.', goal: 1, xp: 55, gameId: 'memory' },
-    { id: 'c4-win', title: 'Cabinet Champion', detail: 'Beat the Drop Four AI on Intermediate or higher.', goal: 1, xp: 70, gameId: 'connect4' },
+    { id: 'memory-streak', title: 'Perfect Recall', detail: 'Hit a 3-match streak in Pika Pairs.', goal: 1, xp: 55, gameId: 'memory' },
+    { id: 'c4-win', title: 'Cabinet Champion', detail: 'Beat the Four in a Row AI on Intermediate or higher.', goal: 1, xp: 70, gameId: 'connect4' },
     { id: 'chess-move', title: 'Opening Theory', detail: 'Play 20 chess moves.', goal: 20, xp: 50, gameId: 'chess' },
     { id: 'react-fast', title: 'Hair Trigger', detail: 'Land a reaction under 300 ms.', goal: 1, xp: 65, gameId: 'reaction' },
     { id: 'snake-score', title: 'Neon Feast', detail: 'Score 120 in Snake Arena.', goal: 120, xp: 60, gameId: 'snake' },

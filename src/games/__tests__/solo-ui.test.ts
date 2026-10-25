@@ -118,7 +118,7 @@ describe('the new solo screens respond to a click', () => {
     expect(stones().length, 'your stone plus the AI reply').toBeGreaterThanOrEqual(2);
   });
 
-  it('Drop Four drops a disc in the column you pick', async () => {
+  it('Four in a Row drops a disc in the column you pick', async () => {
     await mount('connect4');
     const slots = () => enabled([...host.querySelectorAll<HTMLElement>('button[aria-label^="Drop in column"]')]);
     expect(slots().length, 'every open column offers a drop').toBe(7);

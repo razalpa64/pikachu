@@ -6,7 +6,7 @@ import type { Cue } from './audio';
  *
  * Sound used to live only in the solo views, so every Play Together match was
  * nearly silent: the shared board components are what a room renders, and four
- * of them (tic-tac-toe, Drop Four, Spark Quiz, Wild Eights) never made a sound
+ * of them (tic-tac-toe, Four in a Row, Spark Quiz, Wild Eights) never made a sound
  * at all. Rather than scatter `sfx()` through ten board files — and risk
  * double-firing wherever a solo view already emits the same cue — this hook
  * diffs successive match states in the one place that sees all nine games.

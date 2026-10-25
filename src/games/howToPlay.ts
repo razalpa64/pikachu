@@ -200,6 +200,36 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'The imposter should give a word that could belong to any of a dozen answers. Vague, never wrong.',
   },
+  daily: {
+    goal: 'Reproduce the hidden picture from its row and column counts alone — one grid a day, the same grid for everyone.',
+    steps: [
+      'Each number beside a row or under a column is the length of one unbroken run of filled squares, left to right or top to bottom.',
+      'Tap a square to fill it. Switch to Mark ✕ and tap to record a square you have proved empty; a header goes quiet once that line is satisfied.',
+      'The puzzle is finished the moment every row and column count is met — any picture that fits the clues is accepted.',
+      'Finish it to bank the day and grow your streak; miss a day and the streak starts again.',
+    ],
+    tip: 'Start with the biggest numbers. A 5 in a five-wide line fills the whole line, and any run longer than half the line has squares you can fill for certain.',
+  },
+  wordbomb: {
+    goal: 'Keep the fuse moving: score more words than your opponent before the turns run out, and never be the one holding it when it goes off.',
+    steps: [
+      'A letter is lit. Type any word that starts with it — three letters or more — and press play.',
+      'The last letter of your word becomes the next lit letter, and the fuse passes to the other player.',
+      'Miss the clock and you take a strike. Two strikes and the bomb goes off, whatever the score.',
+      'The match also ends when the turns run out; whoever has more words then wins.',
+    ],
+    tip: 'End your words on easy letters — e, t, s, r — and you leave the other person an easy answer but a short clock. Ending on a hard letter is a gamble that pays off more often than it should.',
+  },
+  wyr: {
+    goal: 'Score more points than your opponent by either reading them, or surprising them.',
+    steps: [
+      'Each round one player is the chooser and the other is the guesser — the roles swap every round.',
+      'The chooser picks the option they would genuinely choose. The guesser picks the one they think the chooser will take.',
+      'Both answers stay hidden until you have both locked in, then the round is revealed.',
+      'A correct guess scores for the guesser; a wrong one scores for the chooser. One point per round.',
+    ],
+    tip: 'Answer honestly as the chooser. The moment you start picking what you think they expect, the game stops being about you.',
+  },
   dare: {
     goal: 'Two people, a deck of cards, and no score to keep.',
     steps: [

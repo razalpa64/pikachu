@@ -70,7 +70,7 @@ describe('catalogue', () => {
       expect(rules.result(state).over, `${g.id} opens already finished`).toBe(false);
       const starter = rules.currentPlayer(state);
       if (starter === null) {
-        /* Some games have no single current player by design: Reaction Duel waits for
+        /* Some games have no single current player by design: Spark Reflex waits for
            the server's signal, Paper Fleet opens in a simultaneous placement phase,
            Spark Quiz has both seats answering at once. Those are validated per-action
            rather than enumerated, so there is nothing further to assert here — but a
@@ -182,7 +182,7 @@ function boardFileFor(id: string): string {
     chess: 'ChessBoard', checkers: 'CheckersBoard', battleship: 'BattleshipBoard',
     cards: 'WildEightsBoard', trivia: 'SparkQuizBoard', reaction: 'ReactionBoard',
     sketch: 'SketchBoard', reversi: 'ReversiBoard', gomoku: 'GomokuBoard',
-    dots: 'DotsBoard', mancala: 'MancalaBoard',
+    dots: 'DotsBoard', mancala: 'MancalaBoard', wyr: 'WouldYouRatherBoard', wordbomb: 'WordBombBoard',
   };
   return `${known[id] ?? 'Unknown'}.tsx`;
 }

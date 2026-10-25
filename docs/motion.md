@@ -1,64 +1,66 @@
-# Motion, sound and interaction rules
+# Motion language
 
-A short, enforceable description of how this arcade moves. It exists because
-"consistent motion" is easy to claim and easy to lose: ten screens each inventing
-their own duration is how a hand-built game stops feeling hand-built.
+The arcade moves like a hand-made toy, not a dashboard. This is the short,
+enforceable version of that sentence: which durations exist, what each one is
+allowed to carry, and what has to happen when somebody asks for less motion.
 
 ## The four durations
 
-Every transition in the app sits on one of these, and nothing uses a fifth:
+Everything in the app uses one of these. If a transition needs a fifth, it is
+usually two of these stacked, or it is decoration that should not be there.
 
-| Band | Value | Used for |
+| Token | Value | Allowed to carry |
 | --- | --- | --- |
-| **tick** | 100–150 ms | press feedback, chip toggles, hover tints, key flashes |
-| **move** | 200–300 ms | buttons, cards lifting, panels appearing, seat hand-overs |
-| **arrive** | 400–650 ms | a cover zooming under the pointer, a result card landing |
-| **scene** | 900–1200 ms | the one hero-level thing on a page — mascot entrance, showcase art |
+| `tick` | 100–150 ms | press feedback, colour changes, chip toggles, hover tints, a clock's width |
+| `move` | 200–300 ms | a piece travelling one square, a card flipping, a panel appearing, a seat hand-over |
+| `arrive` | 400–650 ms | a result card landing, a rail's covers settling after a route change |
+| `scene` | 900–1200 ms | one thing per screen — the front-page hero, a win sequence — never two |
 
-Rules that keep those bands honest:
+Easing: `cubic-bezier(.4,1.5,.5,1)` for anything that lands (it overshoots once
+and settles), `ease-out` for anything that fades, `linear` only for a clock.
 
-* **One scene animation per screen.** The front page has the hero mascot; the
-  game screens have the board. Everything else is tick or move. Nothing is
-  permanently animating in the background — no drifting particles over a board,
-  no idle shimmer on a panel you are trying to read.
-* **Motion explains, it does not decorate.** A piece moves along its path, a
-  card flips over, a curtain slides across the hand. If an animation does not
-  tell the player what just changed, it is not there.
-* **Nothing bounces twice.** `pk-hop` and `pk-pop` are the only springy
-  keyframes and they are reserved for the mascot and for a result appearing.
+## Rules
+
+1. **One scene animation per screen.** On a game screen it is the board. Nothing
+   else is allowed to be permanently animating.
+2. **Nothing decorative over a live signal.** The playing surface is cleared the
+   moment it carries information — see `docs/art-direction.md` §5. A flash may
+   sit on the *frame* of a button, never over the word you have to read.
+3. **Fall, do not fade.** A disc falls into its slot and lands; it does not
+   appear. A card turns; it does not dissolve.
+4. **Clocks tick.** A timer may shrink, recolour or pulse exactly once when it
+   passes a threshold. It never breathes continuously.
+5. **Animation explains.** Every animation answers "what just changed?" If it
+   cannot answer that in one sentence, it is decoration and it goes.
+6. **Never block input.** Nothing animates over a control that is waiting to be
+   pressed; the reaction pad in particular must be tappable on frame one.
 
 ## Reduced motion
 
-`prefers-reduced-motion: reduce` and the in-app `motion: off` setting both take
-the same path (`html[data-motion="off"]`), collapsing every animation and
-transition to 0.001 ms in `src/styles.css`. Anything that would have been
-*communicated* by the animation must still work without it:
+`prefers-reduced-motion: reduce` and the in-app `motion: off` setting take the
+same path — `html[data-motion="off"]` reduces every animation and transition to
+0.001 ms in `src/styles.css`. Anything the motion was *communicating* must still
+arrive another way:
 
 * the intro becomes a single one-second title card;
-* the pass-and-play curtain still appears, it just does not slide;
-* result overlays still appear, they just do not scale in.
+* the pass-and-play curtain still appears, it simply does not slide;
+* result overlays still appear, they do not scale in;
+* the reaction signal changes colour and text with no flash;
+* a falling disc is already in its slot on the next frame.
 
-Add new motion inside those two hooks, never with an inline `animationDuration`
-that bypasses them.
+## Game-specific motion
+
+| Game | The one thing that moves | Why |
+| --- | --- | --- |
+| Four in a Row | the disc falls and lands | the drop *is* the rule — it shows which column, and that gravity applied |
+| Word Bomb | the fuse bar drains | the clock is the opponent; a shrinking bar reads faster than a number |
+| Would You Rather | the two cards turn face-up at the reveal | it marks the moment secrecy ends |
+| Spark Reflex | the pad's colour flips to butter-yellow | the signal must be readable in one frame, with no transition in the way |
+| Pika Pairs | the card flips | showing which card you turned is the memory aid |
+| Daily Puzzle | a square fills | no other motion at all; the grid is the whole game |
 
 ## Sound
 
-Sound is optional, off until the first interaction unlocks audio, remembered
-across sessions, and every cue is a short file — no loops start on their own
-except the jukebox on `/music`, which the visitor has to press play on. Overlap
-is prevented in `src/lib/audio.ts`; a cue that is already playing is restarted,
-never stacked.
-
-## Quality tiers
-
-`html[data-quality="performance"]` (chosen automatically on low-memory or
-touch-only devices, and settable in Settings) removes the expensive decoration:
-backdrop blur, film grain, scanlines, drifting hearts, and pinned background
-gradients. Layout, colour and every interaction stay identical — the tier only
-removes pixels that cost frames.
-
-## Advertising
-
-Never inside a match. The three slots that exist (`home-foot`, `library-foot`,
-`feedback-foot`) are all below real content and render nothing until a publisher
-id exists *and* the visitor has opted in — see `src/lib/ads.ts`.
+Sound follows the same discipline as motion: short, one at a time, never over a
+countdown, silent until the visitor asks for it. `sfx()` is the only entry point,
+so "no overlap" is enforced in one place rather than remembered in thirty.

@@ -1,0 +1,273 @@
+/**
+ * Retro Arcade — the Game Boy Advance shelf.
+ *
+ * Everything in this module is deliberately boring and defensive, because this
+ * is the one part of the site that hands a binary file to a runtime we do not
+ * own (the EmulatorJS `mgba` core, which itself runs untrusted game code inside
+ * a wasm VM).
+ *
+ * Three rules, all enforced here rather than by convention:
+ *
+ *   1. The library is data, not code. `/retro/roms.json` is fetched and every
+ *      entry is validated against a strict shape before it reaches a component.
+ *      A manifest entry can only ever point at `roms/<slug>.gba` or
+ *      `covers/<slug>.png` *inside* our own `/retro/` directory — never at a
+ *      third-party URL.
+ *   2. The player never receives a URL it did not get from that validated
+ *      manifest. `player.html` re-checks the id against the same manifest, so a
+ *      hand-edited `?game=` cannot smuggle in a remote file.
+ *   3. A user's own cartridge is a `File` we keep in memory on their device. It
+ *      is never uploaded, never written to storage, and never turned into a URL
+ *      until the player creates a short-lived `blob:` handle for it.
+ */
+
+export interface RetroGame {
+  id: string;
+  title: string;
+  tagline: string;
+  year: number;
+  author: string;
+  engine?: string;
+  license: string;
+  licenseUrl: string;
+  sourceUrl: string;
+  description: string;
+  /** Path relative to `/retro/`, validated below. */
+  rom: string;
+  cover: string;
+  marquee: string | null;
+  bytes: number;
+  accent: string;
+  tags: string[];
+  players: number;
+  /** True only when the cartridge itself writes battery-backed save data. */
+  save: boolean;
+}
+
+export interface RetroLibrary {
+  games: RetroGame[];
+  system: string;
+  note: string;
+}
+
+/**
+ * The expected shelf, for tests only. A guard against a manifest that parses
+ * into *something* while silently losing cartridges (a typo in `rom`, a bad
+ * accent colour) — the page would render an empty shelf and no test would care.
+ */
+export const RETRO_TITLES_EXPECTED = ['alien-invasion', 'cyber-citadel', 'simple-frogger'] as const;
+
+export const RETRO_CHANNEL = 'pikachu-retro';
+export const RETRO_MANIFEST_URL = '/retro/roms.json';
+export const RETRO_PLAYER_URL = '/retro/player.html';
+
+const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const ROM_RE = /^roms\/[a-z0-9]+(?:-[a-z0-9]+)*\.gba$/;
+const COVER_RE = /^covers\/[a-z0-9]+(?:-[a-z0-9]+)*\.png$/;
+const ACCENT_RE = /^#[0-9a-fA-F]{6}$/;
+const MAX_ROM_BYTES = 32 * 1024 * 1024;
+
+/**
+ * The first 156 bytes of every GBA cartridge after the entry-point branch: the
+ * Nintendo logo the boot ROM checks before it will run a game. Matching it is
+ * the cheapest reliable way to tell "this is a GBA ROM" from "this is a photo of
+ * a dog" without shipping a parser. Universal across commercial and homebrew
+ * builds — it is a hardware requirement, not a copyrightable link to a game.
+ */
+const GBA_LOGO_HEX =
+  '24ffae51699aa2213d84820a84e409ad11248b98c0817f21a352be199309ce2010464a4af82731ec58c7e83382e3cebf85f4df94ce4b09c194568ac01372a7fc9f844d73a3ca9a615897a327fc039876231dc7610304ae56bf38840040a70efdff52fe036f9530f197fbc08560d68025a963be03014e38e2f9a234ffbb3e0344780090cb88113a9465c07c6387f03cafd625e48b380aac7221d4f807';
+const GBA_LOGO = (() => {
+  const out = new Uint8Array(156);
+  for (let i = 0; i < 156; i += 1) out[i] = parseInt(GBA_LOGO_HEX.slice(i * 2, i * 2 + 2), 16);
+  return out;
+})();
+
+const str = (v: unknown, max = 400): string | null =>
+  typeof v === 'string' && v.trim().length > 0 && v.length <= max ? v.trim() : null;
+
+const httpsUrl = (v: unknown): string | null => {
+  const s = str(v, 300);
+  if (!s) return null;
+  try {
+    const u = new URL(s);
+    return u.protocol === 'https:' ? u.toString() : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Validates one manifest entry. Returns null instead of throwing so one bad
+ *  row cannot take down the whole shelf. */
+export function validateRetroGame(raw: unknown): RetroGame | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+
+  const id = str(r.id, 48);
+  const title = str(r.title, 60);
+  const rom = str(r.rom, 120);
+  const cover = str(r.cover, 120);
+  const licenseUrl = httpsUrl(r.licenseUrl);
+  const sourceUrl = httpsUrl(r.sourceUrl);
+  const accent = str(r.accent, 7);
+  const bytes = typeof r.bytes === 'number' && Number.isFinite(r.bytes) && r.bytes > 0 && r.bytes <= MAX_ROM_BYTES ? Math.round(r.bytes) : null;
+  const year = typeof r.year === 'number' && r.year >= 1990 && r.year <= 2100 ? Math.round(r.year) : null;
+
+  if (!id || !ID_RE.test(id)) return null;
+  if (!title || !rom || !ROM_RE.test(rom) || !cover || !COVER_RE.test(cover)) return null;
+  if (!licenseUrl || !sourceUrl || !accent || !ACCENT_RE.test(accent) || !bytes || !year) return null;
+
+  const marqueeRaw = r.marquee === null || r.marquee === undefined ? null : str(r.marquee, 120);
+  if (marqueeRaw && !COVER_RE.test(marqueeRaw)) return null;
+
+  const tags = Array.isArray(r.tags)
+    ? r.tags.filter((t): t is string => typeof t === 'string' && t.length > 0 && t.length <= 24).slice(0, 6)
+    : [];
+
+  return {
+    id,
+    title,
+    tagline: str(r.tagline, 80) ?? '',
+    year,
+    author: str(r.author, 60) ?? 'Unknown',
+    engine: str(r.engine, 40) ?? undefined,
+    license: str(r.license, 24) ?? 'Unknown',
+    licenseUrl,
+    sourceUrl,
+    description: str(r.description, 600) ?? '',
+    rom,
+    cover,
+    marquee: marqueeRaw,
+    bytes,
+    accent,
+    tags,
+    players: r.players === 2 ? 2 : 1,
+    save: r.save === true,
+  };
+}
+
+export function parseRetroLibrary(raw: unknown): RetroLibrary {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const list = Array.isArray(r.games) ? r.games : [];
+  const seen = new Set<string>();
+  const games: RetroGame[] = [];
+  for (const item of list) {
+    const game = validateRetroGame(item);
+    if (!game || seen.has(game.id)) continue;
+    seen.add(game.id);
+    games.push(game);
+  }
+  return {
+    games,
+    system: str(r.system, 60) ?? 'Nintendo Game Boy Advance',
+    note: str(r.note, 400) ?? '',
+  };
+}
+
+let cache: Promise<RetroLibrary> | null = null;
+
+/** Fetches and validates the shelf. Cached for the life of the tab. */
+export function loadRetroLibrary(): Promise<RetroLibrary> {
+  if (!cache) {
+    cache = fetch(RETRO_MANIFEST_URL, { headers: { accept: 'application/json' } })
+      .then((res) => {
+        if (!res.ok) throw new Error(`Manifest request failed (${res.status})`);
+        return res.json() as Promise<unknown>;
+      })
+      .then(parseRetroLibrary)
+      .catch((err) => {
+        // Let the next mount retry instead of caching a failure forever.
+        cache = null;
+        throw err;
+      });
+  }
+  return cache;
+}
+
+export const retroGameById = (games: RetroGame[] | null, id: string | undefined): RetroGame | null => {
+  if (!games || !id) return null;
+  return games.find((g) => g.id === id) ?? null;
+};
+
+export const romUrlFor = (game: RetroGame): string => `/retro/${game.rom}`;
+export const coverUrlFor = (game: RetroGame): string => `/retro/${game.cover}`;
+export const marqueeUrlFor = (game: RetroGame): string | null => (game.marquee ? `/retro/${game.marquee}` : null);
+
+/** Reads a ROM's first 0xC0 bytes and checks the cartridge header. */
+export function looksLikeGbaRom(head: Uint8Array): boolean {
+  if (head.length < 0xc0) return false;
+  for (let i = 0; i < GBA_LOGO.length; i += 1) {
+    if (head[4 + i] !== GBA_LOGO[i]) return false;
+  }
+  return true;
+}
+
+export type LocalCartridgeProblem = 'too-big' | 'empty' | 'not-gba' | 'extension';
+
+/**
+ * Validates a cartridge the visitor dropped in. Runs on the first 0xC0 bytes
+ * only, so a 32 MB file costs a 192-byte read.
+ */
+export async function inspectLocalCartridge(file: File): Promise<LocalCartridgeProblem | null> {
+  if (!/\.(gba|agb|bin)$/i.test(file.name)) return 'extension';
+  if (file.size === 0) return 'empty';
+  if (file.size > MAX_ROM_BYTES) return 'too-big';
+  const head = new Uint8Array(await file.slice(0, 0xc0).arrayBuffer());
+  return looksLikeGbaRom(head) ? null : 'not-gba';
+}
+
+export const LOCAL_CARTRIDGE_MESSAGE: Record<LocalCartridgeProblem, string> = {
+  'too-big': 'That file is larger than 32 MB. The archive caps cartridges at 32 MB so a mistake cannot fill your memory.',
+  empty: 'That file is empty.',
+  'not-gba': 'That file does not have a Game Boy Advance cartridge header. Only GBA ROMs can run in this emulator.',
+  extension: 'Pick a .gba file.',
+};
+
+export function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * The mapping actually wired into the player, verified by pressing each key in
+ * a real browser against a real ROM (see `npm run e2e:retro`). It is the
+ * EmulatorJS default for a GBA pad; we surface it because a hidden control
+ * scheme is the fastest way to make a good emulator feel broken.
+ */
+export const RETRO_KEYBOARD = [
+  { keys: ['↑', '↓', '←', '→'], action: 'D-pad' },
+  { keys: ['Z'], action: 'A' },
+  { keys: ['X'], action: 'B' },
+  { keys: ['Enter'], action: 'Start' },
+  { keys: ['V'], action: 'Select' },
+  { keys: ['Q', 'E'], action: 'L / R' },
+] as const;
+
+/**
+ * RetroArch button indices, which is what the core reads. The emulator's own
+ * on-screen pad uses the same numbering, so these are not guesses: 8 is A and
+ * 0 is B in mgba, which is also why Z is A on a keyboard.
+ */
+export const RETRO_BUTTON = {
+  B: 0,
+  SELECT: 2,
+  START: 3,
+  UP: 4,
+  DOWN: 5,
+  LEFT: 6,
+  RIGHT: 7,
+  A: 8,
+  L: 10,
+  R: 11,
+} as const;
+
+export type PlayerStatus = 'booting' | 'loading' | 'ready' | 'running' | 'paused' | 'error';
+
+export interface PlayerMessage {
+  channel?: string;
+  type?: string;
+  status?: PlayerStatus;
+  message?: string;
+  dataUrl?: string;
+  value?: number;
+}

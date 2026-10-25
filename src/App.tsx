@@ -22,6 +22,8 @@ const Profile = lazy(() => import('./screens/Profile'));
 const SettingsScreen = lazy(() => import('./screens/Settings'));
 const Feedback = lazy(() => import('./screens/Feedback'));
 const Privacy = lazy(() => import('./screens/Privacy'));
+const Retro = lazy(() => import('./screens/Retro'));
+const RetroPlayer = lazy(() => import('./screens/RetroPlayer'));
 
 function RouteFallback() {
   return <div className="min-h-[58vh] grid place-items-center"><ElectricLoader status="Just a moment" detail="Loading this part of the arcade for the first time." /></div>;
@@ -65,6 +67,8 @@ function Shell() {
             <Route path="/solo" element={<SoloHub />} />
             <Route path="/solo/:slug" element={<Solo />} />
             <Route path="/challenges" element={<Challenges />} />
+            <Route path="/retro" element={<Retro />} />
+            <Route path="/retro/:id" element={<RetroPlayer />} />
             <Route path="/music" element={<Music />} />
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/profile" element={<Profile />} />

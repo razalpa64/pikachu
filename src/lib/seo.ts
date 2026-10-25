@@ -257,6 +257,17 @@ export const LIBRARY_FAQ: { q: string; a: string }[] = [
   },
 ];
 
+/**
+ * The retro shelf is data on disk (`public/retro/roms.json`) read at runtime, so
+ * the three titles are mirrored here for structured data only. A unit test keeps
+ * this list and the manifest in step — see `retro.test.ts`.
+ */
+export const RETRO_TITLES = [
+  { id: 'alien-invasion', title: 'Alien Invasion' },
+  { id: 'cyber-citadel', title: 'Cyber Citadel' },
+  { id: 'simple-frogger', title: 'Simple Frogger' },
+] as const;
+
 const STATIC_PAGES: Record<string, PageCopy> = {
   '/': {
     title: 'Pikachu Arcade — Free Two-Player Browser Games',
@@ -301,6 +312,21 @@ const STATIC_PAGES: Record<string, PageCopy> = {
     title: 'Achievements & Trophies',
     description:
       'Every trophy you have collected across the arcade, how it was earned, and what is still waiting to be unlocked.',
+  },
+  '/retro': {
+    title: 'Retro Arcade — Game Boy Advance in Your Browser',
+    description:
+      'Play freely redistributable Game Boy Advance homebrew in the browser: Alien Invasion, Cyber Citadel and Simple Frogger, with sound, save states and fullscreen. No BIOS, no account, no commercial ROMs.',
+    jsonLd: [
+      {
+        '@type': 'CollectionPage',
+        name: 'Retro Arcade',
+        description:
+          'Open-source Game Boy Advance cartridges running in an emulator inside the browser, loaded only when a game is launched.',
+        about: { '@type': 'SoftwareApplication', name: 'mGBA', applicationCategory: 'Emulator' },
+        hasPart: RETRO_TITLES.map((g) => ({ '@type': 'VideoGame', name: g.title, gamePlatform: 'Nintendo Game Boy Advance', applicationCategory: 'Game' })),
+      },
+    ],
   },
   '/music': {
     title: 'The Sound Room — Music & Ambience',
@@ -349,6 +375,20 @@ export function seoForPath(pathname: string): SeoMeta {
       ...base,
       title: 'Private Match Room',
       description: 'A private room in the Pikachu arcade.',
+      robots: NOINDEX,
+      jsonLd: [],
+    };
+  }
+
+  /* A cartridge player is an app view, not a landing page: it renders nothing
+     until ~1.5 MB of emulator has downloaded, so it should not compete for a
+     search result with the shelf that explains it. */
+  if (/^\/retro\/.+/.test(path)) {
+    const known = RETRO_TITLES.find((g) => path === `/retro/${g.id}`);
+    return {
+      ...base,
+      title: known ? `${known.title} — Retro Arcade` : 'Retro Arcade Player',
+      description: 'A Game Boy Advance cartridge running in the browser.',
       robots: NOINDEX,
       jsonLd: [],
     };

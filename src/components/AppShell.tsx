@@ -19,6 +19,7 @@ const NAV = [
   { to: '/library', label: 'Library', short: 'Games', icon: 'grid' },
   { to: '/together', label: 'Play Together', short: 'Together', icon: 'users' },
   { to: '/solo', label: 'Solo', short: 'Solo', icon: 'sword', end: true },
+  { to: '/retro', label: 'Retro Arcade', short: 'Retro', icon: 'gamepad' },
   { to: '/challenges', label: 'Challenges', short: 'Daily', icon: 'target' },
   { to: '/music', label: 'Our Music', short: 'Music', icon: 'volume' },
   { to: '/achievements', label: 'Achievements', short: 'Cups', icon: 'trophy' },
@@ -26,7 +27,9 @@ const NAV = [
   { to: '/settings', label: 'Settings', short: 'Setup', icon: 'gear' },
 ];
 
-/** How many of those appear in the bottom bar. The grid below must match. */
+/** How many of those appear in the top bar on a wide screen. */
+const TOP_COUNT = 7;
+/** How many appear in the bottom bar on a phone. The grid below must match. */
 const BAR_COUNT = 6;
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -36,7 +39,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
   const nav = useNavigate();
   const loc = useLocation();
   const lvl = levelFor(progress.xp);
-  const immersive = loc.pathname.startsWith('/solo/') || loc.pathname.startsWith('/room/');
+  /* The retro player owns the whole viewport: a bottom bar and a footer under a
+     running emulator is chrome competing with the console. The shelf itself
+     (`/retro`) stays a normal page. */
+  const immersive = loc.pathname.startsWith('/solo/') || loc.pathname.startsWith('/room/') || /^\/retro\/.+/.test(loc.pathname);
 
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
   useEffect(() => {
@@ -72,9 +78,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <nav className="hidden lg:flex items-center gap-0.5 ml-3" aria-label="Primary">
-            {NAV.slice(0, 6).map((n) => (
+            {NAV.slice(0, TOP_COUNT).map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} onMouseEnter={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')} onFocus={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')}
-                className={({ isActive }) => `relative px-3 py-[7px] rounded-full text-[12px] font-extrabold uppercase tracking-wider transition-colors no-tap
+                className={({ isActive }) => `relative px-2.5 xl:px-3 py-[7px] rounded-full text-[11.5px] xl:text-[12px] font-extrabold uppercase tracking-wider transition-colors no-tap
                   ${isActive ? 'text-[#5a3a12] bg-volt-200 border-2 border-ink-500' : 'border-2 border-transparent text-cream-500 hover:text-cream-100 hover:bg-blush-100'}`}>
                 {({ isActive }) => (
                   <span className="flex items-center gap-1.5">
@@ -101,7 +107,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Icon name={settings.muted ? 'mute' : 'volume'} size={18} />
           </button>
 
-          <button onClick={() => { sfx('click'); nav('/profile'); }} className="hidden sm:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full border-2 border-ink-500 bg-white hover:border-blush-300 hover:bg-blush-100 no-tap">
+          <button onClick={() => { sfx('click'); nav('/profile'); }} className="hidden xl:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full border-2 border-ink-500 bg-white hover:border-blush-300 hover:bg-blush-100 no-tap">
             <img src={MASCOT_ART[identity.mascot] ?? MASCOT_ART.classic} alt="" width={24} height={24} className="w-6 h-6 object-contain" />
             <span className="text-left leading-none">
               <span className="block text-[11.5px] font-extrabold text-cream-100 max-w-[90px] truncate">{identity.name || 'Trainer'}</span>

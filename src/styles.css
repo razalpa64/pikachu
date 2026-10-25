@@ -503,3 +503,141 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   .board-stage { padding-block-end: 4px; }
 }
 }
+
+/* ============================================================
+   Retro Arcade
+   ============================================================ */
+
+/* Fullscreen puts the whole console on screen — bezel, buttons and all — so the
+   chrome you were already using stays where it was. Letterboxing the console
+   inside a black page would have thrown the controls away at the exact moment
+   they matter most. */
+/* The console is a device, so it is sized like one: as wide as the column
+   allows, but never taller than the viewport minus the chrome above it and the
+   control strip below. Without the height guard a 3:2 screen on a 1440px column
+   is 900px tall and pushes the controls off the page. */
+.retro-console {
+  width: 100%;
+  max-width: min(100%, calc((100dvh - 250px) * 1.5 + 34px));
+  margin-inline: auto;
+}
+@media (max-width: 640px) {
+  .retro-console { max-width: 100%; }
+}
+
+.retro-console:fullscreen {
+  border-radius: 0;
+  border-color: #14100d;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #14100d;
+}
+.retro-console:fullscreen > div:nth-child(2) {
+  /* the screen: as large as the viewport allows while keeping GBA's 3:2 */
+  max-width: min(100%, calc((100dvh - 130px) * 1.5));
+  margin-inline: auto;
+  width: 100%;
+}
+.retro-console:fullscreen .retro-controls {
+  max-width: min(100%, calc((100dvh - 130px) * 1.5));
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* ---- the handheld's own buttons (touch only) ---- */
+.retro-pad {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 16px;
+  background: #221a15;
+  border: 2px solid #3d2c23;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.retro-pad-btn {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #5d4636;
+  border-radius: 12px;
+  background: #2f231c;
+  color: #ffe27a;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color .08s ease, transform .08s ease;
+}
+.retro-pad-btn:active { background: #4a3529; transform: translateY(1px); }
+
+.retro-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  grid-template-rows: repeat(3, 34px);
+  gap: 2px;
+}
+.retro-dpad > .retro-pad-btn { border-radius: 8px; font-size: 10px; }
+.retro-dpad-up { grid-area: 1 / 2; }
+.retro-dpad-left { grid-area: 2 / 1; }
+.retro-dpad-right { grid-area: 2 / 3; }
+.retro-dpad-down { grid-area: 3 / 2; }
+.retro-dpad-hub {
+  grid-area: 2 / 2;
+  border-radius: 4px;
+  background: #3a2a21;
+  border-top: 2px solid #5d4636;
+  border-left: 2px solid #5d4636;
+}
+
+.retro-pad-mid {
+  /* The two small pills get their own row: squeezing them between the D-pad and
+     the face buttons forced the whole strip wider than the screen on a 390px
+     phone, which pushed the A button out through the frame. */
+  flex: 1 0 100%;
+  order: 3;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+.retro-pad-pill {
+  width: auto;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 8.5px;
+  letter-spacing: .12em;
+}
+
+.retro-pad-face {
+  display: grid;
+  grid-template-columns: 44px 44px;
+  grid-template-rows: 26px 44px;
+  gap: 6px;
+  justify-items: center;
+}
+.retro-pad-face > .retro-pad-btn { border-radius: 999px; font-size: 15px; }
+.retro-pad-face > .retro-pad-btn:nth-child(1) { grid-area: 2 / 1; }
+.retro-pad-face > .retro-pad-btn:nth-child(2) { grid-area: 1 / 2; }
+
+@media (max-width: 380px) {
+  .retro-dpad { grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); }
+  .retro-pad-face { grid-template-columns: 40px 40px; grid-template-rows: 24px 40px; }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  /* landscape phones: the pad is the difference between playable and not */
+  .retro-pad { margin-top: 6px; padding: 6px 8px; }
+  .retro-dpad { grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); }
+}

@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 
 import { GAMES } from '../src/games/registry.ts';
 import { SITE_URL } from '../src/lib/seo.ts';
-import { renderRobots, renderSitemap } from '../src/lib/sitemap.ts';
+import { STATIC_ENTRIES, renderRobots, renderSitemap } from '../src/lib/sitemap.ts';
 import { applyNoscriptIndex } from '../src/lib/noscript.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,4 +31,4 @@ const indexPath = join(root, 'index.html');
 writeFileSync(indexPath, applyNoscriptIndex(readFileSync(indexPath, 'utf8'), GAMES), 'utf8');
 
 const live = GAMES.filter((g) => g.status === 'live').length;
-console.log(`[seo] robots.txt · sitemap.xml (${live} games + 8 pages) · noscript index`);
+console.log(`[seo] robots.txt · sitemap.xml (${live} games + ${STATIC_ENTRIES.length} pages) · noscript index`);

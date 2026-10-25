@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore, useAmbience } from '../lib/store';
 import { useRoom } from '../lib/useRoom';
-import { GAMES, gameById, liveGames, onlineGames, GENRE_LABEL } from '../games/registry';
+import { GAMES, gameById, liveGames, GENRE_LABEL } from '../games/registry';
 import { GameCard } from '../components/GameCard';
 import { GameArtwork } from '../components/GameArtwork';
 import { GameRail, Spotlight } from '../components/GameRail';
@@ -15,6 +15,7 @@ import { dailyChallenges, levelFor } from '../lib/progress';
 import { readRecord, solvedToday } from '../games/daily/streak';
 import { DAILY_VERSION, dateKey } from '../games/daily/puzzle';
 import { MASCOT_ART } from '../lib/identity';
+import { dayHash, railPicks } from '../lib/rails';
 
 /**
  * The front page.
@@ -26,8 +27,9 @@ import { MASCOT_ART } from '../lib/identity';
  *   your table  only when there is a room or a match history — a returning
  *               visitor's fastest route back in
  *   spotlight   one real game, chosen by the daily seed: the visual anchor
- *   shelves     three horizontal rails (quick, together, solo) instead of one
- *               grid, so the page has rhythm and each row answers a question
+ *   shelves     four horizontal rails (quick, together, party, solo) instead of
+ *               one grid, so the page has rhythm and each row answers a question;
+ *               they rotate with the date, so no game is stuck in the library
  *   daily       three goals, resetting at midnight
  *   together    the private-room pitch, with the code field right there
  *   library     six covers for browsing, then the tip jar and the sign-off
@@ -46,33 +48,17 @@ export default function Home() {
   const recents = progress.recents.map((r) => ({ ...r, game: gameById(r.gameId) })).filter((r) => r.game).slice(0, 4);
 
   const live = useMemo(() => liveGames(), []);
-  /* The pick is deterministic per day: both people opening the arcade on the same
-     evening see the same suggestion, and it changes without a deploy. */
-  const pick = useMemo(() => {
-    // hash the date string, so the pick is stable for the day and different tomorrow
-    let h = 0;
-    for (const ch of progress.dailySeed) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-    return live[h % live.length] ?? live[0];
-  }, [live, progress.dailySeed]);
-
-  const quick = useMemo(() => live.filter((g) => g.duration <= 6).slice(0, 9), [live]);
-  const together = useMemo(() => onlineGames().filter((g) => g.players[1] >= 2).slice(0, 9), []);
-  const solo = useMemo(() => live.filter((g) => g.modes.includes('ai') || g.modes.includes('solo')).slice(0, 9), [live]);
-  /* Party and trivia — games you put in the middle of the table. A different
-     question from "something to play with someone far away", so its own row. */
-  const party = useMemo(() => live.filter((g) => g.genre === 'party' || g.modes.includes('local')).slice(0, 9), [live]);
-
-  const featured = useMemo(() => {
-    // one from each genre first, then fill — the front page should not be six
-    // strategy boards with every puzzle invisible until the library
-    const byGenre = ['strategy', 'party', 'puzzle', 'arcade'].map((genre) => live.find((g) => g.genre === genre));
-    const chosen = byGenre.filter((g): g is NonNullable<typeof g> => !!g);
-    for (const g of live) {
-      if (chosen.length >= 6) break;
-      if (!chosen.includes(g)) chosen.push(g);
-    }
-    return chosen.slice(0, 6);
-  }, [live]);
+  /**
+   * Everything on this page that chooses a game is seeded from the date: the
+   * spotlight and the five rails. Two people opening the arcade on the same
+   * evening see the same page, it changes without a deploy, and — because each
+   * rail rotates — every game in the catalogue gets its turn in front instead of
+   * the same nine early entries filling the window forever. `lib/rails.ts` holds
+   * the selection rules and the tests that keep that promise.
+   */
+  const day = useMemo(() => dayHash(progress.dailySeed), [progress.dailySeed]);
+  const { quick, together, solo, party, featured } = useMemo(() => railPicks(live, day), [live, day]);
+  const pick = live[day % live.length] ?? live[0];
 
   const totals = useMemo(() => {
     const v = Object.values(progress.stats);

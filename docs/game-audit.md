@@ -170,7 +170,7 @@ Things that were deliberately **not** done:
   berry falling, the fuse burning and the card curtain, and `prefers-reduced-motion`
   removes all three.
 
-Test coverage at the time of writing: **560 tests across 37 files**, including
+Test coverage at the time of writing: **567 tests across 38 files**, including
 `spyfall.test.ts` (19), `spyfall-ui.test.ts` (7), `bluff.test.ts` (16),
 `bluff-ui.test.ts` (6), `berry.test.ts` (11), `berry-ui.test.ts` (3) and
 `shelf.test.ts` (4) — the last one names the ten requested games and fails if any

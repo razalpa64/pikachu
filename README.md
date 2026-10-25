@@ -521,7 +521,7 @@ Nothing calls a language model to pick a move. Everything runs locally and finis
 npm test
 ```
 
-560 tests across 37 files covering: legality and junk-payload rejection for all seventeen
+567 tests across 38 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake

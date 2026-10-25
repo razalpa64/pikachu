@@ -162,7 +162,12 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - **No hidden-info leaks**: `redact(state, slot)` runs before every broadcast — a Paper Fleet client is never sent the enemy fleet, a Memory client is never sent the face-down deck, a Wild Eights client is sent `-1` placeholders for the opponent's hand and the whole stock, a Guess & Draw client is sent a row of underscores instead of the word (and never the bank the rest of the match is drawn from), and a Spark Quiz client is told only *that* the other player has locked in, never *what* they picked — plus the unasked questions are withheld so nobody can read ahead. `scripts/smoke-cards.ts` asserts this on the wire, and `scripts/e2e/online-cards.mjs` asserts the other player's cards appear nowhere in your tab's DOM.
 
 **The rest**
-- Skippable intro (plays once per session, ~4 s, ~1 s with reduced motion).
+- **Cold open** (plays once per session, ~3.7 s, 1.2 s with reduced motion): paper light that
+  follows the pointer, a hairline electric sweep, the mascot rising as a silhouette, a strike,
+  the wordmark one letter at a time, and three covers fanning out to say what is inside. There
+  is no skip button on purpose — a skip button on a four-second splash is an admission that it
+  is too long, so the sequence was tightened instead. Nothing in it is interactive, so reduced
+  motion changes only the animation, never the flow.
 - Home hub: hero scene, Play now / Play together / Play solo, quick-continue, daily challenges, invite panel, library strip.
 - Game Library with working search, mode/genre filters, sort (featured / name / duration / most played), favourites and recents.
 - Solo Adventures hub, Challenges, Achievements (16 badges, all awarded from real match data), Profile, Settings.
@@ -958,6 +963,12 @@ by **sadsnake1** (CC BY-NC-SA 4.0), taken unmodified from the lichess repository
 project satisfies. Mascot clips are cleaned and re-encoded from supplied source GIFs;
 character cries are the public Pokémon Showdown cry files. Runtime dependencies are React, React
 Router, `chess.js` (move legality), `ws` (relay) and the optional Supabase client.
+
+**The tip jar.** Everything here is free and there is no paid tier, so the only support link in the
+app is a plain anchor — \`<a href="https://buymeacoffee.com/razalpa" target="_blank" rel="noopener
+noreferrer">\` — rendered by \`src/components/Support.tsx\` in exactly two places: a quiet card at the
+bottom of the home page, and the desktop footer. It never floats over a board, it never interrupts a
+match, and it is a real link so middle-click, copy-link and screen readers all behave normally.
 
 Pikachu is a trademark of Nintendo / Creatures Inc. / GAME FREAK. This is a personal,
 non-commercial project and is not affiliated with or endorsed by them.

@@ -4,6 +4,7 @@ import { prefetchRoute } from '../lib/prefetch';
 import { useStore } from '../lib/store';
 import { useRoom } from '../lib/useRoom';
 import { Icon, ConnectionIndicator } from './ui';
+import { SupportLink } from './Support';
 import { PikachuMascot } from '../mascot';
 import { levelFor } from '../lib/progress';
 import { MASCOT_ART } from '../lib/identity';
@@ -172,14 +173,17 @@ export default function AppShell({ children }: { children: ReactNode }) {
       {/* ---------------- footer ---------------- */}
       {!immersive && (
         <footer className="hidden lg:block border-t-2 border-ink-500 bg-[#fdf2e3]">
-          <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-5 flex items-center justify-between gap-4">
-            <p className="text-[11.5px] text-cream-500">
-              <span className="wordmark text-[13px] mr-2">PIKACHU</span>
-              A little arcade built for two. Original artwork, original engines, made with love.
-            </p>
-            <p className="text-[11px] text-ink-400">
-              Pikachu is a trademark of Nintendo / Creatures Inc. / GAME FREAK. This is a personal, non-commercial project.
-            </p>
+          <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-4 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-[11.5px] text-cream-500">
+                <span className="wordmark text-[13px] mr-2">PIKACHU</span>
+                A little arcade built for two. Original artwork, original engines, made with love.
+              </p>
+              <p className="text-[11px] text-ink-400 mt-0.5">
+                Pikachu is a trademark of Nintendo / Creatures Inc. / GAME FREAK. This is a personal, non-commercial project.
+              </p>
+            </div>
+            <SupportLink />
           </div>
         </footer>
       )}

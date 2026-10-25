@@ -6,6 +6,7 @@ import { GAMES, gameById, liveGames } from '../games/registry';
 import { GameCard } from '../components/GameCard';
 import { GameArtwork } from '../components/GameArtwork';
 import { Button, Icon, Panel, SectionTitle, Stat } from '../components/ui';
+import { SupportCard } from '../components/Support';
 import { PikachuMascot, BoltRule } from '../mascot';
 import { dailyChallenges, levelFor } from '../lib/progress';
 import { MASCOT_ART } from '../lib/identity';
@@ -232,6 +233,9 @@ export default function Home() {
             {featured.map((g) => <GameCard key={g.id} game={g} />)}
           </div>
         </section>
+
+        {/* ============================ TIP JAR ============================ */}
+        <SupportCard />
 
         {/* ============================ CLOSING ILLUSTRATION ============================ */}
         <section aria-label="Pikachu and a friend waving goodbye" className="pt-1">

@@ -172,6 +172,13 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - Game Library with working search, mode/genre filters, sort (featured / name / duration / most played), favourites and recents.
 - Solo Adventures hub, Challenges, Achievements (16 badges, all awarded from real match data), Profile, Settings.
 - Honest loading: `ElectricLoader` is indeterminate unless a real `progress` number exists. There are no artificial delays anywhere.
+- **A suggestion box that does not lose your note.** `/feedback` takes a review, a game idea, an
+  improvement or a bug report — four kinds, one short form, stars only when it is a review, and a
+  name and contact folded away behind a disclosure. A note is written to the device *first* and only
+  then sent to Postgres, so a missing key, a dropped connection or a closed tab never eats it: the
+  page tells you it is queued and the queue drains by itself the next time cloud sync works.
+  Published reviews appear on the page (the wall), which is readable without an account.
+  Details and the moderation rules are under *Reviews & ideas* below.
 - **Every game explains itself, in place.** `src/games/howToPlay.ts` holds a card for all twenty
   games — the goal in one sentence, the numbered rules, and the tip that actually changes how you
   play it ("hand over the third side of a box and you have given your opponent a present"). The
@@ -219,6 +226,63 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - No mobile app wrapper, no push notifications.
 - No ELO/global ranking, no matchmaking with strangers — this is a private two-player arena.
 - No visual-regression screenshots. The browser suite asserts on the DOM, console and network; it does not compare pixels.
+
+---
+
+## Reviews & ideas
+
+`/feedback` is the only inbound channel: one form with four kinds of note.
+
+| kind | asks for | goes where |
+|---|---|---|
+| **A review** | stars 1–5 + a sentence | shown on the wall on this page, once posted |
+| **A game idea** | the game, and what the two players do on a turn | read and triaged by hand |
+| **An improvement** | what is clunky or confusing, and what you expected | read and triaged |
+| **Something's broken** | what you tapped, what happened, what should have happened | first in the queue, because a broken game is worse than a missing one |
+
+**Nothing requires an account,** and nothing is shared anywhere else in the app.
+
+### It works with or without Supabase
+
+The table behind this is `public.feedback` (`supabase/migrations/0003_feedback.sql`), and the client
+is `src/lib/feedback.ts`. The order of operations is deliberate:
+
+1. validate in the browser (so the error appears under the field, not as a 400),
+2. write the note to `localStorage` **immediately**,
+3. try the insert,
+4. on success mark it `sent`; on a transient failure leave it `queued` and say so on the page.
+
+With no Supabase project configured — the default — step 3 is skipped and every note stays on the
+device with an honest line under the form saying exactly that. `flushFeedbackQueue()` runs on boot,
+so the moment a project *is* connected, anything queued is delivered and the queue line clears.
+
+### What the database enforces itself
+
+The anon key is public, so none of the client-side rules count for anything. The migration restates
+every one of them, and adds the things a browser cannot do:
+
+- **CHECK constraints** — message 8–1200 characters, rating 1–5, a review must have a rating and
+  nothing else may have one, name ≤ 40, contact ≤ 120.
+- **Column-level grants** — `anon` may `insert` eight named columns and `select` seven. `contact`,
+  `device_id`, `user_id` and `status` are not readable by the browser at all. RLS filters rows; only
+  column grants can stop a *field* leaking, which is why both are used.
+- **RLS** — insert allowed only with `status = 'published'` and either no `user_id` or your own;
+  select allowed only for published rows. There is deliberately **no update or delete policy**, so a
+  note can only be hidden in the SQL editor: `update public.feedback set status = 'hidden' where id = …`.
+- **A server-side rate limit** — a `security definer` trigger refuses the sixth note from one device
+  in an hour, and any note at all when more than 120 have arrived in ten minutes. The client has the
+  same per-device limit for a nicer message; the trigger is the one that counts.
+- **Hardened chat logs** — `0002` shipped `room_messages` with `using (true)` and `with check (true)`,
+  which on a public anon key means *read every room's chat and write anything you like into it*. The
+  browser now has insert-only access with length checks and no `select` grant at all. The relay
+  remains the authoritative copy; the table is a mirror you read in the dashboard.
+
+### Also fixed while looking at Supabase
+
+Signing in on a second device restored your name and mascot but left the career page reading zero,
+because `fetchRemoteUserData()` returned per-game stats that nothing consumed. `mergeRemoteStats()`
+now folds them in **field by field with `max`**, so a stale cloud row can never roll back a session
+you just played offline, and the same merge runs on boot when a session is already stored.
 
 ---
 
@@ -371,7 +435,7 @@ Nothing calls a language model to pick a move. Everything runs locally and finis
 npm test
 ```
 
-287 tests in 11 files covering: legality and junk-payload rejection for all fourteen turn-based
+345 tests in 17 files covering: legality and junk-payload rejection for all fourteen turn-based
 games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs, mandatory capture and
 promotion in checkers, memory redaction and streaks, fleet placement validation plus a full
 AI-vs-AI battle, reaction-duel timing on a real clock, snake collision/growth/wrap, puzzle
@@ -392,6 +456,32 @@ manifest to a file between 8 KB and 400 KB, that every game has a how-to-play ca
 difficulty tiers are offered where difficulties exist, and that the default settings actually
 validate. Adding a game and forgetting one of those wires now fails `npm test` instead of failing
 in a stranger's browser.
+
+The feedback box adds 52 of those, split by *what could break*:
+
+- `lib/__tests__/feedback.test.ts` — validation (empty, too short, a review with no rating, a rating on
+  an idea, out-of-range stars, the length cap, control characters), that a failed validation stores
+  nothing, that a note written with no Supabase is still there afterwards, and that the sixth note in
+  an hour is refused on the device.
+- `lib/__tests__/feedback-cloud.test.ts` — a fake PostgREST client, **plus assertions that read
+  `0003_feedback.sql` itself**: every column the client writes is granted for insert, every column the
+  wall reads is granted for select, `contact`/`device_id`/`status` are not readable, RLS is on, the
+  rate-limit trigger exists, and there is no update or delete policy. If the client and the migration
+  ever disagree, `npm test` fails instead of the wall silently going empty.
+- `screens/__tests__/feedback-screen.test.ts` — the page clicked through in jsdom: a review posts and
+  is kept, a short note is refused with the field marked `aria-invalid` and nothing stored, a review
+  with no stars is refused, and choosing "a game idea" removes the star widget and relabels the button.
+- `lib/__tests__/cloud-stats.test.ts` — the cloud career merge takes the better of each field, adds a
+  game the device has never played, and survives junk rows instead of writing `NaN` into progress.
+- `lib/__tests__/supabase-schema.test.ts` — **the migrations, executed.** It boots PGlite (PostgreSQL
+  compiled to WebAssembly, in memory), stubs in the three things Supabase provides — the `anon` and
+  `authenticated` roles, `auth.users`, and `auth.uid()` — then runs `0001` → `0002` → `0003` and
+  connects **as `anon`** to try everything it must not be able to do: read `contact`, `device_id`,
+  `user_id` or `status`; post a review with no rating, or a rating on an idea; claim someone else's
+  account; edit or delete a note; read the chat mirror; read anyone's profile. It also proves the
+  rate-limit trigger refuses the sixth note in an hour, that a hidden note is hidden but not deleted,
+  and that all five tables have RLS on. That is the half of the Supabase story the browser tests
+  cannot reach — and the half that matters, because the anon key is public.
 
 The last group is a **real DOM**. `src/games/__tests__/solo-ui.test.ts` runs jsdom, mounts the
 actual solo screens inside the actual store and router, and clicks the way a person clicks — then
@@ -864,6 +954,20 @@ browser:
     `role="status"` polite live region, so the change is announced, and the dot inside it is
     `aria-hidden` so the state is not read twice.
 
+
+59. **There was nowhere to say anything.** Twenty games and no way to tell the person who built them
+    that a board was unreadable on a phone, or that a game was missing. `/feedback` now takes a
+    review, a game idea, an improvement and a bug report; a note is written to the device before it
+    is sent, so a missing Supabase project or a closed tab cannot lose it, and published reviews are
+    shown on the page. The database side is not an afterthought: column-level grants, CHECK
+    constraints, a `security definer` rate-limit trigger and no update/delete policy at all.
+60. **Supabase shipped two tables you could read and write at will, and stats that never came back.**
+    `room_messages` had `using (true)` on select and `with check (true)` on insert — with a public
+    anon key that is every room's chat, readable, and a spam target. It is now append-only with no
+    select grant, length checks on every column, and a comment pointing at the prune query. Separately,
+    signing in on a second device restored the name and mascot but left the career at zero because the
+    stats `fetchRemoteUserData()` returned were thrown away; they are now merged field by field with
+    `max`, on sign-in and on boot.
 
 ---
 

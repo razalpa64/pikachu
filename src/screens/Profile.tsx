@@ -200,6 +200,15 @@ export default function Profile() {
             <Link to="/settings" className="inline-block mt-2.5 text-[12px] text-volt-700 font-bold hover:underline">Manage account & sync →</Link>
           </Panel>
 
+          <Panel className="p-4">
+            <p className="eyebrow mb-1.5">Reviews &amp; ideas</p>
+            <p className="text-[12.5px] text-cream-400">
+              Tell me what to build next — a review, a game you want, or the thing that annoyed you.
+              No account needed.
+            </p>
+            <Link to="/feedback" className="inline-block mt-2.5 text-[12px] text-volt-700 font-bold hover:underline">Open the suggestion box →</Link>
+          </Panel>
+
           <Button variant="ghost" className="w-full" onClick={() => setResetOpen(true)} icon={<Icon name="rotate" size={14} />}>
             Reset local progress
           </Button>

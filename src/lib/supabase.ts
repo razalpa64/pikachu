@@ -195,10 +195,13 @@ export async function logRoomMessage(roomCode: string, senderId: string, senderN
   const sb = await supabase();
   if (!sb) return;
   try {
+    /* Every one of these is clamped to the CHECK constraint in
+       supabase/migrations/0003_feedback.sql. A mirror that fails because somebody's
+       name is 41 characters long is a mirror that quietly stops working. */
     await sb.from('room_messages').insert({
-      room_code: roomCode.toUpperCase(),
-      sender_id: senderId,
-      sender_name: senderName,
+      room_code: roomCode.toUpperCase().slice(0, 10),
+      sender_id: String(senderId).slice(0, 64),
+      sender_name: (senderName || 'A player').slice(0, 40),
       message: message.slice(0, 300),
     });
   } catch { /* best effort */ }
@@ -211,7 +214,10 @@ export async function upsertRemoteProfile(identity: Identity) {
     const uid = await currentUserId();
     if (!uid) return;
     await sb.from('profiles').upsert({
-      id: uid, display_name: identity.name || 'Trainer', mascot: identity.mascot, updated_at: new Date().toISOString(),
+      id: uid,
+      display_name: (identity.name || 'Trainer').slice(0, 40),   // profiles.display_name is 1–40
+      mascot: identity.mascot,
+      updated_at: new Date().toISOString(),
     });
   } catch (e) {
     if (!warned) { warned = true; console.warn('[supabase] profile sync unavailable', e); }

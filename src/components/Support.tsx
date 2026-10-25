@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { Icon } from './ui';
 import { useStore } from '../lib/store';
 
@@ -59,8 +60,11 @@ export function SupportCard() {
             If the arcade earned an evening, a coffee keeps the servers awake.
           </p>
         </div>
-        <div className="shrink-0 sm:pl-2">
+        <div className="shrink-0 sm:pl-2 flex flex-col items-start sm:items-end gap-1.5">
           <SupportLink size="md" />
+          <Link to="/feedback" className="text-[11.5px] font-bold text-cream-500 hover:text-volt-700 hover:underline no-underline">
+            Reviews &amp; ideas →
+          </Link>
         </div>
       </div>
     </section>

@@ -15,8 +15,12 @@ export default function ConnectFourBoard({ state, youSlot, onMove, interactive }
         style={{ background: 'linear-gradient(176deg,#ffe9c8,#f3cfa4)', boxShadow: '0 26px 54px -28px rgba(140,94,70,.7), inset 0 2px 0 rgba(255,255,255,.75)', border: '3px solid #c99b78' }}>
         {/* marquee */}
         <div className="flex items-center justify-between px-1 pb-2">
-          <span className="text-[9.5px] font-extrabold uppercase tracking-[.22em] text-cream-300">Drop Four</span>
-          <span className="flex gap-1" aria-hidden>{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-blush-300" style={{ animation: `pk-pulse 1.4s ${i * .3}s infinite` }} />)}</span>
+          <span className="text-[9.5px] font-extrabold uppercase tracking-[.22em] text-cream-300">Four in a Row</span>
+          {/* Three bulbs, unlit. These used to pulse on an infinite loop beside the
+              board, which is exactly the permanent background motion that makes a
+              hand-made game feel like a slot machine — and it competed with the
+              one thing on this screen that should move, the disc. */}
+          <span className="flex gap-1" aria-hidden>{[0, 1, 2].map((i) => <span key={i} className="w-1.5 h-1.5 rounded-full bg-blush-300" />)}</span>
         </div>
 
         {/* drop slots */}
@@ -39,7 +43,7 @@ export default function ConnectFourBoard({ state, youSlot, onMove, interactive }
 
         {/* grid */}
         <div className="relative p-2.5 rounded-[20px]" style={{ background: 'linear-gradient(180deg,#fff1f5,#ffdfe9)', border: '3px solid #e9a7bd' }}>
-          <div className="grid gap-[5px]" style={{ gridTemplateColumns: `repeat(${cols}, ${size})` }} role="grid" aria-label="Drop Four grid">
+          <div className="grid gap-[5px]" style={{ gridTemplateColumns: `repeat(${cols}, ${size})` }} role="grid" aria-label="Four in a Row grid">
             {Array.from({ length: rows }).map((_, rIdx) => {
               const r = rows - 1 - rIdx;
               return Array.from({ length: cols }).map((__, c) => {

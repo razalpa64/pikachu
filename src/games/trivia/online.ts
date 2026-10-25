@@ -4,7 +4,7 @@
  * This is NOT the solo quiz with a second seat bolted on. The solo game is a
  * turn-taking loop against a simulated rival; online, both players answer the
  * same question at the same time and the clock belongs to the server. That
- * makes it a *simultaneous* game, like Reaction Duel: `currentPlayer` is always
+ * makes it a *simultaneous* game, like Spark Reflex: `currentPlayer` is always
  * null, and `tick()` — not a move — is what advances the round.
  *
  * Two properties matter and are enforced here rather than in the UI:

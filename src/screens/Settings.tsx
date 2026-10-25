@@ -177,7 +177,7 @@ export default function Settings() {
       <SectionTitle eyebrow="Gameplay" title="Assistance" />
       <Panel className="p-4 mt-3.5 space-y-3.5">
         <Toggle checked={settings.showHints} onChange={(v) => setSettings({ showHints: v })} label="Show hints and legal-move markers" />
-        <p className="text-[11.5px] text-cream-400">Affects move dots in Chess and Checkers, the drop preview in Drop Four, and engine depth readouts.</p>
+        <p className="text-[11.5px] text-cream-400">Affects move dots in Chess and Checkers, the drop preview in Four in a Row, and engine depth readouts.</p>
         <div className="pt-3 border-t border-ink-600">
           <span className="eyebrow block mb-2">Board theme</span>
           <Segmented value={settings.boardTheme} onChange={(v) => setSettings({ boardTheme: String(v) })} label="Board theme"

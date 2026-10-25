@@ -201,9 +201,9 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 |---|---|---|---|---|
 | 1 | **Chess Arena** | ✅ 5 tiers | ✅ | Alpha-beta negamax in a Web Worker: quiescence search, MVV-LVA ordering, killer moves, piece-square tables, iterative deepening on a time budget. Clocks (3+2 / 10+5 / 30+10), SAN history, take-back, resign, draw offers, promotion chooser. |
 | 2 | **Tic-Tac-Toe Duel** | ✅ 5 tiers | ✅ | Exact memoised minimax; 3×3/4×4/5×5 boards. The expert tier is unbeatable, and the test proves it exhaustively rather than by sampling — it walks *every* opponent reply from both seats. |
-| 3 | **Drop Four** (Connect Four) | ✅ 5 tiers | ✅ | Iterative-deepening minimax with threat detection and a move explanation feed. |
-| 4 | **Memory Match** | ✅ 5 tiers | ✅ | Solo / vs AI / same-device / co-op. The AI has a real, lossy memory model per difficulty. Server redacts face-down cards. |
-| 5 | **Reaction Duel** | ✅ 5 tiers | ✅ | Signal timing is owned by the server clock, never a local timer. False starts, per-round log, calibrated human-like AI reflex distribution. |
+| 3 | **Four in a Row** (Connect Four) | ✅ 5 tiers | ✅ | Iterative-deepening minimax with threat detection and a move explanation feed. |
+| 4 | **Pika Pairs** | ✅ 5 tiers | ✅ | Solo / vs AI / same-device / co-op. The AI has a real, lossy memory model per difficulty. Server redacts face-down cards. |
+| 5 | **Spark Reflex** | ✅ 5 tiers | ✅ | Signal timing is owned by the server clock, never a local timer. False starts, per-round log, calibrated human-like AI reflex distribution. |
 | 6 | **Snake Arena** | ✅ 5 tiers | — | Grid engine with a BFS-pursuit AI serpent guarded by flood-fill survivability. Four pastel skins, pillars, wrap walls, canvas renderer, boosts. |
 | 7 | **Paper Fleet** (Battleship) | ✅ 5 tiers | ✅ | Hunt/target AI with parity sweeping. Manual or auto fleet placement. The server never sends the enemy fleet to your browser. |
 | 8 | **Checkers Royale** | ✅ 5 tiers | ✅ | Mandatory capture, chain jumps, kings, resign. |
@@ -708,7 +708,7 @@ browser:
 10. **Putting a simultaneous game online silently disabled its board.** `isMyTurn()` in `Room.tsx`
     falls through to `state.turn === slot`, and Spark Quiz has no `turn` — a simultaneous game has
     no such thing. `interactive` was therefore false for both players and every answer button
-    rendered disabled, with no error logged anywhere. Reaction Duel had already been special-cased;
+    rendered disabled, with no error logged anywhere. Spark Reflex had already been special-cased;
     the quiz needed the same. The turn pill said "Your move" too, which is meaningless when you
     both move at once — it now reads "Answer now" / "Locked in" / "Answer revealed".
 11. **The quiz header read "question 1 of 1".** Redaction truncates the question queue so a client
@@ -730,7 +730,7 @@ browser:
 14. **The segmented chips were 24.5 px tall.** That scrapes past WCAG 2.5.8 AA by half a pixel and
     is still a poor thumb target on a phone — and this is meant to be played on a phone. Mode,
     difficulty and round-count chips now get a 34–36 px hit area below the `sm` breakpoint and keep
-    their compact look above it. Toggles and the Drop Four column buttons got the same treatment.
+    their compact look above it. Toggles and the Four in a Row column buttons got the same treatment.
 15. **The opponent's card fan dropped a stray card onto a second row.** The fan overlaps its cards
     with a negative margin and the container was `flex-wrap`, so on a narrow screen the seventh
     back wrapped and sat on its own, misaligned, looking like a rendering fault. A fan should never
@@ -782,7 +782,7 @@ browser:
     page with `/\b[A-Z2-9]{5}\b/`. `innerText` returns *rendered* text, and nav labels are
     uppercased by CSS — so "MUSIC" matched first and the guest joined `/room/MUSIC`. The code now
     has a `data-room-code` attribute and the harnesses read that.
-28. **Every board piece was a CSS gradient or a hand-written SVG path.** Tic-Tac-Toe, Drop Four
+28. **Every board piece was a CSS gradient or a hand-written SVG path.** Tic-Tac-Toe, Four in a Row
     and Checkers now use painted tokens — a gold bolt and a rose heart — processed by
     `scripts/pieces.py` and asserted by a test, so a sprite cannot quietly disappear and leave an
     empty cell.
@@ -922,7 +922,7 @@ browser:
     counts decoded cries on **both** sides; with the hook commented out it reports `0 cries on host,
     0 cries on guest`, which is exactly the silence that was shipped.
 
-42. **Four games had no sound of their own, and the biggest cue of all was a beep.** Reaction Duel
+42. **Four games had no sound of their own, and the biggest cue of all was a beep.** Spark Reflex
     never called `sfx` once — it did not even destructure it — so everything after the signal was
     mute. Snake's crash was silent: you simply stopped and the result card appeared. Both are now
     voiced, and Snake's three pickups (worth 10, 25 and 40) get three different voices off the score
@@ -958,7 +958,7 @@ browser:
 46. **Snake told phone players to press keys they do not have.** The start card read "Press an arrow
     key to start the run" over "SPACE PAUSES · ESC HOLDS" — on a touch device with a D-pad sitting
     below the fold. It reads as a broken game, not a wrong label. Volt Runner's canvas overlay said
-    "Press space, or tap, to run / Space ↑ jumps · ↓ ducks" and Reaction Duel said "Click or press
+    "Press space, or tap, to run / Space ↑ jumps · ↓ ducks" and Spark Reflex said "Click or press
     space". All of it now branches on `useTouch()`.
 47. **Making Pikachu bigger on a phone looked impossible without making the game unfair.** The
     renderer fits on width, so a taller canvas only adds sky, and cropping the road to zoom in
@@ -1112,9 +1112,9 @@ its tile and the bottle rotates around its own middle.
 
 | set | files | where |
 |---|---|---|
-| board pieces | `art/piece/*.webp` ×4 | Tic-Tac-Toe, Drop Four, Checkers |
+| board pieces | `art/piece/*.webp` ×4 | Tic-Tac-Toe, Four in a Row, Checkers |
 | runner | `art/run/*` ×5 | Volt Runner |
-| memory faces | `art/mem/*.webp` | Memory Match |
+| pairs faces | `art/mem/*.webp` | Pika Pairs |
 | bottle | `art/dare/bottle.webp` | Truth or Dare |
 | game covers | `art/game/*.webp` ×20 | Library, Home, room picker |
 

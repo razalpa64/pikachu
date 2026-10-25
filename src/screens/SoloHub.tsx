@@ -91,7 +91,7 @@ export default function SoloHub() {
       <div className="grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4 mt-3.5">
         {[
           { t: 'Chess Arena', d: 'Alpha-beta negamax with quiescence search, killer moves and piece-square tables — in a Web Worker so the board never freezes.', c: '#f0b429' },
-          { t: 'Drop Four & Checkers', d: 'Iterative-deepening minimax with a time budget; difficulty changes real search depth, not reaction scripting.', c: '#e05a74' },
+          { t: 'Four in a Row & Checkers', d: 'Iterative-deepening minimax with a time budget; difficulty changes real search depth, not reaction scripting.', c: '#e05a74' },
           { t: 'Paper Fleet', d: 'Hunt/target AI with parity sweeping and a live probability density map of where your ships can still fit.', c: '#4a9fd8' },
           { t: 'Snake Arena', d: 'Breadth-first pursuit with a flood-fill survivability guard so the rival serpent avoids trapping itself.', c: '#3fae82' },
         ].map((x) => (

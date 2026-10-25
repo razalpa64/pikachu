@@ -12,6 +12,8 @@ import { Button, Icon, Panel, SectionTitle, Stat } from '../components/ui';
 import { SupportCard } from '../components/Support';
 import { PikachuMascot, BoltRule } from '../mascot';
 import { dailyChallenges, levelFor } from '../lib/progress';
+import { readRecord, solvedToday } from '../games/daily/streak';
+import { DAILY_VERSION, dateKey } from '../games/daily/puzzle';
 import { MASCOT_ART } from '../lib/identity';
 
 /**
@@ -255,6 +257,8 @@ export default function Home() {
           blurb={`${pick.description} ${GENRE_LABEL[pick.genre]} · ${pick.modes.includes('online') ? 'works on two devices or against the AI' : 'solo or same-device'}.`}
         />
 
+        <DailyStrip />
+
         {/* ================================ SHELVES ================================ */}
         <GameRail id="quick-h" eyebrow="Short sessions" title="Ready in five minutes"
           note="A full round while the kettle boils." games={quick}
@@ -357,5 +361,56 @@ export default function Home() {
         </section>
       </div>
     </div>
+  );
+}
+
+/**
+ * One strip, once a day.
+ *
+ * A daily puzzle is worthless if nobody can find it, but a whole shelf for it
+ * would out-shout the games people actually came for — so it is a single warm
+ * band: what it is, whether today is still open, and the streak *you* earned.
+ * No invented "12,481 players solved this" — the number on the right is the
+ * only one this app can know.
+ */
+function DailyStrip() {
+  const nav = useNavigate();
+  const rec = useMemo(() => readRecord(), []);
+  const today = dateKey();
+  const done = solvedToday(rec, today);
+
+  return (
+    <section aria-labelledby="daily-h"
+      className="relative panel panel-notch overflow-hidden flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5 px-4 py-3.5 sm:px-5">
+      <div className="flex items-center gap-3 min-w-0 flex-1">
+        {/* a tiny nonogram, drawn from the same picture the game is: squares, not an icon font */}
+        <div className="shrink-0 grid grid-cols-3 gap-[3px] p-1.5 rounded-lg border-2 border-ink-500 bg-ink-800" aria-hidden>
+          {[1, 0, 1, 0, 1, 0, 1, 1, 1].map((on, i) => (
+            <span key={i} className="w-[7px] h-[7px] rounded-[1.5px]"
+              style={{ background: on ? '#e8a21c' : '#f0dcc2' }} />
+          ))}
+        </div>
+        <div className="min-w-0">
+          <p className="eyebrow text-volt-700">Daily puzzle · edition {DAILY_VERSION}</p>
+          <h2 id="daily-h" className="display text-[17px] sm:text-[19px] text-cream-100 leading-tight mt-0.5">
+            {done ? 'Today’s grid is already solved' : 'Today’s grid is open'}
+          </h2>
+          <p className="text-[12px] text-cream-500 leading-snug mt-0.5">
+            A 5×5 nonogram, the same one for everyone, generated from the date — no server, nothing to sign up for.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3 shrink-0 sm:pl-2">
+        {rec.streak > 0 && (
+          <div className="text-right">
+            <p className="display text-[19px] text-leaf-700 leading-none tabnum">{rec.streak}</p>
+            <p className="text-[9px] font-extrabold uppercase tracking-wider text-cream-400">day streak</p>
+          </div>
+        )}
+        <Button variant={done ? 'ghost' : 'primary'} onClick={() => nav('/solo/daily-puzzle')}>
+          {done ? 'Play again' : 'Open today’s'}
+        </Button>
+      </div>
+    </section>
   );
 }

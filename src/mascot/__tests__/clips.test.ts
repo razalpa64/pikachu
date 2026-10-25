@@ -146,7 +146,7 @@ describe('the supplied artwork', () => {
     const ttt = read('src/components/boards/TicTacToeBoard.tsx');
     expect(ttt, 'the tic-tac-toe marks are still hand-drawn SVG').toContain('/art/piece/volt.webp');
     const c4 = read('src/components/boards/ConnectFourBoard.tsx');
-    expect(c4, 'the Drop Four discs are still a CSS gradient').toContain('/art/piece/');
+    expect(c4, 'the Four in a Row discs are still a CSS gradient').toContain('/art/piece/');
     const chk = read('src/components/boards/CheckersBoard.tsx');
     expect(chk, 'the checkers pieces are still a CSS gradient').toContain('/art/piece/checker-');
   });

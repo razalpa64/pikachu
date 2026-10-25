@@ -37,7 +37,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
-    id: 'connect4', slug: 'connect-four', title: 'Drop Four',
+    id: 'connect4', slug: 'connect-four', title: 'Four in a Row',
     tagline: 'Drop, stack, sneak a win',
     description: 'Four in a row with satisfying, weighty falling discs. Every win direction is checked properly, and the alpha-beta engine reads nine moves ahead when you ask it to.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 6,
@@ -45,7 +45,7 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
-    id: 'memory', slug: 'memory-match', title: 'Memory Match',
+    id: 'memory', slug: 'memory-match', title: 'Pika Pairs',
     tagline: 'Who remembers better?',
     description: 'Eighteen hand-drawn cards to turn over. Flip, remember, chain a streak. Play alone against the clock, race each other, or clear the whole board together as a team.',
     genre: 'puzzle', modes: ['solo', 'ai', 'online', 'coop'], players: [1, 2], duration: 5,
@@ -60,7 +60,7 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
-    id: 'reaction', slug: 'reaction-duel', title: 'Reaction Duel',
+    id: 'reaction', slug: 'reaction-duel', title: 'Spark Reflex',
     tagline: 'Blink and you lose',
     description: 'A server-timed reflex duel. The panel hums, waits a random moment, then lights up — first honest press takes the round. Jump the gun and it is a false start.',
     genre: 'party', modes: ['online', 'ai', 'local'], players: [1, 2], duration: 2,
@@ -225,6 +225,14 @@ export const GAMES: GameMeta[] = [
         { value: 1, label: 'One round' }, { value: 2, label: 'Two rounds' }, { value: 3, label: 'Three rounds' },
       ] },
     ],
+  },
+  {
+    id: 'daily', slug: 'daily-puzzle', title: 'Daily Puzzle',
+    tagline: 'One warm-up a day',
+    description: 'A 5×5 nonogram, the same grid for everyone, generated from the date — no server, no cache, no peeking. Solve it, keep the streak alive, and share a result that spoils nothing.',
+    genre: 'puzzle', modes: ['solo'], players: [1, 1], duration: 3,
+    accent: '#1d5f70', artKey: 'daily', status: 'live', serverRefereed: false,
+    difficulties: ['beginner'],
   },
   {
     id: 'wordbomb', slug: 'word-bomb', title: 'Word Bomb',

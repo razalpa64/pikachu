@@ -200,6 +200,16 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'The imposter should give a word that could belong to any of a dozen answers. Vague, never wrong.',
   },
+  daily: {
+    goal: 'Reproduce the hidden picture from its row and column counts alone — one grid a day, the same grid for everyone.',
+    steps: [
+      'Each number beside a row or under a column is the length of one unbroken run of filled squares, left to right or top to bottom.',
+      'Tap a square to fill it. Switch to Mark ✕ and tap to record a square you have proved empty; a header goes quiet once that line is satisfied.',
+      'The puzzle is finished the moment every row and column count is met — any picture that fits the clues is accepted.',
+      'Finish it to bank the day and grow your streak; miss a day and the streak starts again.',
+    ],
+    tip: 'Start with the biggest numbers. A 5 in a five-wide line fills the whole line, and any run longer than half the line has squares you can fill for certain.',
+  },
   wordbomb: {
     goal: 'Keep the fuse moving: score more words than your opponent before the turns run out, and never be the one holding it when it goes off.',
     steps: [

@@ -58,7 +58,7 @@ describe('leaving a review', () => {
 
     const box = host.querySelector<HTMLTextAreaElement>('#fb-message')!;
     await act(async () => {
-      setValue(box, 'Me and my brother played Drop Four for an hour and the AI never once felt random.');
+      setValue(box, 'Me and my brother played Four in a Row for an hour and the AI never once felt random.');
     });
     const star = host.querySelector<HTMLElement>('button[aria-label="4 stars"]')!;
     await act(async () => { star.click(); });
@@ -73,7 +73,7 @@ describe('leaving a review', () => {
     const notes = localNotes();
     expect(notes).toHaveLength(1);
     expect(notes[0].draft.rating).toBe(4);
-    expect(notes[0].draft.message).toMatch(/Drop Four/);
+    expect(notes[0].draft.message).toMatch(/Four in a Row/);
     expect(notes[0].state, 'nothing pretends to have been uploaded').toBe('queued');
   });
 

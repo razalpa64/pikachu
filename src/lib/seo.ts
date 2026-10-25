@@ -17,6 +17,10 @@
  */
 
 import { GAMES, gameBySlug, GENRE_LABEL } from '../games/registry';
+
+/** Counted from the registry, never typed by hand — the headline has to stay true
+ *  as games are added. */
+const ONLINE_COUNT = GAMES.filter((g) => g.serverRefereed).length;
 import { howToFor } from '../games/howToPlay';
 import type { GameMeta } from '../games/types';
 
@@ -236,7 +240,8 @@ export const LIBRARY_FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'Which games can two people play online?',
-    a: 'Fourteen of the twenty games are refereed online, including chess, checkers, Drop Four, Battleship, Lantern Flip, River Stones, Mancala, Wild Eights and Spark Quiz. The rest are solo or pass-and-play on one device.',
+    a: `${ONLINE_COUNT} of the ${GAMES.length} games are refereed online, including chess, checkers, Four in a Row, Battleship, Lantern Flip, River Stones, Mancala, Wild Eights, Spark Quiz, Word Bomb and Would You Rather. The rest are solo or pass-and-play on one device.`,
+
   },
   {
     q: 'Is everything free?',

@@ -9,7 +9,7 @@ export type ArtKey =
   | 'chess' | 'ttt' | 'c4' | 'memory' | 'reaction'
   | 'checkers' | 'battleship' | 'snake' | 'puzzle' | 'arcade'
   | 'trivia' | 'dare' | 'imposter' | 'detective' | 'cards' | 'sketch'
-  | 'reversi' | 'gomoku' | 'dots' | 'mancala' | 'wyr' | 'wordbomb';
+  | 'reversi' | 'gomoku' | 'dots' | 'mancala' | 'wyr' | 'wordbomb' | 'daily';
 
 export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   chess:      { src: '/art/game/chess.webp',      alt: 'A pastel chess set on a honey chequerboard' },
@@ -34,6 +34,7 @@ export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   mancala:    { src: '/art/game/mancala.webp',    alt: 'A carved wooden mancala tray with little seeds in its pits' },
   wyr:        { src: '/art/game/wyr.webp',        alt: 'Two illustrated cards side by side on a picnic cloth, one golden and one rose' },
   wordbomb:   { src: '/art/game/wordbomb.webp',   alt: 'A round gold-fused bomb resting on a pile of letter tiles' },
+  daily:      { src: '/art/game/daily.webp',      alt: 'A small pencil-marked grid on cream paper beside a cup of tea' },
 };
 
 

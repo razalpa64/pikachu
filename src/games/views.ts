@@ -25,6 +25,7 @@ export const SOLO_IMPORTERS: Record<string, Importer> = {
   trivia: () => import('./trivia/SoloView'),
   wyr: () => import('./wyr/SoloView'),
   wordbomb: () => import('./wordbomb/SoloView'),
+  daily: () => import('./daily/SoloView'),
   dare: () => import('./dare/SoloView'),
   imposter: () => import('./imposter/SoloView'),
   detective: () => import('./detective/SoloView'),

@@ -15,16 +15,16 @@ import { MASCOT_ART } from '../lib/identity';
  * the bar's column count has to match the number of entries it renders.
  */
 const NAV = [
-  { to: '/', label: 'Home', short: 'Home', icon: 'home', end: true },
-  { to: '/library', label: 'Library', short: 'Games', icon: 'grid' },
-  { to: '/together', label: 'Play Together', short: 'Together', icon: 'users' },
-  { to: '/solo', label: 'Solo', short: 'Solo', icon: 'sword', end: true },
-  { to: '/retro', label: 'Retro Arcade', short: 'Retro', icon: 'gamepad' },
-  { to: '/challenges', label: 'Challenges', short: 'Daily', icon: 'target' },
-  { to: '/music', label: 'Our Music', short: 'Music', icon: 'volume' },
-  { to: '/achievements', label: 'Achievements', short: 'Cups', icon: 'trophy' },
-  { to: '/profile', label: 'Profile', short: 'You', icon: 'user' },
-  { to: '/settings', label: 'Settings', short: 'Setup', icon: 'gear' },
+  { to: '/', label: 'Home', short: 'Home', top: 'Home', icon: 'home', end: true },
+  { to: '/library', label: 'Library', short: 'Games', top: 'Library', icon: 'grid' },
+  { to: '/together', label: 'Play Together', short: 'Together', top: 'Together', icon: 'users' },
+  { to: '/solo', label: 'Solo', short: 'Solo', top: 'Solo', icon: 'sword', end: true },
+  { to: '/retro', label: 'Retro Arcade', short: 'Retro', top: 'Retro', icon: 'gamepad' },
+  { to: '/challenges', label: 'Challenges', short: 'Daily', top: 'Challenges', icon: 'target' },
+  { to: '/music', label: 'Our Music', short: 'Music', top: 'Music', icon: 'volume' },
+  { to: '/achievements', label: 'Achievements', short: 'Cups', top: 'Achievements', icon: 'trophy' },
+  { to: '/profile', label: 'Profile', short: 'You', top: 'Profile', icon: 'user' },
+  { to: '/settings', label: 'Settings', short: 'Setup', top: 'Settings', icon: 'gear' },
 ];
 
 /** How many of those appear in the top bar on a wide screen. */
@@ -43,6 +43,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
      running emulator is chrome competing with the console. The shelf itself
      (`/retro`) stays a normal page. */
   const immersive = loc.pathname.startsWith('/solo/') || loc.pathname.startsWith('/room/') || /^\/retro\/.+/.test(loc.pathname);
+  /* The retro *player* is a device, not a page: it draws its own header and owns
+     the whole viewport. Leaving the site header above it would both eat 58px of
+     the console and leave a row of links behind it that keyboard users could
+     tab into without being able to see where they were. The shelf (`/retro`) is
+     untouched. */
+  const consolePage = /^\/retro\/.+/.test(loc.pathname);
 
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
   useEffect(() => {
@@ -59,6 +65,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {/* ---------------- top bar ---------------- */}
+      {!consolePage && (
       <header className="sticky top-0 z-50 safe-t bg-[#fffaf1]/92 border-b-2 border-ink-600 backdrop-blur-md blur-heavy">
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] h-[58px] flex items-center gap-3">
           <button onClick={() => { sfx('click'); nav('/'); }} className="flex items-center gap-2 shrink-0 no-tap group" aria-label="PIKACHU home">
@@ -79,14 +86,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
           <nav className="hidden lg:flex items-center gap-0.5 ml-3" aria-label="Primary">
             {NAV.slice(0, TOP_COUNT).map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end} onMouseEnter={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')} onFocus={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')}
-                className={({ isActive }) => `relative px-2.5 xl:px-3 py-[7px] rounded-full text-[11.5px] xl:text-[12px] font-extrabold uppercase tracking-wider transition-colors no-tap
+              <NavLink key={n.to} to={n.to} end={n.end} aria-label={n.label}
+                onMouseEnter={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')} onFocus={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')}
+                className={({ isActive }) => `relative shrink-0 px-2 xl:px-2.5 py-[7px] rounded-full text-[11.5px] xl:text-[12px] font-extrabold uppercase tracking-wider transition-colors no-tap
                   ${isActive ? 'text-[#5a3a12] bg-volt-200 border-2 border-ink-500' : 'border-2 border-transparent text-cream-500 hover:text-cream-100 hover:bg-blush-100'}`}>
-                {({ isActive }) => (
-                  <span className="flex items-center gap-1.5">
-                    <Icon name={n.icon} size={15} />{n.label}
-                  </span>
-                )}
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <Icon name={n.icon} size={15} />
+                  {/* One line, always. Multi-word names ("Play Together") used to
+                      wrap inside the pill, which made three items twice as tall as
+                      the rest and turned the active pill into an oval. The bar now
+                      shows the single-word name up to 2xl and the full name only
+                      where there is room to guarantee it fits. */}
+                  <span aria-hidden className="2xl:hidden">{n.top}</span>
+                  <span aria-hidden className="hidden 2xl:inline">{n.label}</span>
+                </span>
               </NavLink>
             ))}
           </nav>
@@ -124,6 +137,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <div className="h-full bg-gradient-to-r from-volt-300 via-volt-400 to-blush-300 transition-[width] duration-700" style={{ width: `${lvl.pct * 100}%` }} />
         </div>
       </header>
+      )}
 
       {/* ---------------- mobile drawer ---------------- */}
       {menuOpen && (

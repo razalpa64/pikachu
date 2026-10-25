@@ -641,12 +641,43 @@ browser against a real ROM before it was printed on the page:
 | V | Select |
 | Q / E | L / R |
 
-On a touch device the console draws its own pad under the screen (D-pad, A/B,
-Start/Select) and sends `simulateInput` calls straight to the core — the same
-call a hardware controller produces. Connected controllers are picked up via the
-browser Gamepad API; if a pad was already plugged in when the page loaded,
-`player.html` claims it for player 1, because EmulatorJS dispatches its
-`connected` event for pre-existing pads before it has attached its own listener.
+The console's own plastic is wired to the core: every button on the shell — D-pad,
+A/B, Select/Start — sends `simulateInput` calls straight to the engine, the same
+call a hardware controller produces. They are real `<button>`s, so they work with
+a thumb, a mouse, or the keyboard (tab to one and hold Space). Connected
+controllers are picked up via the browser Gamepad API; if a pad was already
+plugged in when the page loaded, `player.html` claims it for player 1, because
+EmulatorJS dispatches its `connected` event for pre-existing pads before it has
+attached its own listener.
+
+### The console is the page
+
+`/retro/:id` is not a video player with a frame around it: it is a handheld that
+occupies the viewport, and the emulator's canvas is its screen.
+
+* **The proportions are traced, not invented.** The shell, bezel, LCD, D-pad,
+  button spacing, silkscreen and speaker slots are measured off a reference
+  photograph of a DMG-style handheld and expressed in `cqw` against the shell's
+  own width, so the whole device scales as one object from a 386px phone to a
+  630px fullscreen laptop. There is one set of numbers and no breakpoint
+  approximations of the shape.
+* **The screen is exactly 3:2**, the GBA's own ratio, so the picture fills the
+  LCD edge to edge with no letterboxing — `retro.mjs` measures the canvas against
+  the hole and fails if they differ by more than 2px.
+* **The site's own header and bottom bar step out.** The player draws a slim bar
+  (title, state, keys, info) and a rail (pause, save, load, restart, mute,
+  capture, fullscreen); two navigations above a running emulator would be chrome
+  competing with the console.
+* **Fullscreen gives the whole screen to the device.** Press fullscreen and the
+  header and rail step away, the shell grows to fill the glass (+~100px of
+  width), and a floating *Exit fullscreen* button appears — the rail is gone, so
+  leaving cannot be a guess about the Esc key.
+* **Landscape phones get the picture, not a miniature.** Below 560px of height
+  the artwork would leave a 130px screen, so the LCD fills the viewport and the
+  working D-pad, A/B and Select/Start sit in the black margins either side of it,
+  at thumb size.
+* **The battery lamp tells the truth** — unlit while booting, lit while the core
+  runs, dimmed when paused.
 
 ### Verified, and how to re-verify
 
@@ -657,10 +688,11 @@ node scripts/e2e/retro.mjs --phone      # touch emulation
 ```
 
 `scripts/e2e/retro.mjs` drives a real Chromium: shelf search and filters, launch,
-the start gesture, audio-context state, keyboard *and* synthetic-controller input
-asserted against captured `simulateInput` calls, pause/resume, save/load, PNG
-capture, mute, restart, fullscreen entry and exit, the local-ROM path, plus a
-layout overflow check and the touch pad on a phone profile. It needs a real
+the start gesture, audio-context state, keyboard, synthetic-controller *and*
+on-shell button input asserted against captured `simulateInput` calls, the canvas
+filling the LCD, pause/resume, save/load, PNG capture, mute, restart, fullscreen
+entry and exit (including that the shell grows and that a way out stays on
+screen), the local-ROM path, plus a layout overflow check on a phone profile. It needs a real
 browser with WebGL2; on a machine whose Chromium lacks `libnss`/`libnspr`, pass
 `PIKACHU_CHROME=/path/to/chromium PIKACHU_LD=/path/to/libs`.
 

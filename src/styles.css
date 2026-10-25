@@ -505,139 +505,851 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
 }
 
 /* ============================================================
-   Retro Arcade
+   Retro Arcade — the handheld
    ============================================================ */
 
-/* Fullscreen puts the whole console on screen — bezel, buttons and all — so the
-   chrome you were already using stays where it was. Letterboxing the console
-   inside a black page would have thrown the controls away at the exact moment
-   they matter most. */
-/* The console is a device, so it is sized like one: as wide as the column
-   allows, but never taller than the viewport minus the chrome above it and the
-   control strip below. Without the height guard a 3:2 screen on a 1440px column
-   is 900px tall and pushes the controls off the page. */
-.retro-console {
-  width: 100%;
-  max-width: min(100%, calc((100dvh - 250px) * 1.5 + 34px));
-  margin-inline: auto;
-}
-@media (max-width: 640px) {
-  .retro-console { max-width: 100%; }
-}
+/* The player is a console, not a card in a page: it owns the viewport.
+   Every measurement in this block is a percentage of the shell's own width
+   (`cqw` against the device), traced from the reference photograph at 945×1280
+   — so the bezel, the silkscreen and the buttons stay in the same relationship
+   to each other whether the shell is 300px wide on a phone or 700px on a
+   laptop. Nothing here is a breakpoint approximation of the shape. */
 
-.retro-console:fullscreen {
-  border-radius: 0;
-  border-color: #14100d;
-  padding: 8px;
+.gb-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  background: #14100d;
-}
-.retro-console:fullscreen > div:nth-child(2) {
-  /* the screen: as large as the viewport allows while keeping GBA's 3:2 */
-  max-width: min(100%, calc((100dvh - 130px) * 1.5));
-  margin-inline: auto;
-  width: 100%;
-}
-.retro-console:fullscreen .retro-controls {
-  max-width: min(100%, calc((100dvh - 130px) * 1.5));
-  margin-inline: auto;
-  width: 100%;
+  background:
+    radial-gradient(120% 78% at 50% -8%, #fffdf8 0%, rgba(255, 250, 241, 0) 62%),
+    radial-gradient(90% 60% at 50% 112%, rgba(201, 168, 136, .26), transparent 66%),
+    #f6ecd9;
+  color: var(--color-cream-100);
+  overscroll-behavior: none;
 }
 
-/* ---- the handheld's own buttons (touch only) ---- */
-.retro-pad {
+/* ---------------- slim header ---------------- */
+.gb-head {
+  flex: 0 0 auto;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  margin-top: 10px;
-  padding: 8px 10px;
-  border-radius: 16px;
-  background: #221a15;
-  border: 2px solid #3d2c23;
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: none;
+  padding: 8px clamp(10px, 2vw, 20px);
+  padding-top: max(8px, env(safe-area-inset-top));
 }
-.retro-pad-btn {
+.gb-head-title { min-width: 0; flex: 1; }
+.gb-head-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--color-cream-100);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gb-head-meta {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-cream-500);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gb-chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink-500);
+  background: #fffdf7;
+  color: var(--color-cream-400);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.gb-chip:hover { color: var(--color-cream-100); border-color: var(--color-ink-400); background: #fff; }
+.gb-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink-600);
+  background: rgba(255, 253, 247, .72);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-cream-400);
+}
+.gb-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px rgba(92, 64, 53, .06);
+  transition: background .25s ease;
+}
+
+/* ---------------- the desk the device sits on ---------------- */
+.gb-mid {
+  flex: 1 1 auto;
+  min-height: 0;
+  container-type: size;
   display: grid;
   place-items: center;
-  width: 100%;
-  height: 100%;
-  border: 2px solid #5d4636;
-  border-radius: 12px;
-  background: #2f231c;
-  color: #ffe27a;
-  font-family: var(--font-display);
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: .06em;
+  padding: 4px 8px 2px;
+  overflow: hidden;
+}
+
+/* ---------------- the device ---------------- */
+.gb-device {
+  position: relative;
+  width: min(calc(100cqw - 4px), calc((100cqh - 4px) * 0.7383));
+  aspect-ratio: 945 / 1280;
+  container-type: inline-size;
+  border-radius: 2.4cqw 2.4cqw 7.2cqw 4.2cqw / 1.8cqw 1.8cqw 5.3cqw 3.1cqw;
+  background:
+    radial-gradient(110% 44% at 26% 0%, rgba(255, 255, 255, .34), rgba(255, 255, 255, 0) 62%),
+    linear-gradient(178deg, #bdb9b0 0%, #b5b0a7 22%, #aaa59c 58%, #9d988f 100%);
+  box-shadow:
+    inset 0 .55cqw 0 rgba(255, 255, 255, .5),
+    inset 0 0 .05cqw rgba(60, 52, 44, .9),
+    inset 0 -.9cqw 1.4cqw rgba(64, 56, 48, .34),
+    inset .5cqw 0 .9cqw rgba(255, 255, 255, .24),
+    inset -.5cqw 0 .9cqw rgba(74, 66, 58, .24),
+    0 0 0 .1cqw rgba(74, 66, 58, .45),
+    0 .25cqw 0 #8b877f,
+    0 1.6cqw 4cqw -.8cqw rgba(88, 58, 22, .5);
+}
+
+/* The reference body is moulded plastic: a fine grain plus a soft sheen. Both
+   are texture, not illustration — they never draw an edge that is not there. */
+.gb-grain {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  opacity: .16;
+  pointer-events: none;
+}
+
+/* the photograph's body falls into shade toward the bottom-right corner */
+.gb-device::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(80% 60% at 100% 100%, rgba(64, 56, 48, .18), rgba(64, 56, 48, 0) 68%),
+    radial-gradient(60% 40% at 0% 100%, rgba(64, 56, 48, .1), rgba(64, 56, 48, 0) 70%);
+}
+
+/* power switch in its recessed tray, then the mould seam under it */
+.gb-power {
+  position: absolute;
+  top: 1.9cqw;
+  left: 7.4cqw;
+  width: 29.6cqw;
+  height: 4.6cqw;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1cqw;
+  background: linear-gradient(#bdb9b1, #cfcbc3 55%, #bcb8b0);
+  box-shadow:
+    inset 0 .22cqw .3cqw rgba(255, 255, 255, .55),
+    inset 0 -.3cqw .5cqw rgba(90, 82, 74, .35),
+    0 .1cqw 0 rgba(255, 255, 255, .5);
+  color: #7c776f;
+  font-size: 2.05cqw;
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+.gb-power-words { display: flex; align-items: center; gap: .8cqw; }
+.gb-power-words i { width: .5cqw; height: .5cqw; border-radius: 50%; background: #8e8981; }
+.gb-power-arrow { font-size: 1.4cqw; opacity: .85; }
+
+.gb-seam {
+  position: absolute;
+  left: 1.6cqw;
+  right: 1.6cqw;
+  top: 8.35cqw;
+  height: .22cqw;
+  background: linear-gradient(90deg, rgba(90, 82, 74, 0) 0%, rgba(90, 82, 74, .5) 7%, rgba(90, 82, 74, .5) 93%, rgba(90, 82, 74, 0) 100%);
+  box-shadow: 0 .3cqw 0 rgba(255, 255, 255, .55);
+}
+
+/* ---------------- bezel ---------------- */
+.gb-bezel {
+  position: absolute;
+  left: 7.2cqw;
+  top: 11.4cqw;
+  width: 85.6cqw;
+  height: 57.5cqw;
+  border-radius: 4.4cqw 4.4cqw 11.5cqw 6.5cqw;
+  background: linear-gradient(178deg, #393a40 0%, #323339 40%, #2a2b31 100%);
+  box-shadow:
+    inset 0 .3cqw .4cqw rgba(255, 255, 255, .13),
+    inset 0 -.5cqw .9cqw rgba(0, 0, 0, .45),
+    0 .3cqw .4cqw rgba(255, 255, 255, .45),
+    0 -.15cqw .2cqw rgba(0, 0, 0, .2);
+}
+
+/* the caption with its two rules: magenta above, indigo below */
+.gb-brand {
+  position: absolute;
+  top: 3.5cqw;
+  left: 3.4cqw;
+  right: 3.4cqw;
+  display: flex;
+  align-items: center;
+  gap: 1.7cqw;
+  color: #9a9eaa;
+  font-size: 1.92cqw;
+  font-weight: 700;
+  letter-spacing: .185em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.gb-brand-rule {
+  flex: 1 1 auto;
+  height: 1.15cqw;
+  border-top: .34cqw solid #8d3a63;
+  border-bottom: .24cqw solid #3f4b86;
+  opacity: .95;
+}
+
+/* battery lamp: lit while the core is actually running */
+.gb-lamp {
+  position: absolute;
+  left: 3.3cqw;
+  top: 20.1cqw;
+  width: 2.8cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.gb-lamp-led {
+  width: 1.75cqw;
+  height: 1.75cqw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, #8f4a3c, #4a1d16 58%, #240d09);
+  box-shadow: inset 0 0 .6cqw rgba(0, 0, 0, .8), 0 0 0 .18cqw rgba(0, 0, 0, .35);
+  transition: background .3s ease, box-shadow .3s ease;
+}
+.gb-device[data-lamp="waiting"] .gb-lamp-led { animation: gb-lamp-pulse 1.7s ease-in-out infinite; }
+.gb-device[data-lamp="on"] .gb-lamp-led {
+  background: radial-gradient(circle at 34% 28%, #ff9a8c, #e01f1f 58%, #7d0c0c);
+  box-shadow: 0 0 1.5cqw rgba(224, 31, 31, .8), inset 0 0 .4cqw rgba(255, 255, 255, .55);
+}
+.gb-device[data-lamp="paused"] .gb-lamp-led {
+  background: radial-gradient(circle at 34% 28%, #bb6a62, #7d1f1f 60%, #3c0a0a);
+  box-shadow: 0 0 .5cqw rgba(170, 40, 40, .35);
+}
+@keyframes gb-lamp-pulse {
+  50% {
+    background: radial-gradient(circle at 34% 28%, #a9605a, #5e1a1a);
+    box-shadow: 0 0 1.2cqw rgba(150, 30, 30, .4);
+  }
+}
+.gb-lamp-label {
+  position: absolute;
+  top: 2.9cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.5cqw;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+  color: #9a9eaa;
+  white-space: nowrap;
+}
+
+/* The LCD. 3:2 is the GBA's own ratio, so the canvas fills the hole instead of
+   being letterboxed inside a hole the wrong shape; the opening sits where the
+   photograph has it, centred in the bezel. */
+.gb-screen {
+  position: absolute;
+  left: 13.96cqw;
+  top: 10.9cqw;
+  width: 57.67cqw;
+  aspect-ratio: 3 / 2;
+  border-radius: .7cqw;
+  overflow: hidden;
+  background: #0c24aa;
+  box-shadow:
+    0 0 0 .34cqw #4b4c53,
+    0 0 0 1.02cqw #232429,
+    0 0 0 1.22cqw #141519,
+    0 .7cqw 1.5cqw rgba(0, 0, 0, .5),
+    inset 0 0 .5cqw rgba(0, 0, 0, .55);
+}
+.gb-iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0c24aa; }
+.gb-screen-note {
+  position: absolute;
+  left: 50%;
+  top: 7%;
+  transform: translateX(-50%);
+  padding: .55cqw 1.4cqw;
+  border-radius: 999px;
+  background: rgba(6, 12, 40, .72);
+  color: #dbe4ff;
+  font-size: 1.7cqw;
+  font-weight: 700;
+  letter-spacing: .07em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ---------------- D-pad ----------------
+   Drawn as two moulded bars rather than four boxes, so the silhouette is a
+   single piece — but read as four whole arms, because that is where a thumb
+   lands. The centre is dead, exactly like the real thing. */
+.gb-dpad {
+  position: absolute;
+  left: 8.89cqw;
+  top: 80.2cqw;
+  width: 25.8cqw;
+  height: 23.7cqw;
+  --gb-dpad-r: 1.5cqw;
+}
+.gb-dpad-shape { position: absolute; inset: 0; filter: drop-shadow(0 .5cqw .55cqw rgba(60, 52, 44, .45)); }
+.gb-dpad-shape::before,
+.gb-dpad-shape::after {
+  content: "";
+  position: absolute;
+  background: #1e1f24;
+  border-radius: var(--gb-dpad-r);
+  box-shadow:
+    inset 0 .22cqw .2cqw rgba(255, 255, 255, .13),
+    inset 0 -.9cqw 1.1cqw rgba(0, 0, 0, .6),
+    inset .3cqw 0 .6cqw rgba(255, 255, 255, .05);
+}
+.gb-dpad-shape::before { left: 0; right: 0; top: 30.2%; height: 39.7%; }
+.gb-dpad-shape::after { top: 0; bottom: 0; left: 31.8%; width: 36.4%; }
+
+.gb-tri {
+  position: absolute;
+  width: 2.7cqw;
+  height: 2.1cqw;
+  background: linear-gradient(180deg, rgba(0, 0, 0, .62), rgba(255, 255, 255, .12));
+  clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
+  z-index: 1;
+}
+.gb-tri-up { left: 50%; top: 12%; transform: translateX(-50%); }
+.gb-tri-down { left: 50%; bottom: 12%; transform: translateX(-50%) rotate(180deg); }
+.gb-tri-left { left: 8%; top: 50%; transform: translateY(-50%) rotate(-90deg); }
+.gb-tri-right { right: 8%; top: 50%; transform: translateY(-50%) rotate(90deg); }
+
+.gb-dpad-hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36%;
+  height: 38%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #35363d, #1a1b20 70%);
+  box-shadow:
+    inset 0 .25cqw .35cqw rgba(0, 0, 0, .55),
+    0 0 0 .1cqw rgba(0, 0, 0, .3),
+    -.15cqw -.15cqw .3cqw rgba(255, 255, 255, .07);
+  z-index: 1;
+}
+
+.gb-hit {
+  position: absolute;
+  border: 0;
+  padding: 0;
+  background: transparent;
   cursor: pointer;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color .08s ease, transform .08s ease;
 }
-.retro-pad-btn:active { background: #4a3529; transform: translateY(1px); }
+.gb-hit-up { left: 0; right: 0; top: 0; height: 30.2%; border-radius: var(--gb-dpad-r) var(--gb-dpad-r) 0 0; }
+.gb-hit-down { left: 0; right: 0; bottom: 0; height: 30.2%; border-radius: 0 0 var(--gb-dpad-r) var(--gb-dpad-r); }
+.gb-hit-left { left: 0; top: 30.2%; width: 31.8%; height: 39.7%; border-radius: var(--gb-dpad-r) 0 0 var(--gb-dpad-r); }
+.gb-hit-right { right: 0; top: 30.2%; width: 31.8%; height: 39.7%; border-radius: 0 var(--gb-dpad-r) var(--gb-dpad-r) 0; }
+.gb-hit:active { background: rgba(0, 0, 0, .22); }
 
-.retro-dpad {
-  display: grid;
-  grid-template-columns: repeat(3, 34px);
-  grid-template-rows: repeat(3, 34px);
-  gap: 2px;
+/* ---------------- A / B ----------------
+   The photograph has them on a soft raised pad, tilted along the line the two
+   buttons sit on. The buttons are drawn at the printed size; the pad also gives
+   the thumb something to land on. */
+.gb-ridge {
+  position: absolute;
+  left: 61.6cqw;
+  top: 82.9cqw;
+  width: 33.4cqw;
+  height: 16.4cqw;
+  border-radius: 8.2cqw;
+  transform: rotate(-29deg);
+  pointer-events: none;
+  background: linear-gradient(152deg, rgba(255, 255, 255, .16) 0%, rgba(255, 255, 255, 0) 46%, rgba(92, 84, 76, .1) 100%);
+  box-shadow:
+    0 .18cqw .5cqw rgba(92, 84, 76, .16),
+    0 -.12cqw .3cqw rgba(255, 255, 255, .28);
 }
-.retro-dpad > .retro-pad-btn { border-radius: 8px; font-size: 10px; }
-.retro-dpad-up { grid-area: 1 / 2; }
-.retro-dpad-left { grid-area: 2 / 1; }
-.retro-dpad-right { grid-area: 2 / 3; }
-.retro-dpad-down { grid-area: 3 / 2; }
-.retro-dpad-hub {
-  grid-area: 2 / 2;
-  border-radius: 4px;
-  background: #3a2a21;
-  border-top: 2px solid #5d4636;
-  border-left: 2px solid #5d4636;
+.gb-face {
+  position: absolute;
+  left: 64.78cqw;
+  top: 81.06cqw;
+  width: 27.1cqw;
+  height: 20cqw;
 }
+.gb-face-btn {
+  position: absolute;
+  width: 41.3%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  background:
+    radial-gradient(circle at 40% 30%, #b12f6a 0%, #93205a 42%, #6d1245 72%, #4d0b30 100%);
+  box-shadow:
+    inset 0 .5cqw .7cqw rgba(255, 255, 255, .18),
+    inset 0 -.7cqw 1cqw rgba(38, 0, 16, .6),
+    0 0 0 .22cqw rgba(34, 12, 22, .5),
+    0 .35cqw .6cqw rgba(48, 20, 30, .45);
+}
+.gb-face-btn:active {
+  background: radial-gradient(circle at 40% 30%, #95275a, #7a1a4b 45%, #5a0f38 76%, #3d0826 100%);
+  box-shadow: inset 0 .6cqw .8cqw rgba(0, 0, 0, .45);
+}
+.gb-face-gloss {
+  position: absolute;
+  left: 18%;
+  top: 12%;
+  width: 46%;
+  height: 26%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0));
+  filter: blur(.18cqw);
+  pointer-events: none;
+}
+.gb-face-a { right: 0; top: 0; }
+.gb-face-b { left: 0; bottom: 0; }
+.gb-face-letter {
+  position: absolute;
+  font-family: var(--font-display);
+  font-size: 3cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .02em;
+  color: #35347a;
+  pointer-events: none;
+}
+.gb-face-letter-a { left: 88%; top: 74%; }
+.gb-face-letter-b { left: 37%; top: 113%; }
 
-.retro-pad-mid {
-  /* The two small pills get their own row: squeezing them between the D-pad and
-     the face buttons forced the whole strip wider than the screen on a 390px
-     phone, which pushed the A button out through the frame. */
-  flex: 1 0 100%;
-  order: 3;
-  display: flex;
-  gap: 8px;
-  justify-content: center;
+/* ---------------- SELECT / START ----------------
+   Dark pills in recessed trays, tilted the way the photograph tilts them, with
+   the caption printed below each on the body. */
+.gb-system {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
-.retro-pad-pill {
-  width: auto;
-  height: 22px;
-  padding: 0 10px;
+.gb-system-btn {
+  position: absolute;
+  width: 12.1cqw;
+  height: 2.15cqw;
+  border: 0;
+  padding: 0;
   border-radius: 999px;
-  font-size: 8.5px;
-  letter-spacing: .12em;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  background: linear-gradient(180deg, #3d3e44, #232429 55%, #1b1c20);
+  box-shadow:
+    inset 0 .18cqw .2cqw rgba(255, 255, 255, .2),
+    inset 0 -.35cqw .45cqw rgba(0, 0, 0, .7),
+    0 .1cqw 0 rgba(255, 255, 255, .55);
+  transform: rotate(-33deg);
+}
+/* the recess around the pill, and a bigger thumb target than the pill itself */
+.gb-system-btn::before {
+  content: "";
+  position: absolute;
+  inset: -.7cqw -1.1cqw;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(96, 88, 78, .45), rgba(96, 88, 78, .22) 70%, rgba(255, 255, 255, .35));
+  box-shadow: inset 0 .3cqw .4cqw rgba(52, 46, 40, .5), 0 .08cqw 0 rgba(255, 255, 255, .45);
+  z-index: -1;
+}
+.gb-system-btn::after { content: ""; position: absolute; inset: -1.5cqw -1.2cqw; }
+.gb-system-select { left: 32.45cqw; top: 113.3cqw; }
+.gb-system-start { left: 47.95cqw; top: 112.7cqw; }
+.gb-system-label {
+  position: absolute;
+  left: .4cqw;
+  top: 2.9cqw;
+  font-size: 2.15cqw;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .03em;
+  text-transform: uppercase;
+  color: #3b3a72;
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-.retro-pad-face {
-  display: grid;
-  grid-template-columns: 44px 44px;
-  grid-template-rows: 26px 44px;
+/* ---------------- speaker grille ---------------- */
+/* decorative overlays never eat a press meant for the screen or the plastic */
+.gb-grille { position: absolute; inset: 0; pointer-events: none; }
+.gb-grille i {
+  position: absolute;
+  width: 1.3cqw;
+  height: 12.1cqw;
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(27deg);
+  background: linear-gradient(90deg, #5b564f 0%, #2b2722 55%, #57524b 100%);
+  box-shadow:
+    inset 0 0 .35cqw rgba(0, 0, 0, .7),
+    0 .1cqw 0 rgba(255, 255, 255, .4);
+}
+
+/* transient message, on the body where there is room for it */
+.gb-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 2.4cqw;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: .8cqw 1.9cqw;
+  border-radius: 999px;
+  background: rgba(44, 34, 26, .9);
+  color: #ffe27a;
+  font-size: 1.8cqw;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* A thumb never needs a focus ring, but a keyboard player does: the plastic is
+   tabbable, so it has to say where the focus is. */
+.gb-hit:focus-visible,
+.gb-face-btn:focus-visible,
+.gb-system-btn:focus-visible {
+  outline: .9cqw solid #ffd24d;
+  outline-offset: .5cqw;
+  z-index: 2;
+}
+
+/* ---------------- rail ---------------- */
+.gb-rail {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  padding: 6px clamp(10px, 2vw, 20px);
+  padding-bottom: max(6px, env(safe-area-inset-bottom));
+}
+.gb-rail-inner {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink-500);
+  background: rgba(255, 253, 247, .94);
+  box-shadow: 0 10px 24px -18px rgba(90, 58, 18, .9);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.gb-rail-inner::-webkit-scrollbar { display: none; }
+.gb-rail-btn {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
-  justify-items: center;
+  height: 34px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  color: var(--color-cream-500);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
-.retro-pad-face > .retro-pad-btn { border-radius: 999px; font-size: 15px; }
-.retro-pad-face > .retro-pad-btn:nth-child(1) { grid-area: 2 / 1; }
-.retro-pad-face > .retro-pad-btn:nth-child(2) { grid-area: 1 / 2; }
+.gb-rail-btn:hover:not(:disabled) { background: var(--color-blush-100); color: var(--color-cream-100); }
+.gb-rail-btn:focus-visible, .gb-chip:focus-visible, .gb-plate-x:focus-visible, .gb-fs-exit:focus-visible {
+  outline: 2px solid var(--color-volt-700);
+  outline-offset: 2px;
+}
+.gb-rail-btn:disabled { opacity: .34; cursor: not-allowed; }
 
-@media (max-width: 380px) {
-  .retro-dpad { grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); }
-  .retro-pad-face { grid-template-columns: 40px 40px; grid-template-rows: 24px 40px; }
+/* ---------------- plates (keys / cartridge notes) ---------------- */
+.gb-plate-wrap {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(60, 42, 30, .4);
+  backdrop-filter: blur(3px);
+  z-index: 3;
+}
+.gb-plate {
+  width: min(440px, 100%);
+  max-height: min(78dvh, 560px);
+  overflow-y: auto;
+  border-radius: 20px;
+  border: 2px solid var(--color-ink-500);
+  background: #fffaf1;
+  padding: 16px 18px 18px;
+  box-shadow: 0 24px 50px -24px rgba(60, 40, 20, .6);
+  color: var(--color-cream-100);
+}
+.gb-plate-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gb-plate-head h2 { font-family: var(--font-display); font-size: 17px; margin: 0; }
+.gb-plate-x {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--color-blush-100);
+  color: var(--color-cream-400);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.gb-keys { margin: 12px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.gb-key-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gb-key-row dt { display: flex; gap: 4px; }
+.gb-key-row kbd {
+  min-width: 24px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--color-ink-400);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-cream-300);
+  box-shadow: 0 2px 0 var(--line-strong);
+}
+.gb-key-row dd {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--color-cream-500);
+}
+.gb-plate-note { margin: 12px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--color-cream-400); }
+.gb-facts { margin: 12px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 16px; }
+.gb-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--color-ink-600);
+  padding-bottom: 4px;
+  font-size: 12px;
+}
+.gb-facts dt { color: var(--color-cream-500); font-weight: 700; }
+.gb-facts dd { margin: 0; font-weight: 800; color: var(--color-cream-300); }
+.gb-plate-link {
+  margin-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 800;
+  color: var(--color-volt-700);
+}
+.gb-plate-link:hover { text-decoration: underline; }
+
+/* ---------------- fullscreen ----------------
+   The point of asking for the whole screen is the screen: the header and the
+   rail step aside, and the shell grows into the ~120px they were holding. The
+   one thing that must not disappear is the way out. */
+.gb-stage:fullscreen { background: #f6ecd9; }
+.gb-stage[data-full="on"] .gb-head,
+.gb-stage[data-full="on"] .gb-rail { display: none; }
+.gb-stage[data-full="on"] .gb-mid { padding: 0; }
+
+.gb-fs-exit {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink-500);
+  background: rgba(255, 253, 247, .9);
+  color: var(--color-cream-400);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: .72;
+  transition: opacity .2s ease;
+}
+.gb-fs-exit:hover, .gb-fs-exit:focus-visible { opacity: 1; }
+
+/* ---------------- room to breathe on a laptop ---------------- */
+@media (min-width: 900px) {
+  .gb-head { padding-top: 12px; padding-bottom: 10px; }
+  .gb-mid { padding-bottom: 6px; }
+  .gb-rail { padding-bottom: 14px; }
 }
 
-@media (max-height: 520px) and (orientation: landscape) {
-  /* landscape phones: the pad is the difference between playable and not */
-  .retro-pad { margin-top: 6px; padding: 6px 8px; }
-  .retro-dpad { grid-template-columns: repeat(3, 30px); grid-template-rows: repeat(3, 30px); }
+/* ---------------- narrow: the title keeps the room ---------------- */
+@media (max-width: 720px) {
+  .gb-head { gap: 6px; }
+  .gb-head-meta { display: none; }
+  .gb-head-name { font-size: 13px; }
+  .gb-chip, .gb-status { height: 32px; padding: 0 9px; }
+  .gb-chip-word { display: none; }
+  .gb-status-text { display: none; }
+  .gb-status-dot { width: 8px; height: 8px; }
+  .gb-rail-btn { width: 38px; justify-content: center; padding: 0; }
+  .gb-rail-btn span { display: none; }
+  .gb-rail-btn { height: 36px; }
+}
+
+/* ---------------- landscape phone ----------------
+   The shell would be ~290px tall here, which makes a 130px screen. Instead the
+   LCD takes the whole glass and the working controls sit either side of it, at
+   thumb size — the arrangement every handheld emulator lands on, and the only
+   one where a landscape phone is actually playable. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .gb-stage { background: #12100e; color: #f5e9d6; }
+  .gb-head { padding-top: 6px; padding-bottom: 2px; }
+  .gb-head-meta { display: none; }
+  .gb-head-name { color: #f5e9d6; font-size: 12px; }
+  .gb-chip { height: 28px; border-color: #4a4238; background: #241f1a; color: #e2cbb0; }
+  .gb-chip-word { display: none; }
+  .gb-status { height: 28px; border-color: #4a4238; background: #241f1a; }
+  .gb-status-text { display: none; }
+  .gb-mid { padding: 0; display: block; position: relative; }
+  .gb-rail { padding: 2px 8px 4px; background: #12100e; }
+  .gb-rail-inner { border-color: #4a4238; background: #241f1a; }
+  .gb-rail-btn { height: 30px; width: 34px; justify-content: center; padding: 0; color: #d9c3aa; }
+  .gb-rail-btn span { display: none; }
+
+  .gb-device {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    aspect-ratio: auto;
+    border-radius: 0;
+    background: #000;
+    box-shadow: none;
+    container-type: size;
+  }
+  .gb-grain, .gb-power, .gb-seam, .gb-brand, .gb-lamp, .gb-ridge, .gb-grille, .gb-toast { display: none; }
+  .gb-bezel { position: absolute; inset: 0; width: auto; height: auto; border-radius: 0; background: #000; box-shadow: none; }
+  .gb-screen {
+    left: 50%;
+    top: 50%;
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+    aspect-ratio: 3 / 2;
+    transform: translate(-50%, -50%);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .gb-screen-note { font-size: 11px; padding: 4px 12px; top: 6px; white-space: normal; max-width: 80%; text-align: center; }
+
+  .gb-dpad {
+    left: max(8px, 2.4vw);
+    top: 50%;
+    transform: translateY(-50%);
+    width: min(30vh, 24vw);
+    height: min(28vh, 22vw);
+    --gb-dpad-r: 6px;
+    z-index: 2;
+    opacity: .9;
+  }
+  .gb-tri { width: 9px; height: 7px; }
+  .gb-dpad-shape::before,
+  .gb-dpad-shape::after {
+    background: #31323a;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 -6px 10px rgba(0, 0, 0, .45);
+  }
+  .gb-hit:active { background: rgba(255, 255, 255, .16); }
+
+  .gb-face {
+    right: max(8px, 2.4vw);
+    left: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    width: min(26vh, 21vw);
+    height: min(26vh, 21vw);
+    z-index: 2;
+    opacity: .92;
+  }
+  .gb-face-btn { width: 47%; }
+  .gb-face-letter { display: none; }
+
+  /* Select/Start sit under the D-pad, in the black margin beside the screen —
+     reachable by the same thumb and out of the picture. */
+  .gb-system {
+    inset: auto auto 20px max(10px, 2.4vw);
+    display: flex;
+    gap: 24px;
+    height: auto;
+    width: auto;
+    justify-content: flex-start;
+  }
+  .gb-system-btn {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 58px;
+    height: 16px;
+    transform: rotate(-22deg);
+    opacity: .9;
+  }
+  .gb-system-label {
+    left: 50%;
+    top: calc(100% + 3px);
+    transform: translateX(-50%);
+    font-size: 9px;
+    line-height: 1;
+    color: #cbb9a4;
+    opacity: .9;
+  }
+  .gb-plate { max-height: 88dvh; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gb-device[data-lamp="waiting"] .gb-lamp-led { animation: none; }
 }

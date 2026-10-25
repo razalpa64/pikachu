@@ -76,6 +76,30 @@
       "save": null
     },
     {
+      "id": "afska-beat-beast",
+      "title": "BeatBeast",
+      "tagline": "Rhythm",
+      "year": null,
+      "author": "Multiple authors",
+      "engine": "GBA homebrew",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/afska/beat-beast",
+      "sourceUrl": "https://github.com/afska/beat-beast",
+      "description": "BeatBeast — a Game Boy Advance homebrew cartridge from the Homebrew Hub archive.",
+      "rom": "roms/afska-beat-beast.gba",
+      "cover": "covers/afska-beat-beast.png",
+      "marquee": null,
+      "bytes": 33506864,
+      "accent": "#603090",
+      "tags": [
+        "rhythm",
+        "shooter",
+        "single player"
+      ],
+      "players": 1,
+      "save": null
+    },
+    {
       "id": "goldcube-cat-fish",
       "title": "Cat Fish",
       "tagline": "action",
@@ -186,7 +210,7 @@
       "cover": "covers/gbatris.png",
       "marquee": null,
       "bytes": 2343292,
-      "accent": "#c048c0",
+      "accent": "#c07800",
       "tags": [
         "puzzle",
         "action",
@@ -314,6 +338,30 @@
       ],
       "players": 1,
       "save": false
+    },
+    {
+      "id": "skyland",
+      "title": "Skyland",
+      "tagline": "Open Source",
+      "year": null,
+      "author": "evanbowman",
+      "engine": "GBA homebrew",
+      "license": "MPL-2.0",
+      "licenseUrl": "https://github.com/evanbowman/skyland",
+      "sourceUrl": "https://github.com/evanbowman/skyland",
+      "description": "Skyland — a Game Boy Advance homebrew cartridge from the Homebrew Hub archive.",
+      "rom": "roms/skyland.gba",
+      "cover": "covers/skyland.png",
+      "marquee": null,
+      "bytes": 24693968,
+      "accent": "#60c0c0",
+      "tags": [
+        "rpg",
+        "adventure",
+        "single player"
+      ],
+      "players": 1,
+      "save": null
     },
     {
       "id": "solar-guard",

@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "generatedAt": "2026-10-25T15:28:04.301Z",
+  "generatedAt": "2026-10-25T15:55:40.078Z",
   "source": {
     "repo": "gbadev-org/games",
     "branch": "master",
@@ -13,21 +13,20 @@
     "gbaGames": 240,
     "withLicense": 19,
     "importable": 0,
-    "installed": 14,
-    "skipped": 237,
+    "installed": 16,
+    "skipped": 235,
     "failed": 0,
     "byReason": {
       "license-missing": 215,
       "typetag": 10,
       "no-rom": 4,
-      "rom-too-big": 2,
       "third-party-ip": 3,
       "asset-license": 1,
       "platform": 1,
       "license-unknown": 1
     },
-    "shelfGames": 20,
-    "shelfBytes": 44321151
+    "shelfGames": 22,
+    "shelfBytes": 102521983
   },
   "entries": [
     {
@@ -870,7 +869,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "35 colours, 65.0% changed on START and 99.9% on the first move, 18950ms"
+        "detail": "35 colours, 65.1% changed on START and 99.9% on the first move, 18769ms"
       },
       "cached": {
         "gameJsonSha": "965d1da400ddac0f189b0f035ba249a09d95c4b0",
@@ -919,7 +918,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "189 colours, 65.5% changed on START and 100.0% on the first move, 18707ms"
+        "detail": "191 colours, 65.5% changed on START and 100.0% on the first move, 18698ms"
       },
       "cached": {
         "gameJsonSha": "21a703c50856504fdc03655ed8a18b517b3f7b96",
@@ -1293,9 +1292,9 @@
         "mixed": []
       },
       "verdict": {
-        "status": "skipped",
-        "reason": "rom-too-big",
-        "detail": "32.0 MB > 8.0 MB this run"
+        "status": "installed",
+        "reason": null,
+        "detail": "364 colours, 39.7% changed on START and 40.3% on the first move, 19159ms"
       },
       "cached": {
         "gameJsonSha": "c6c2fbdd690908f6355e5a9b0e3bc9ca876d7884",
@@ -2044,7 +2043,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "26 colours, 93.1% changed on START and 5.3% on the first move, 18643ms"
+        "detail": "26 colours, 93.1% changed on START and 5.3% on the first move, 18634ms"
       },
       "cached": {
         "gameJsonSha": "9cf06c8ac409de361641c60856e5d1da2b2c45aa",
@@ -4180,7 +4179,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "12 colours, 33.6% changed on START and 34.5% on the first move, 18684ms"
+        "detail": "12 colours, 38.8% changed on START and 34.5% on the first move, 18593ms"
       },
       "cached": {
         "gameJsonSha": "5dc4144e036fde48ccb3adfa292f81c8bd8b978f",
@@ -4985,7 +4984,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "6 colours, 99.8% changed on START and 99.6% on the first move, 18827ms"
+        "detail": "6 colours, 99.8% changed on START and 99.6% on the first move, 18674ms"
       },
       "cached": {
         "gameJsonSha": "dc1474872f5cb27577f4af4d33422fbbb4eef617",
@@ -5031,7 +5030,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "26 colours, 99.5% changed on START and 2.0% on the first move, 18650ms"
+        "detail": "50 colours, 99.5% changed on START and 2.8% on the first move, 18746ms"
       },
       "cached": {
         "gameJsonSha": "61e5b11c7bc14ec33a994f8600a399d6d7b1afb4",
@@ -5681,7 +5680,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "38 colours, 75.1% changed on START and 95.0% on the first move, 18614ms"
+        "detail": "38 colours, 75.1% changed on START and 95.0% on the first move, 18571ms"
       },
       "cached": {
         "gameJsonSha": "773b93be9f5a51f21be922b880b1f5e106b4c7db",
@@ -7295,7 +7294,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "11 colours, 0.0% changed on START and 3.0% on the first move, 18588ms"
+        "detail": "11 colours, 0.0% changed on START and 3.0% on the first move, 18603ms"
       },
       "cached": {
         "gameJsonSha": "fa17d40a7340f003f0d7328687f5f05b4083c141",
@@ -9519,9 +9518,9 @@
         "mixed": []
       },
       "verdict": {
-        "status": "skipped",
-        "reason": "rom-too-big",
-        "detail": "23.6 MB > 8.0 MB this run"
+        "status": "installed",
+        "reason": null,
+        "detail": "17 colours, 0.9% changed on START and 100.0% on the first move, 18763ms"
       },
       "cached": {
         "gameJsonSha": "7282c87129471c82b6fa00a7f90e94ac2eb8c454",
@@ -9672,7 +9671,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "248 colours, 98.2% changed on START and 98.4% on the first move, 18706ms"
+        "detail": "248 colours, 98.2% changed on START and 98.4% on the first move, 18661ms"
       },
       "cached": {
         "gameJsonSha": "9c15433cf2fc99cd4e9452ea31948db79ca5ce1f",
@@ -10639,7 +10638,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "15 colours, 69.2% changed on START and 0.0% on the first move, 18583ms"
+        "detail": "15 colours, 69.2% changed on START and 0.0% on the first move, 18533ms"
       },
       "cached": {
         "gameJsonSha": "ef4dec430affa8e41487797212050ff1941256d8",
@@ -10684,7 +10683,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "10 colours, 11.4% changed on START and 29.8% on the first move, 18671ms"
+        "detail": "10 colours, 11.0% changed on START and 29.8% on the first move, 18589ms"
       },
       "cached": {
         "gameJsonSha": "f970ca309ea32eecd026689a761db6c35e560d56",
@@ -11303,7 +11302,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "71 colours, 99.1% changed on START and 98.8% on the first move, 18615ms"
+        "detail": "71 colours, 99.0% changed on START and 98.8% on the first move, 18635ms"
       },
       "cached": {
         "gameJsonSha": "7ea8dd4122f4e4bcbea394687259d901a707810f",
@@ -12000,7 +11999,7 @@
       "verdict": {
         "status": "installed",
         "reason": null,
-        "detail": "90 colours, 77.6% changed on START and 17.5% on the first move, 18531ms"
+        "detail": "93 colours, 77.4% changed on START and 22.8% on the first move, 18639ms"
       },
       "cached": {
         "gameJsonSha": "ddd4eaa34433c178ac137f20ec7a88cd9da3418d",

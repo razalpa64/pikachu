@@ -84,10 +84,12 @@ const IMPORTED_NOTICE = join(LICENSES, 'imported.txt');
 
 /**
  * How much cartridge the shelf will hold per game. This is a shipping budget,
- * not a licensing rule: `--max-bytes` raises it for a one-off import, and the
- * entries it holds back keep their verdict so a later run can pick them up.
+ * not a licensing rule: it is the site's own 32 MB ceiling, which is also the
+ * largest cartridge the GBA address space can hold. A tighter run can pass
+ * `--max-bytes`, and the entries it holds back keep their verdict so a later
+ * run picks them up.
  */
-const SHELF_BUDGET_BYTES = 8 * 1024 * 1024;
+const SHELF_BUDGET_BYTES = MAX_ROM_BYTES;
 
 const MANIFEST_NOTE =
   'Every entry is a freely redistributable homebrew build whose own licence permits redistribution; the archive licence is never used as authority for a game. No commercial ROMs are hosted here. Covers are real 240x160 frames captured from the running emulator.';

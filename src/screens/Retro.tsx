@@ -5,6 +5,7 @@ import {
   LOCAL_CARTRIDGE_MESSAGE,
   coverUrlFor,
   formatBytes,
+  cartridgeKind,
   inspectLocalCartridge,
   loadRetroLibrary,
   marqueeUrlFor,
@@ -193,11 +194,14 @@ export default function Retro() {
     setLocalProblem(null);
     setChecking(true);
     const problem = await inspectLocalCartridge(file);
+    const kind = problem ? null : await cartridgeKind(file);
     setChecking(false);
     if (problem) { setLocalProblem(LOCAL_CARTRIDGE_MESSAGE[problem]); return; }
     sfx('select');
     // The File stays in this tab's memory: a route-state hand-off, not an upload.
-    nav('/retro/local', { state: { name: file.name.replace(/\.(gba|agb|bin)$/i, ''), file } });
+    nav('/retro/local', {
+      state: { name: file.name.replace(/\.(gba|agb|bin|gb|gbc)$/i, ''), file, kind: kind ?? 'gba' },
+    });
   };
 
   return (
@@ -313,9 +317,11 @@ export default function Retro() {
               'Let go and the cartridge drops straight into the emulator.'
             ) : (
               <>
-                Drop a <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gba</code> file
-                on this card — or pick one — and it runs in this tab. The file is read by your browser, checked for a real
-                GBA cartridge header, and handed straight to the emulator: never uploaded, never saved, gone when you close
+                Drop a <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gba</code>,{' '}
+                <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gb</code> or{' '}
+                <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gbc</code> file on
+                this card — or pick one — and it runs in this tab. The file is read by your browser, checked for a real
+                cartridge header, and handed straight to the emulator: never uploaded, never saved, gone when you close
                 the page.
               </>
             )}
@@ -324,14 +330,14 @@ export default function Retro() {
             <input
               ref={fileRef}
               type="file"
-              accept=".gba,.agb,.bin"
+              accept=".gba,.agb,.bin,.gb,.gbc"
               className="sr-only"
               onChange={(e) => { void onPickCartridge(e.target.files?.[0]); e.currentTarget.value = ''; }}
             />
             <Button onClick={() => fileRef.current?.click()} icon={<Icon name="plus" size={14} />} disabled={checking}>
               {checking ? 'Checking cartridge…' : 'Choose a ROM'}
             </Button>
-            <span className="text-[11.5px] text-cream-500">GBA only · up to 32 MB · stays on your device</span>
+            <span className="text-[11.5px] text-cream-500">GBA · GB · GBC · up to 32 MB · stays on your device</span>
           </div>
           {localProblem && (
             <p role="alert" className="mt-3 text-[12.5px] font-bold text-blush-600">{localProblem}</p>

@@ -166,7 +166,10 @@
     window.EJS_startOnLoaded = false;
     window.EJS_volume = 0.7;
     window.EJS_color = "#e8a21c";
-    window.EJS_backgroundColor = "#0c24aa";
+    /* A Game Boy cartridge gets the handheld's own olive screen surround rather
+       than the GBA's blue, so the pillarboxing does not look like a mistake. */
+    var isGb = game.kind === "gb";
+    window.EJS_backgroundColor = isGb ? "#10160d" : "#0c24aa";
     window.EJS_language = "en-US";
     window.EJS_disableAutoLang = false;
     /* EmulatorJS only switches its on-screen pad on by default when the user
@@ -310,7 +313,7 @@
         try { url = URL.createObjectURL(payload.romFile); } catch (e) { url = null; }
       }
       if (!url) { status("error", "no-rom"); setBootText("No game data was provided."); return; }
-      boot({ romUrl: url, name: payload.name, numericId: payload.numericId });
+      boot({ romUrl: url, name: payload.name, numericId: payload.numericId, kind: payload.kind });
       return;
     }
     if (data.type === "cmd") handleCommand(data);

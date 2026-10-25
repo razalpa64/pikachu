@@ -211,25 +211,68 @@ export function looksLikeGbaRom(head: Uint8Array): boolean {
   return true;
 }
 
-export type LocalCartridgeProblem = 'too-big' | 'empty' | 'not-gba' | 'extension';
+/**
+ * The 48-byte Nintendo logo a Game Boy / Game Boy Color cartridge carries at
+ * 0x0104. Like the GBA logo above it is a header field the boot ROM checks, and
+ * it is the only reliable way to tell a real GB dump from a file that happens to
+ * be 32 KB.
+ */
+const GB_LOGO = Uint8Array.from(
+  'ceed6666cc0d000b03730083000c000d0008111f8889000edccc6ee6ddddddd999bbbb67636e0ecccdddc999fbbb9333e'
+    .match(/.{2}/g)!
+    .map((byte) => parseInt(byte, 16)),
+);
+
+/** Reads a ROM's first 0x150 bytes and checks the Game Boy cartridge header. */
+export function looksLikeGbRom(head: Uint8Array): boolean {
+  if (head.length < 0x150) return false;
+  for (let i = 0; i < GB_LOGO.length; i += 1) {
+    if (head[0x104 + i] !== GB_LOGO[i]) return false;
+  }
+  return true;
+}
+
+export type CartridgeKind = 'gba' | 'gb';
 
 /**
- * Validates a cartridge the visitor dropped in. Runs on the first 0xC0 bytes
- * only, so a 32 MB file costs a 192-byte read.
+ * Which console a dumped cartridge belongs to, from its own header. The mGBA
+ * core behind the player runs both, so a Game Boy dump plays in the same
+ * handheld — the shelf itself stays GBA-only.
+ */
+export function detectCartridge(head: Uint8Array): CartridgeKind | null {
+  if (looksLikeGbaRom(head)) return 'gba';
+  if (looksLikeGbRom(head)) return 'gb';
+  return null;
+}
+
+export const LOCAL_CARTRIDGE_EXTENSIONS = ['.gba', '.agb', '.bin', '.gb', '.gbc'];
+
+export type LocalCartridgeProblem = 'too-big' | 'empty' | 'not-cartridge' | 'extension';
+
+/**
+ * Validates a cartridge the visitor dropped in. Runs on the first 0x150 bytes
+ * only, so a 32 MB file costs a 336-byte read.
  */
 export async function inspectLocalCartridge(file: File): Promise<LocalCartridgeProblem | null> {
-  if (!/\.(gba|agb|bin)$/i.test(file.name)) return 'extension';
+  if (!LOCAL_CARTRIDGE_EXTENSIONS.some((ext) => file.name.toLowerCase().endsWith(ext))) return 'extension';
   if (file.size === 0) return 'empty';
   if (file.size > MAX_ROM_BYTES) return 'too-big';
-  const head = new Uint8Array(await file.slice(0, 0xc0).arrayBuffer());
-  return looksLikeGbaRom(head) ? null : 'not-gba';
+  const head = new Uint8Array(await file.slice(0, 0x150).arrayBuffer());
+  return detectCartridge(head) ? null : 'not-cartridge';
+}
+
+/** The same read, for the kind of cartridge rather than for a complaint. */
+export async function cartridgeKind(file: File): Promise<CartridgeKind | null> {
+  const head = new Uint8Array(await file.slice(0, 0x150).arrayBuffer());
+  return detectCartridge(head);
 }
 
 export const LOCAL_CARTRIDGE_MESSAGE: Record<LocalCartridgeProblem, string> = {
   'too-big': 'That file is larger than 32 MB. The archive caps cartridges at 32 MB so a mistake cannot fill your memory.',
   empty: 'That file is empty.',
-  'not-gba': 'That file does not have a Game Boy Advance cartridge header. Only GBA ROMs can run in this emulator.',
-  extension: 'Pick a .gba file.',
+  'not-cartridge':
+    'That file has neither a Game Boy Advance header nor a Game Boy / Game Boy Color header. Only dumps of real cartridges can run here.',
+  extension: 'Pick a .gba, .agb, .gb or .gbc file.',
 };
 
 export function formatBytes(bytes: number): string {

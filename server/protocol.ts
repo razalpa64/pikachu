@@ -31,6 +31,26 @@ export interface RoomView {
   history: { matchId: string; winnerSlot: 0 | 1 | null; reason: string; finishedAt: number }[];
 }
 
+/**
+ * How many people are in each game right now. `playing` counts distinct players
+ * sitting in a live room; `waiting` is the matchmaking queue. Pushed to every
+ * connected client (throttled) so a lobby can say "4 playing, 2 looking" without
+ * anybody polling.
+ */
+export interface PresenceView {
+  games: Record<string, { playing: number; waiting: number }>;
+  players: number;
+  at: number;
+}
+
+/** What the server tells one player about their own place in the queue. */
+export interface QueueView {
+  status: 'waiting' | 'matched' | 'cancelled' | 'timeout' | 'expired';
+  gameId: string | null;
+  waiting: number;
+  since: number | null;
+}
+
 export type ClientMsg =
   | { t: 'hello'; playerId: string; name: string; mascot: string; resumeCode?: string }
   | { t: 'create'; gameId: string; settings: Record<string, unknown>; roomName: string; mode?: 'online' | 'coop' }
@@ -48,7 +68,11 @@ export type ClientMsg =
   | { t: 'chat'; text: string }
   | { t: 'typing'; on: boolean }
   | { t: 'nudge'; text: string }
-  | { t: 'ping'; ts: number };
+  | { t: 'ping'; ts: number }
+  /* "put me in the queue for this game" — the server picks the opponent and
+     creates the room itself, so a matched player never has to type a code. */
+  | { t: 'queue'; gameId: string; settings: Record<string, unknown>; roomName?: string }
+  | { t: 'unqueue' };
 
 export type ServerMsg =
   | { t: 'welcome'; playerId: string; serverTime: number }
@@ -60,8 +84,13 @@ export type ServerMsg =
   | { t: 'error'; code: string; message: string; recovery?: string }
   | { t: 'nudge'; from: string; text: string }
   | { t: 'left' }
-  | { t: 'pong'; ts: number; serverTime: number };
+  | { t: 'pong'; ts: number; serverTime: number }
+  | { t: 'presence'; presence: PresenceView }
+  | { t: 'queue'; queue: QueueView };
 
 export const ROOM_TTL_MS = 1000 * 60 * 90;          // rooms expire after 90 min idle
 export const RECONNECT_GRACE_MS = 1000 * 45;        // disconnected player keeps their slot
 export const START_COUNTDOWN_MS = 3200;
+/* How long a matched pair gets before the first move — the same countdown a
+   private room shows, because a matchmade game is a normal game. */
+export const MATCH_START_DELAY_MS = 2600;

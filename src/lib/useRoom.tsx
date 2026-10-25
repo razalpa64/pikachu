@@ -2,9 +2,10 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from 'react';
 import { Relay, type ConnState } from './net/relay';
-import type { RoomView } from '../../server/protocol';
+import type { PresenceView, QueueView, RoomView } from '../../server/protocol';
 import { useStore } from './store';
 import { logRoomMessage } from './supabase';
+import { useNavigate } from 'react-router-dom';
 
 export interface MatchSnapshot {
   matchId: string; seq: number; state: any; yourSlot: 0 | 1;
@@ -22,6 +23,16 @@ export interface ChatMessage {
   isSelf: boolean;
 }
 
+export interface QueueState {
+  /** `waiting` = in the queue; `timeout` = 30s gone by, still waiting. */
+  status: QueueView['status'];
+  gameId: string | null;
+  waiting: number;
+  since: number | null;
+  /** ms epoch when this client started looking — for the elapsed counter. */
+  at: number;
+}
+
 interface RoomCtx {
   conn: ConnState;
   rtt: number | null;
@@ -34,6 +45,12 @@ interface RoomCtx {
   /** true while the other player is composing — expires on its own if the
       "stopped typing" event never arrives (closed tab, dropped socket) */
   peerTyping: boolean;
+  /** Live counts of who is playing and who is waiting, pushed by the relay. */
+  presence: PresenceView | null;
+  /** Our own place in the matchmaking queue, if we are looking for a game. */
+  queue: QueueState | null;
+  findMatch: (gameId: string, settings: Record<string, unknown>, roomName?: string) => void;
+  cancelMatch: () => void;
   clearError: () => void;
   sendChat: (text: string) => void;
   sendTyping: (on: boolean) => void;
@@ -59,6 +76,7 @@ const RESUME_KEY = 'pikachu.room.code';
 
 export function RoomProvider({ children }: { children: ReactNode }) {
   const { identity, toast, sfx } = useStore();
+  const nav = useNavigate();
   const [conn, setConn] = useState<ConnState>('idle');
   const [rtt, setRtt] = useState<number | null>(null);
   const [room, setRoom] = useState<RoomView | null>(null);
@@ -68,10 +86,15 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<RoomError | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [peerTyping, setPeerTyping] = useState(false);
+  const [presence, setPresence] = useState<PresenceView | null>(null);
+  const [queue, setQueue] = useState<QueueState | null>(null);
   const typingTimer = useRef<number | null>(null);
   const typingLastSent = useRef(0);
   const relayRef = useRef<Relay | null>(null);
   const seqRef = useRef(0);
+  /** True between "find me an opponent" and being matched — so a match found
+      while the player wandered off to another screen still opens the arena. */
+  const searchingRef = useRef(false);
 
   const ident = useMemo(
     () => ({ playerId: identity.playerId, name: identity.name || 'Trainer', mascot: identity.mascot }),
@@ -84,6 +107,15 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       room: (r, y) => {
         setRoom(r); setYou(y);
         try { localStorage.setItem(RESUME_KEY, r.code); } catch { /* ignore */ }
+        if (searchingRef.current) {
+          searchingRef.current = false;
+          const rival = r.members.find((m) => m.id !== ident.playerId)?.name ?? 'a stranger';
+          sfx('win');
+          toast({ kind: 'success', title: 'Opponent found', body: `You are in with ${rival}.` });
+          /* Matching can happen while the player is looking at another screen;
+             take them to the board rather than leaving them elsewhere. */
+          nav(`/room/${r.code}`);
+        }
         // If the room has no active match or returned to lobby/ready check, clear stale game match state
         if (!r.matchId || r.status === 'WAITING' || r.status === 'READY_CHECK') {
           setMatch(null);
@@ -110,8 +142,29 @@ export function RoomProvider({ children }: { children: ReactNode }) {
         toast({ kind: 'error', title: p.message, body: p.recovery });
       },
       nudge: (p) => { sfx('spark'); toast({ kind: 'info', title: `${p.from} says`, body: p.text }); },
+      presence: (p) => setPresence(p),
+      queue: (q) => {
+        /* `matched` and `cancelled` end the search; `waiting` and `timeout`
+           keep it on screen. The room event that follows does the navigating. */
+        if (q.status === 'waiting' || q.status === 'timeout') {
+          setQueue((prev) => ({
+            status: q.status,
+            gameId: q.gameId,
+            waiting: q.waiting,
+            since: q.since,
+            /* timeout carries the original timestamp; keep the local one if the
+               server's is missing so the clock never resets to zero. */
+            at: q.since ?? prev?.at ?? Date.now(),
+          }));
+        } else {
+          setQueue(null);
+        }
+        if (q.status === 'timeout') sfx('spark');
+        if (q.status === 'matched') sfx('win');
+      },
       left: () => {
-        setRoom(null); setYou(null); setMatch(null); setFinished(null); setMessages([]); setPeerTyping(false);
+        searchingRef.current = false;
+        setRoom(null); setYou(null); setMatch(null); setFinished(null); setMessages([]); setPeerTyping(false); setQueue(null);
         try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
       },
     });
@@ -125,7 +178,17 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const connect = useCallback(() => relayRef.current?.connect(), []);
   const api = useMemo<RoomCtx>(() => ({
-    conn, rtt, room, you, match, finished, error, messages, peerTyping,
+    conn, rtt, room, you, match, finished, error, messages, peerTyping, presence, queue,
+    findMatch: (gameId, settings, roomName) => {
+      searchingRef.current = true;
+      setQueue({ status: 'waiting', gameId, waiting: 1, since: Date.now(), at: Date.now() });
+      relayRef.current?.queueJoin(gameId, settings, roomName);
+    },
+    cancelMatch: () => {
+      searchingRef.current = false;
+      relayRef.current?.queueLeave();
+      setQueue(null);
+    },
     clearError: () => setError(null),
     clearMessages: () => setMessages([]),
     sendChat: (text: string) => {
@@ -161,10 +224,16 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     },
     connect,
     create: (gameId, settings, roomName, mode = 'online') => {
+      /* Opening a room is also a way of stopping the search: the relay takes
+         you out of the queue, so the button must stop saying "looking". */
+      searchingRef.current = false;
+      setQueue(null);
       relayRef.current?.connect();
       relayRef.current?.send({ t: 'create', gameId, settings, roomName, mode });
     },
     join: (code) => {
+      searchingRef.current = false;
+      setQueue(null);
       relayRef.current?.connect();
       relayRef.current?.send({ t: 'join', code: code.toUpperCase() });
     },
@@ -198,7 +267,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
     },
     nudge: (text) => relayRef.current?.send({ t: 'nudge', text }),
-  }), [conn, rtt, room, you, match, finished, error, messages, peerTyping, connect, ident.name]);
+  }), [conn, rtt, room, you, match, finished, error, messages, peerTyping, presence, queue, connect, ident.name]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

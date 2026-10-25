@@ -292,9 +292,9 @@ const STATIC_PAGES: Record<string, PageCopy> = {
     ],
   },
   '/together': {
-    title: 'Play Together — Private Rooms With a Code',
+    title: 'Play Together — Random Opponents or a Private Room',
     description:
-      'Create a private room, share the five-letter code, and play any of our online games with a friend on two devices. The server referees every move, so a dropped connection never costs a match.',
+      'Press “Find an opponent” to be matched with someone who is online right now, or open a private room and share its five-letter code. The server referees every move, so a dropped connection never costs a match.',
   },
   '/solo': {
     title: 'Single-Player Games — Play Against the AI',

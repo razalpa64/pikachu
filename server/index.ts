@@ -620,6 +620,22 @@ wss.on('connection', (ws, req) => {
           return;
         }
 
+        /* ---------------------------------------------------------- typing
+           Presence, not content: relayed to the other side only, coalesced by
+           the client to at most one event every ~1.5s, and cheap enough that a
+           whole match never fills the rate-limit bucket. */
+        case 'typing': {
+          const ctx = memberOf(ws);
+          if (!ctx) return;
+          if (!allow(`typing:${ctx.me.id}`, 200)) return;
+          const out = { t: 'typing' as const, from: ctx.me.name, slot: ctx.me.slot, on: !!msg.on };
+          for (const m of ctx.room.members.values()) {
+            if (m.id === ctx.me.id) continue;
+            for (const sock of m.sockets) send(sock, out);
+          }
+          return;
+        }
+
         /* ---------------------------------------------------------- misc */
         case 'nudge': {
           const ctx = memberOf(ws);

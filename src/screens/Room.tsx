@@ -9,6 +9,8 @@ import { Button, ConfirmDialog, ConnectionIndicator, CopyField, EmptyState, Erro
 import { PikachuMascot, ElectricLoader, BoltRule } from '../mascot';
 import { ResultOverlay, MatchCountdown, type Verdict } from '../components/Overlays';
 import { MASCOT_ART } from '../lib/identity';
+import { ChatRail, MobileChat } from '../components/RoomChat';
+import { useRoomSystemLines, type SystemLine } from '../lib/useRoomLines';
 import type { BoardProps } from '../components/boards/types';
 
 const BOARDS: Record<string, React.LazyExoticComponent<React.ComponentType<BoardProps<any>>>> = {
@@ -27,7 +29,7 @@ const BOARDS: Record<string, React.LazyExoticComponent<React.ComponentType<Board
 export default function Room() {
   const { code = '' } = useParams();
   const nav = useNavigate();
-  const { room, you, match, finished, conn, rtt, error, clearError, join, ready, start, act, leave, rematch, resign, offerDraw, respondDraw, nudge, connect, changeGame, returnToLobby, messages, sendChat } = useRoom();
+  const { room, you, match, finished, conn, rtt, error, clearError, join, ready, start, act, leave, rematch, resign, offerDraw, respondDraw, nudge, connect, changeGame, returnToLobby, messages, sendChat, sendTyping, peerTyping } = useRoom();
   const { sfx, finishMatch, visit } = useStore();
   useAmbience(room?.status === 'IN_GAME' ? 'match' : 'hub');
 
@@ -79,6 +81,22 @@ export default function Room() {
   const inviteLink = useMemo(() => `${location.origin}/room/${room?.code ?? code}`, [room?.code, code]);
 
   const doLeave = useCallback(() => { leave(); nav('/together'); }, [leave, nav]);
+
+  /* ------------------------------------------------------------ arena chat
+     One set of props for the docked rail and the phone sheet, so the two can
+     never disagree about who is online, what was said or who is typing. */
+  const systemLines: SystemLine[] = useRoomSystemLines({
+    room, finished, slot, matchId: match?.matchId ?? null,
+  });
+  const chatProps = {
+    messages,
+    system: systemLines,
+    sendChat,
+    onTyping: sendTyping,
+    peerTyping,
+    me: { name: me?.name ?? 'You', mascot: me?.mascot ?? 'classic' },
+    opp: { name: opp?.name ?? '', mascot: opp?.mascot, connected: opp?.connected ?? false },
+  };
 
   /* ------------------------------------------------ error / loading gates */
   if (error && !room) {
@@ -150,7 +168,9 @@ export default function Room() {
       </div>
 
       {/* ---------------- body ---------------- */}
-      <div className="flex-1 mx-auto w-full max-w-[1340px] px-[var(--shell-pad)] py-2 sm:py-5 relative">
+      {/* pb on phones reserves room for the chat peek bar, which is fixed to the
+          bottom of the viewport — without it the last line of a board sits under it. */}
+      <div className="flex-1 mx-auto w-full max-w-[1340px] px-[var(--shell-pad)] pt-2 pb-[74px] sm:py-5 sm:pb-[74px] lg:pb-5 relative">
         {/* reconnection banner */}
         {opp && !opp.connected && room.status !== 'WAITING' && (
           <Panel className="p-3 mb-4 border-volt-600/70 flex items-center gap-3" role="status">
@@ -164,7 +184,7 @@ export default function Room() {
         )}
 
         {(room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)) && (
-          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} messages={messages} sendChat={sendChat} />
+          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} chat={chatProps} />
         )}
 
         {room.status === 'STARTING' && room.startsAt && (
@@ -172,41 +192,48 @@ export default function Room() {
         )}
 
         {(room.status === 'IN_GAME' || (room.status === 'COMPLETED' && finished)) && match && Board && (
-          <div className="relative">
-            <MatchHud game={room.gameId} state={match.state} slot={slot} names={names} myTurn={myTurn}
-              lastAction={match.lastAction} onResign={() => setConfirmResign(true)}
-              onDraw={offerDraw} canDraw={room.gameId === 'chess' || room.gameId === 'checkers'} />
+          <div className="relative lg:grid lg:grid-cols-[minmax(0,1fr)_324px] lg:gap-5 lg:items-start">
+            <div className="min-w-0">
+              <MatchHud game={room.gameId} state={match.state} slot={slot} names={names} myTurn={myTurn}
+                lastAction={match.lastAction} onResign={() => setConfirmResign(true)}
+                onDraw={offerDraw} canDraw={room.gameId === 'chess' || room.gameId === 'checkers'} />
 
-            <div className="flex justify-center py-5 overflow-x-auto">
-              <Suspense fallback={<ElectricLoader status="Loading the arena" compact />}>
-                <Board state={match.state} youSlot={slot} onMove={act} interactive={!!live && myTurn} names={names} hint />
-              </Suspense>
+              <div className="flex justify-center py-5 overflow-x-auto">
+                <Suspense fallback={<ElectricLoader status="Loading the arena" compact />}>
+                  <Board state={match.state} youSlot={slot} onMove={act} interactive={!!live && myTurn} names={names} hint />
+                </Suspense>
+              </div>
+
+              {/* draw offer */}
+              {match.state?.drawOfferBy !== undefined && match.state?.drawOfferBy !== null && match.state.drawOfferBy !== slot && !finished && (
+                <Panel className="p-3.5 max-w-[420px] mx-auto flex items-center gap-3">
+                  <PikachuMascot state="thinking" size={56} />
+                  <div className="flex-1"><p className="text-[13px] font-extrabold text-cream-100">{opp?.name} offers a draw</p></div>
+                  <Button size="sm" variant="primary" onClick={() => respondDraw(true)}>Accept</Button>
+                  <Button size="sm" variant="ghost" onClick={() => respondDraw(false)}>Decline</Button>
+                </Panel>
+              )}
+
+              {verdict && (
+                <ResultOverlay
+                  verdict={verdict} reason={finished?.reason}
+                  playerA={{ name: names[0], score: scoreFor(room.gameId, match.state, 0), you: slot === 0 }}
+                  playerB={{ name: names[1], score: scoreFor(room.gameId, match.state, 1), you: slot === 1 }}
+                  rows={[{ label: 'Series', a: room.series.wins[0], b: room.series.wins[1] }, { label: 'Draws', a: room.series.draws, b: room.series.draws }]}
+                  rematchPending={!!me?.rematchVote && !opp?.rematchVote}
+                  onRematch={() => { sfx('select'); rematch(!me?.rematchVote); }}
+                  onChangeGame={() => { sfx('select'); setPickerOpen(true); }}
+                  changeGameLabel="Change Game"
+                  onExit={() => setConfirmLeave(true)}
+                  extra={<p className="text-[11.5px] text-cream-500">{opp?.rematchVote ? `${opp.name} wants a rematch!` : 'Both trainers must vote to run it back.'}</p>}
+                />
+              )}
             </div>
 
-            {/* draw offer */}
-            {match.state?.drawOfferBy !== undefined && match.state?.drawOfferBy !== null && match.state.drawOfferBy !== slot && !finished && (
-              <Panel className="p-3.5 max-w-[420px] mx-auto flex items-center gap-3">
-                <PikachuMascot state="thinking" size={56} />
-                <div className="flex-1"><p className="text-[13px] font-extrabold text-cream-100">{opp?.name} offers a draw</p></div>
-                <Button size="sm" variant="primary" onClick={() => respondDraw(true)}>Accept</Button>
-                <Button size="sm" variant="ghost" onClick={() => respondDraw(false)}>Decline</Button>
-              </Panel>
-            )}
-
-            {verdict && (
-              <ResultOverlay
-                verdict={verdict} reason={finished?.reason}
-                playerA={{ name: names[0], score: scoreFor(room.gameId, match.state, 0), you: slot === 0 }}
-                playerB={{ name: names[1], score: scoreFor(room.gameId, match.state, 1), you: slot === 1 }}
-                rows={[{ label: 'Series', a: room.series.wins[0], b: room.series.wins[1] }, { label: 'Draws', a: room.series.draws, b: room.series.draws }]}
-                rematchPending={!!me?.rematchVote && !opp?.rematchVote}
-                onRematch={() => { sfx('select'); rematch(!me?.rematchVote); }}
-                onChangeGame={() => { sfx('select'); setPickerOpen(true); }}
-                changeGameLabel="Change Game"
-                onExit={() => setConfirmLeave(true)}
-                extra={<p className="text-[11.5px] text-cream-500">{opp?.rematchVote ? `${opp.name} wants a rematch!` : 'Both trainers must vote to run it back.'}</p>}
-              />
-            )}
+            {/* The chat sits *beside* the board on desktop, so it can never cover
+                a piece, a clock or the result card. */}
+            <ChatRail {...chatProps}
+              className="hidden lg:flex lg:sticky lg:top-[128px] h-[min(64vh,560px)]" />
           </div>
         )}
 
@@ -225,15 +252,8 @@ export default function Room() {
       <ConfirmDialog open={confirmResign} title="Resign this match?" body="Your opponent takes the win and the result is recorded."
         confirmLabel="Resign" danger onConfirm={() => { resign(); setConfirmResign(false); }} onCancel={() => setConfirmResign(false)} />
 
-      {/* In-game and lobby live chat */}
-      <RoomChatWidget
-        messages={messages}
-        sendChat={sendChat}
-        oppName={opp?.name ?? ''}
-        oppMascot={opp?.mascot}
-        oppConnected={opp?.connected ?? false}
-        isLobbyDesktop={room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)}
-      />
+      {/* Phones get a peek bar + sheet; desktop uses the docked rail. */}
+      <MobileChat {...chatProps} />
 
       {/* Seamless game switcher */}
       <GamePickerModal
@@ -357,359 +377,8 @@ function GamePickerModal({
   );
 }
 
-/* ------------------------------------------------------------------ live room chat components */
-const QUICK_CHIPS = ['⚡ GG!', '🔥 Nice move!', '⚡ Pika Pika!', '🤔 Thinking...', '🎯 Rematch?', '👋 Good luck!', '😅 Oops!', '✨ Wow!'];
-
-function QuickChipsBar({ onChip }: { onChip: (chip: string) => void }) {
-  return (
-    <div className="px-2.5 py-1.5 bg-ink-850 border-b border-ink-600 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-      {QUICK_CHIPS.map((chip) => (
-        <button
-          key={chip}
-          type="button"
-          onClick={() => onChip(chip)}
-          className="shrink-0 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-white hover:bg-volt-200 text-cream-100 hover:text-[#4a2e18] border-2 border-ink-500 hover:border-volt-500 transition-all shadow-xs cursor-pointer active:scale-95"
-        >
-          {chip}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ChatInputBar({
-  draft,
-  setDraft,
-  onSend,
-}: {
-  draft: string;
-  setDraft: (v: string) => void;
-  onSend: (e?: React.FormEvent) => void;
-}) {
-  return (
-    <form onSubmit={onSend} className="p-2 sm:p-2.5 bg-ink-850 border-t-2 border-ink-600 flex items-center gap-2 shrink-0">
-      <input
-        type="text"
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        placeholder="Send message to arena..."
-        maxLength={200}
-        className="flex-1 min-w-0 bg-white border-2 border-ink-500 px-3.5 py-1.5 text-[12.5px] font-semibold text-cream-100 placeholder:text-cream-500 rounded-full focus:border-volt-500 focus:outline-none transition-colors shadow-inner"
-      />
-      <Button
-        type="submit"
-        size="sm"
-        variant="primary"
-        disabled={!draft.trim()}
-        icon={<Icon name="send" size={13} />}
-        className="!w-8 !h-8 !p-0 !rounded-full shrink-0 grid place-items-center"
-      />
-    </form>
-  );
-}
-
-function ChatMessagesList({
-  messages,
-  oppName,
-  oppMascot,
-  scrollRef,
-}: {
-  messages: any[];
-  oppName: string;
-  oppMascot?: string;
-  scrollRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  if (!messages || messages.length === 0) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center text-center p-5 select-none min-h-[160px]">
-        <div className="w-14 h-14 rounded-full bg-volt-200/50 border-2 border-volt-400/60 grid place-items-center mb-2.5">
-          <PikachuMascot state="idle" size={48} />
-        </div>
-        <p className="font-display text-[14.5px] font-extrabold text-cream-100">
-          Say hi to {oppName || 'your rival'}!
-        </p>
-        <p className="text-[11px] text-cream-500 max-w-[210px] mt-0.5 leading-relaxed">
-          Tap a reaction above or type a message below.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-2.5">
-      {messages.map((m) => {
-        const timeStr = new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        if (m.isSelf) {
-          return (
-            <div key={m.id} className="flex flex-col items-end text-right">
-              <span className="text-[9.5px] font-bold text-cream-500 mb-0.5 px-1 tracking-tight">
-                You · {timeStr}
-              </span>
-              <div className="max-w-[82%] px-3.5 py-1.5 rounded-2xl rounded-tr-xs bg-gradient-to-br from-volt-300 to-volt-400 text-[#4a2e18] text-[13px] font-bold border-2 border-volt-600 shadow-xs break-words leading-relaxed text-left">
-                {m.text}
-              </div>
-            </div>
-          );
-        }
-
-        return (
-          <div key={m.id} className="flex items-end gap-2 text-left">
-            <div className="w-7 h-7 rounded-full bg-white border-2 border-ink-500 overflow-hidden shrink-0 grid place-items-center mb-0.5 shadow-xs">
-              <img
-                src={MASCOT_ART[oppMascot ?? 'classic'] ?? MASCOT_ART.classic}
-                alt=""
-                className="w-5 h-5 object-contain"
-              />
-            </div>
-            <div className="max-w-[80%] flex flex-col items-start">
-              <span className="text-[9.5px] font-bold text-cream-500 mb-0.5 px-1 tracking-tight">
-                {m.from || oppName || 'Rival'} · {timeStr}
-              </span>
-              <div className="px-3.5 py-1.5 rounded-2xl rounded-tl-xs bg-white text-cream-100 text-[13px] font-semibold border-2 border-ink-500 shadow-xs break-words leading-relaxed">
-                {m.text}
-              </div>
-            </div>
-          </div>
-        );
-      })}
-      <div ref={scrollRef} />
-    </div>
-  );
-}
-
-function RoomChatWidget({
-  messages,
-  sendChat,
-  oppName,
-  oppMascot,
-  oppConnected,
-  isLobbyDesktop,
-}: {
-  messages: any[];
-  sendChat: (text: string) => void;
-  oppName: string;
-  oppMascot?: string;
-  oppConnected?: boolean;
-  isLobbyDesktop?: boolean;
-}) {
-  const { sfx } = useStore();
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState('');
-  const [toastSnippet, setToastSnippet] = useState<string | null>(null);
-  const [readCount, setReadCount] = useState(0);
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const prevMsgCount = useRef(0);
-
-  const unreadCount = !open ? Math.max(0, (messages?.length ?? 0) - readCount) : 0;
-
-  // Show quick incoming message preview when chat is closed, or auto-scroll when open
-  useEffect(() => {
-    const curLen = messages?.length ?? 0;
-    if (curLen > prevMsgCount.current) {
-      const last = messages[curLen - 1];
-      if (open) {
-        setReadCount(curLen);
-        scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-      } else if (last && !last.isSelf) {
-        setToastSnippet(last.text);
-        const timer = setTimeout(() => setToastSnippet(null), 4500);
-        return () => clearTimeout(timer);
-      }
-    }
-    prevMsgCount.current = curLen;
-  }, [messages, open]);
-
-  const toggle = () => {
-    const next = !open;
-    setOpen(next);
-    setToastSnippet(null);
-    setReadCount(messages?.length ?? 0);
-    if (next) {
-      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
-    }
-  };
-
-  const onSend = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const text = draft.trim();
-    if (!text) return;
-    sendChat(text);
-    setDraft('');
-    sfx('place');
-  };
-
-  const onChip = (chip: string) => {
-    sendChat(chip);
-    sfx('place');
-  };
-
-  return (
-    <>
-      {/* Toast snippet for incoming messages when chat is closed */}
-      {toastSnippet && !open && (
-        <div
-          onClick={toggle}
-          className={`fixed bottom-16 right-3 sm:bottom-18 sm:right-5 z-40 max-w-[280px] p-2.5 rounded-2xl bg-white border-2 border-volt-500 shadow-xl cursor-pointer a-pop flex items-center gap-2 hover:bg-volt-50 transition-all ${isLobbyDesktop ? 'lg:hidden' : ''}`}
-        >
-          <span className="w-6 h-6 rounded-full bg-volt-300 border border-volt-500 text-[11px] grid place-items-center shrink-0">⚡</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-extrabold text-volt-700 leading-tight truncate">{oppName || 'Rival'}</p>
-            <p className="text-[12px] font-bold text-cream-100 truncate">{toastSnippet}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Floating launcher button */}
-      {!open && (
-        <button
-          onClick={toggle}
-          className={`fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex items-center gap-2 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full bg-volt-400 text-[#4a2e18] font-bold shadow-xl hover:bg-volt-300 active:scale-95 transition-all border-2 border-ink-600 focus:outline-none no-tap a-pop cursor-pointer ${isLobbyDesktop ? 'lg:hidden' : ''}`}
-          aria-label="Open arena chat"
-        >
-          <Icon name="chat" size={17} />
-          <span className="text-[13px] font-extrabold tracking-wide">Chat</span>
-          {unreadCount > 0 && (
-            <span className="w-5 h-5 rounded-full bg-ember-600 text-white text-[10.5px] font-black grid place-items-center animate-bounce shadow-xs">
-              {unreadCount}
-            </span>
-          )}
-        </button>
-      )}
-
-      {/* Expanded chat window - perfectly centered & padded on mobile, cleanly pinned on desktop */}
-      {open && (
-        <div
-          className={`fixed bottom-3 inset-x-3 sm:inset-x-auto sm:right-5 sm:bottom-5 z-40 w-auto sm:w-[370px] h-[490px] max-h-[82vh] panel panel-notch p-0 flex flex-col shadow-2xl bg-[#fffefb] border-2 border-ink-500 backdrop-blur-md a-pop overflow-hidden ${isLobbyDesktop ? 'lg:hidden' : ''}`}
-        >
-          {/* Header */}
-          <div className="p-3 bg-gradient-to-r from-ink-850 via-[#fff8ec] to-ink-850 border-b-2 border-ink-600 flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="w-8 h-8 rounded-full bg-white border-2 border-ink-500 overflow-hidden grid place-items-center shrink-0 shadow-xs">
-                <img
-                  src={MASCOT_ART[oppMascot ?? 'classic'] ?? MASCOT_ART.classic}
-                  alt=""
-                  className="w-6 h-6 object-contain"
-                />
-              </span>
-              <div className="min-w-0">
-                <p className="font-display text-[13.5px] font-extrabold text-cream-100 leading-tight">Arena Chat</p>
-                <div className="flex items-center gap-1.5">
-                  <span className={`w-1.5 h-1.5 rounded-full ${oppConnected ? 'bg-mint-400' : 'bg-cream-400'}`} />
-                  <p className="text-[10px] font-bold text-cream-500 truncate">
-                    {oppName ? (oppConnected ? `with ${oppName}` : `${oppName} (idle)`) : 'Waiting for rival'}
-                  </p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={toggle}
-                className="w-7 h-7 rounded-full bg-white hover:bg-blush-100 border-2 border-ink-500 text-cream-400 hover:text-blush-600 flex items-center justify-center transition-colors cursor-pointer"
-                aria-label="Close chat"
-              >
-                <Icon name="x" size={13} />
-              </button>
-            </div>
-          </div>
-
-          {/* Quick chips bar */}
-          <QuickChipsBar onChip={onChip} />
-
-          {/* Messages list */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-[#fffcf5]">
-            <ChatMessagesList
-              messages={messages}
-              oppName={oppName}
-              oppMascot={oppMascot}
-              scrollRef={scrollRef}
-            />
-          </div>
-
-          {/* Input form */}
-          <ChatInputBar draft={draft} setDraft={setDraft} onSend={onSend} />
-        </div>
-      )}
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ desktop lobby inline chat */
-function LobbyInlineChat({
-  messages,
-  sendChat,
-  oppName,
-  oppMascot,
-  oppConnected,
-}: {
-  messages: any[];
-  sendChat: (text: string) => void;
-  oppName: string;
-  oppMascot?: string;
-  oppConnected?: boolean;
-}) {
-  const { sfx } = useStore();
-  const [draft, setDraft] = useState('');
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages?.length]);
-
-  const onSend = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const text = draft.trim();
-    if (!text) return;
-    sendChat(text);
-    setDraft('');
-    sfx('place');
-  };
-
-  const onChip = (chip: string) => {
-    sendChat(chip);
-    sfx('place');
-  };
-
-  return (
-    <Panel className="p-0 flex flex-col h-[360px] overflow-hidden shadow-sm">
-      {/* Header */}
-      <div className="p-3 bg-gradient-to-r from-ink-850 via-[#fff8ec] to-ink-850 border-b-2 border-ink-600 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="w-7 h-7 rounded-full bg-volt-300/40 border-2 border-volt-500 text-volt-700 grid place-items-center shrink-0">
-            <Icon name="chat" size={13} />
-          </span>
-          <div>
-            <p className="font-display text-[13px] font-extrabold text-cream-100 leading-tight">Arena Chat</p>
-            <p className="text-[10px] text-cream-500 truncate">
-              {oppName ? (oppConnected ? `Live with ${oppName}` : `${oppName} (waiting)`) : 'Chat with your rival'}
-            </p>
-          </div>
-        </div>
-        <span className="text-[9.5px] font-extrabold px-2 py-0.5 rounded-full bg-white border border-ink-500 text-cream-300 uppercase tracking-wider">
-          Lobby
-        </span>
-      </div>
-
-      {/* Quick chips bar */}
-      <QuickChipsBar onChip={onChip} />
-
-      {/* Messages list */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2.5 bg-[#fffcf5]">
-        <ChatMessagesList
-          messages={messages}
-          oppName={oppName}
-          oppMascot={oppMascot}
-          scrollRef={scrollRef}
-        />
-      </div>
-
-      {/* Input form */}
-      <ChatInputBar draft={draft} setDraft={setDraft} onSend={onSend} />
-    </Panel>
-  );
-}
-
 /* ------------------------------------------------------------------ lobby */
-function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpenPicker, messages, sendChat }: any) {
+function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpenPicker, chat }: any) {
   const { sfx } = useStore();
   const members = [...room.members].sort((a: any, b: any) => a.slot - b.slot);
   const me = members.find((m: any) => m.slot === slot);
@@ -812,15 +481,9 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpen
           </div>
         </Panel>
 
-        {/* Embedded Arena Chat for Lobby */}
+        {/* the same chat surface as the in-game rail, just in the lobby column */}
         <div className="hidden lg:block">
-          <LobbyInlineChat
-            messages={messages}
-            sendChat={sendChat}
-            oppName={opp?.name ?? ''}
-            oppMascot={opp?.mascot}
-            oppConnected={opp?.connected ?? false}
-          />
+          <ChatRail {...chat} className="h-[420px]" />
         </div>
       </div>
     </div>

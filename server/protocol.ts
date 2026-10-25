@@ -46,6 +46,7 @@ export type ClientMsg =
   | { t: 'returnToLobby' }
   | { t: 'leave' }
   | { t: 'chat'; text: string }
+  | { t: 'typing'; on: boolean }
   | { t: 'nudge'; text: string }
   | { t: 'ping'; ts: number };
 
@@ -55,6 +56,7 @@ export type ServerMsg =
   | { t: 'state'; matchId: string; seq: number; state: unknown; yourSlot: 0 | 1; lastAction: string | null; serverTime: number }
   | { t: 'finished'; matchId: string; winnerSlot: 0 | 1 | null; reason: string; state: unknown }
   | { t: 'chat'; id: string; senderId: string; from: string; slot: 0 | 1; text: string; ts: number }
+  | { t: 'typing'; from: string; slot: 0 | 1; on: boolean }
   | { t: 'error'; code: string; message: string; recovery?: string }
   | { t: 'nudge'; from: string; text: string }
   | { t: 'left' }

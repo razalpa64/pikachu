@@ -143,6 +143,18 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - Countdown, result screen, rematch voting with automatic side-swap.
 - Reconnection holds your seat for 45 s; the room itself expires on a timer.
 - **Server authority**: every move is validated by the *same* `rules.ts` module the browser imports (`tsx server/index.ts` imports it directly). Stable match IDs, per-player sequence numbers, idempotent actions, `stale_match` rejection, rate limits on create/join/nudge.
+- **Arena chat**: one surface, three placements. On desktop it is *docked beside the board*
+  (and in the lobby's right column), so it can never cover a piece, a clock or the result card.
+  On a phone it is a peek bar above the safe area that expands into a sheet leaving the board
+  visible. Consecutive messages from one person group together and timestamps collapse into
+  five-minute dividers; joins, game switches, match starts and results arrive as centred system
+  lines. The eight reactions are drawn as inline SVG stickers (`lib/chatFeed.ts` maps the label,
+  and still recognises the emoji form older messages used), so nothing depends on which emoji
+  font the reader's OS ships. The log is a `role="log"` polite live region, the composer is a
+  labelled textarea with a 44 px send button, Enter sends and Shift+Enter breaks the line, and a
+  throttled `typing` message (one per ~1.5 s, relayed to the opponent only) drives the "is
+  typing" trio. Grouping, dividers, ordering and reaction recognition live in `lib/chatFeed.ts`
+  and are covered by 17 unit tests.
 - **No hidden-info leaks**: `redact(state, slot)` runs before every broadcast — a Paper Fleet client is never sent the enemy fleet, a Memory client is never sent the face-down deck, a Wild Eights client is sent `-1` placeholders for the opponent's hand and the whole stock, a Guess & Draw client is sent a row of underscores instead of the word (and never the bank the rest of the match is drawn from), and a Spark Quiz client is told only *that* the other player has locked in, never *what* they picked — plus the unasked questions are withheld so nobody can read ahead. `scripts/smoke-cards.ts` asserts this on the wire, and `scripts/e2e/online-cards.mjs` asserts the other player's cards appear nowhere in your tab's DOM.
 
 **The rest**
@@ -179,7 +191,10 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 
 ### ❌ Not implemented (on purpose, stated plainly)
 
-- No voice/video chat, no in-game text chat.
+- No voice or video chat. Text chat exists (`src/components/RoomChat.tsx`) with quick reactions,
+  typing presence and screen-reader announcements — see *Arena chat* below. It has no message
+  history, no file uploads and no moderation tooling yet, so treat it as a friendly room chat,
+  not a social network.
 - No spectators. Rooms seat exactly two.
 - No mobile app wrapper, no push notifications.
 - No ELO/global ranking, no matchmaking with strangers — this is a private two-player arena.
@@ -750,6 +765,26 @@ browser:
 52. **The dedication under the home page is gone.** "Made For Julian" and its paragraph were
     removed at the owner's request; the closing illustration (the divider plus the two mascots)
     stays, so the page still ends on a picture rather than on the game grid.
+53. **The chat looked like a different app.** It used its own hexes (`#fffefb`, `#fffcf5`), its own
+    shadow depths (`shadow-xs`/`shadow-2xl`), 9.5px labels and eight OS emoji, while every other
+    surface is on the `--line` / panel / `.eyebrow` system. It was also *two* implementations —
+    a 490px floating modal during play and a different inline panel in the lobby — so any fix had
+    to be made twice. Both are gone: `ChatRail` and `MobileChat` now render the same
+    `ChatSurface`, the styling uses only existing tokens, and reactions are drawn stickers.
+54. **The chat's accessibility was accidental.** The send button was a 32px icon with no
+    accessible name at all, new messages were never announced (no `role="log"`, no live region),
+    the input had no label, and the phone sheet was a `fixed` panel that covered the bottom third
+    of the board with no way out but tapping the same button. Now: labelled input and 44px send
+    button, `role="log" aria-live="polite"` on the log, a separate polite region that announces
+    "Julian is typing", Escape closes the sheet and returns focus to the launcher, Tab is trapped
+    while it is open, and the scroll position is only forced when the reader is already at the
+    bottom (with a "Newest" affordance otherwise). Verified by 18 jsdom interaction assertions
+    covering Enter, Shift+Enter, reaction chips, whitespace-only sends and Escape.
+55. **The relay had no way to say "still here".** Typing presence needed a message the protocol
+    did not have, and the tempting shortcut — reusing `chat` with empty text — would have created
+    phantom bubbles in the log on the other side. A dedicated `typing` event now goes to the
+    opponent only, is coalesced client-side to one event per ~1.5s and self-heals with an `off`
+    after 2.6s of silence, so a closed tab cannot leave "is typing" stuck on screen.
 
 
 ---

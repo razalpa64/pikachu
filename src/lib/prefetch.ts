@@ -17,27 +17,13 @@
  * simply forgotten — the real import will surface the error), and never blocks.
  */
 
+import { SOLO_IMPORTERS } from '../games/views';
+
 type Importer = () => Promise<unknown>;
 
-/* Specifiers must match the ones in App.tsx / Solo.tsx exactly so Vite and the
-   browser resolve them to the same chunk rather than a duplicate. */
-const GAME_CHUNKS: Record<string, Importer> = {
-  chess: () => import('../games/chess/SoloView'),
-  tictactoe: () => import('../games/tictactoe/SoloView'),
-  connect4: () => import('../games/connect4/SoloView'),
-  memory: () => import('../games/memory/SoloView'),
-  reaction: () => import('../games/reaction/SoloView'),
-  snake: () => import('../games/snake/SoloView'),
-  battleship: () => import('../games/battleship/SoloView'),
-  checkers: () => import('../games/checkers/SoloView'),
-  trivia: () => import('../games/trivia/SoloView'),
-  dare: () => import('../games/dare/SoloView'),
-  imposter: () => import('../games/imposter/SoloView'),
-  detective: () => import('../games/detective/SoloView'),
-  cards: () => import('../games/cards/SoloView'),
-  puzzle: () => import('../games/puzzle/SoloView'),
-  arcade: () => import('../games/arcade/SoloView'),
-};
+/* One list, shared with the solo route: a game cannot be routable and
+   un-warmable, or warmable and unroutable. */
+const GAME_CHUNKS: Record<string, Importer> = SOLO_IMPORTERS as Record<string, Importer>;
 
 const ROUTE_CHUNKS: Record<string, Importer> = {
   library: () => import('../screens/Library'),

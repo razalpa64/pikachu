@@ -19,7 +19,19 @@ export default function Home() {
   const lvl = levelFor(progress.xp);
   const challenges = useMemo(() => dailyChallenges(progress.dailySeed), [progress.dailySeed]);
   const recents = progress.recents.map((r) => ({ ...r, game: gameById(r.gameId) })).filter((r) => r.game).slice(0, 4);
-  const featured = liveGames().slice(0, 6);
+  /* One from each genre first, then fill — otherwise the front page is six
+     strategy boards and every puzzle and party game is invisible until you
+     open the library. */
+  const featured = useMemo(() => {
+    const live = liveGames();
+    const byGenre = ['strategy', 'party', 'puzzle', 'arcade'].map((genre) => live.find((g) => g.genre === genre));
+    const picked = byGenre.filter((g): g is NonNullable<typeof g> => !!g);
+    for (const g of live) {
+      if (picked.length >= 6) break;
+      if (!picked.includes(g)) picked.push(g);
+    }
+    return picked.slice(0, 6);
+  }, []);
   const totals = useMemo(() => {
     const v = Object.values(progress.stats);
     return {

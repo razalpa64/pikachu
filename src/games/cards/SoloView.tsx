@@ -4,6 +4,7 @@ import SoloShell, { ModeRail } from '../../components/SoloShell';
 import { Button, Icon, Panel, Stat, Toggle, Segmented } from '../../components/ui';
 import { ResultOverlay } from '../../components/Overlays';
 import { useStore } from '../../lib/store';
+import { PikachuMascot } from '../../mascot';
 import {
   createEights, canPlay, playCard, drawCard, pass, chooseSuit, takePenalty,
   playable, topCard, suitOf, rankLabel, cardName, sortHand, handValue, humanise,
@@ -96,6 +97,19 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
   };
 
   const seat = mode === 'local' ? state.turn : you;
+
+  /* Pass and play used to hand the device over with the next player's hand already
+     face up. The curtain is deliberately opaque and covers the table too, because a
+     five-second glance at somebody else's cards is exactly how these games go wrong. */
+  const [curtain, setCurtain] = useState(false);
+  const prevSeat = useRef(seat);
+  useEffect(() => {
+    if (mode !== 'local' || state.over) { setCurtain(false); prevSeat.current = seat; return; }
+    if (seat !== prevSeat.current) {
+      setCurtain(true);
+      prevSeat.current = seat;
+    }
+  }, [seat, mode, state.over]);
   const myHand = sortHand(state.hands[seat]);
   const canAct = !state.over && (mode === 'local' || state.turn === you);
   const myPlayable = canAct ? playable(state, state.turn) : [];
@@ -146,6 +160,22 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
       }
     >
       <div className="relative w-full max-w-[940px] mx-auto">
+        {curtain && !state.over && (
+          <div className="absolute inset-0 z-30 grid place-items-center rounded-[22px]"
+            style={{ background: 'linear-gradient(180deg,#fff8ec,#fff2df)' }}>
+            <div className="panel panel-notch p-6 max-w-[360px] text-center a-pop">
+              <PikachuMascot state="waiting" size={124} />
+              <p className="eyebrow text-volt-700 mt-1 mb-1">Pass and play</p>
+              <h2 className="display text-[22px] text-cream-100 leading-tight">Hand it to {mode === 'local' ? `Player ${seat + 1}` : 'your rival'}</h2>
+              <p className="text-[12.5px] text-cream-500 mt-1.5 leading-relaxed">
+                Their hand stays covered until they say they are ready.
+              </p>
+              <Button variant="primary" className="mt-4 w-full" onClick={() => { sfx('select'); setCurtain(false); }}>
+                I am Player {seat + 1} — deal me in
+              </Button>
+            </div>
+          </div>
+        )}
         {/* opponent */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
           <span className="eyebrow">{mode === 'ai' ? `Rival · ${difficulty}` : 'Player 2'}</span>

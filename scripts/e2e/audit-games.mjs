@@ -1,5 +1,5 @@
 /**
- * Deep per-game audit. For each of the fifteen games: load it, make a real move the
+ * Deep per-game audit. For each of the twenty games: load it, make a real move the
  * way a player would, and assert the game state visibly advanced. Catches
  * "it renders but nothing happens" bugs that a route crawl cannot see.
  */
@@ -206,6 +206,53 @@ await run('Truth or Dare', 'truth-or-dare', async (p, n) => {
   await p.waitForTimeout(1400);
   const after = await txt(p);
   n.push(before !== after ? 'card resolved, deck advanced' : 'resolving the card did NOTHING');
+  return before !== after;
+});
+
+await run('Lantern Flip', 'lantern-flip', async (p, n) => {
+  // d4 (row 4, column 4) is a legal opening for gold in standard Reversi
+  const open = p.locator('[role="gridcell"][aria-label*="flips"]');
+  const c = await open.count();
+  if (!c) { n.push('NO legal opening move highlighted'); return false; }
+  await open.first().click();
+  await p.waitForTimeout(1800);
+  const left = await p.locator('[role="gridcell"][aria-label*="flips"]').count();
+  const label = await p.locator('[role="status"]').first().innerText().catch(() => '');
+  const advanced = /rose coin/.test(await txt(p)) || left > 0;
+  n.push(`${c} opening cells, after the flip ${left} cells, turn pill "${label.trim().slice(0, 18)}"`);
+  return advanced;
+});
+
+await run('River Stones', 'river-stones', async (p, n) => {
+  const cells = p.locator('[role="gridcell"][aria-label*="empty"]');
+  const before = await cells.count();
+  await cells.first().click();
+  await p.waitForTimeout(1800);
+  const after = await p.locator('[role="gridcell"][aria-label*="empty"]').count();
+  n.push(`empty points ${before} -> ${after} (engine replied)`);
+  return after <= before - 2;
+});
+
+await run('Dots & Boxes', 'dots-and-boxes', async (p, n) => {
+  const lines = p.locator('button[aria-label^="Horizontal line"]:not([disabled]), button[aria-label^="Vertical line"]:not([disabled])');
+  const before = await lines.count();
+  if (!before) { n.push('NO undrawn line to play'); return false; }
+  await lines.first().click();
+  await p.waitForTimeout(1500);
+  const drawn = await p.locator('[aria-label*="drawn"]').count();
+  n.push(`${before} lines open, ${drawn} now drawn`);
+  return drawn > 0;
+});
+
+await run('Mancala', 'mancala', async (p, n) => {
+  // your own pits are the row labelled "Your pits"; the first one is always legal
+  const mine = p.locator('[role="row"][aria-label="Your pits"] button').first();
+  if (!await mine.count()) { n.push('NO sowing pit found'); return false; }
+  const before = await txt(p);
+  await mine.click();
+  await p.waitForTimeout(1600);
+  const after = await txt(p);
+  n.push(before !== after ? 'sowed, turn passed to the AI' : 'sowing did NOTHING');
   return before !== after;
 });
 

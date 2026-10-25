@@ -92,6 +92,58 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
+    id: 'reversi', slug: 'lantern-flip', title: 'Lantern Flip',
+    tagline: 'Turn one coin, flip a whole row',
+    description: 'Reversi with warm wooden coins. Every placement must bracket a line of your opponent’s coins, and everything bracketed turns over. Corners can never be taken back — and if you cannot move, you pass.',
+    genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 10,
+    accent: '#2f9c71', artKey: 'reversi', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'size', label: 'Board', type: 'select', default: 8, options: [
+        { value: 6, label: '6 × 6 · quick' }, { value: 8, label: '8 × 8 · classic' }, { value: 10, label: '10 × 10 · long' },
+      ] },
+    ],
+  },
+  {
+    id: 'gomoku', slug: 'river-stones', title: 'River Stones',
+    tagline: 'Five stones in a line',
+    description: 'Gomoku on a wooden board: place a stone, and the first player to line up five — across, down or diagonally — takes it. Simple enough to teach in a sentence, deep enough to lose an evening to.',
+    genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 8,
+    accent: '#a9680d', artKey: 'gomoku', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'size', label: 'Board', type: 'select', default: 15, options: [
+        { value: 9, label: '9 × 9 · tight' }, { value: 11, label: '11 × 11' }, { value: 13, label: '13 × 13' }, { value: 15, label: '15 × 15 · classic' },
+      ] },
+    ],
+  },
+  {
+    id: 'dots', slug: 'dots-and-boxes', title: 'Dots & Boxes',
+    tagline: 'Close the box and keep the turn',
+    description: 'The pencil-and-paper classic, drawn properly. Join two dots, and any box you finish is yours — with another turn straight after. Hand over the third side of a box and you have just given your opponent a present.',
+    genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 7,
+    accent: '#2f7fc4', artKey: 'dots', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'size', label: 'Grid', type: 'select', default: 5, options: [
+        { value: 4, label: '3 × 3 boxes' }, { value: 5, label: '4 × 4 boxes' }, { value: 6, label: '5 × 5 boxes' },
+      ] },
+    ],
+  },
+  {
+    id: 'mancala', slug: 'mancala', title: 'Mancala',
+    tagline: 'Sow the seeds, steal the store',
+    description: 'The oldest board game there is, on a carved wooden tray. Lift a pit, sow the seeds one by one, and watch the two rules that matter: land in your own store and you go again; land in an empty pit and you capture everything opposite.',
+    genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 6,
+    accent: '#c07f0f', artKey: 'mancala', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'seeds', label: 'Seeds per pit', type: 'select', default: 4, options: [
+        { value: 3, label: '3 seeds' }, { value: 4, label: '4 seeds · classic' }, { value: 5, label: '5 seeds' },
+      ] },
+    ],
+  },
+  {
     id: 'snake', slug: 'snake-arena', title: 'Snake Arena',
     tagline: 'One more go, promise',
     description: 'Grid-perfect snake in a pastel garden: four skins, speeds that climb until you panic, berries and charges to chase, and a pathfinding rival snake if you want company.',
@@ -211,6 +263,11 @@ export function defaultGameSettings(g: GameMeta | undefined): Record<string, unk
   if (g?.id === 'memory') {
     const [c, r] = String(out.size ?? '4x4').split('x').map(Number);
     out.cols = c; out.rows = r;
+  }
+  // Dots & Boxes is set by its square side; the engine speaks cols/rows
+  if (g?.id === 'dots') {
+    out.cols = Number(out.size ?? 5);
+    out.rows = Number(out.size ?? 5);
   }
   return out;
 }

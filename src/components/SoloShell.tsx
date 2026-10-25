@@ -5,6 +5,7 @@ import { Button, Icon, Segmented, Stat } from './ui';
 import { PikachuMascot, type MascotState } from '../mascot';
 import { useStore, useAmbience } from '../lib/store';
 import { GameArtwork } from './GameArtwork';
+import { HowToPlay } from './HowToPlay';
 
 export const DIFFS: { value: Difficulty; label: string }[] = [
   { value: 'beginner', label: 'Beginner' },
@@ -114,6 +115,11 @@ export default function SoloShell({
       <div className={`relative flex-1 mx-auto w-full ${wide ? 'max-w-[1340px]' : 'max-w-[1120px]'} px-[var(--shell-pad)] py-2 sm:py-5`}>
         {hud && <div className="hud-strip mb-2 sm:mb-4">{hud}</div>}
         <div className="flex flex-col items-center gap-3 sm:gap-5">{children}</div>
+        {/* the rulebook sits under the board, closed: it never pushes the game down
+            the screen, and it is where a puzzled player is already looking */}
+        <div className="mt-3 sm:mt-5 w-full max-w-[560px] mx-auto">
+          <HowToPlay gameId={game.id} gameTitle={game.title} />
+        </div>
         {(mascotLine || footer) && (
           <div className="mt-3 sm:mt-7 flex flex-col-reverse sm:flex-row items-center gap-3 sm:gap-4 justify-center">
             {mascotLine && (

@@ -8,7 +8,8 @@ import { chromium } from 'playwright';
 const B = 'http://127.0.0.1:5173';
 const SLUGS = ['chess-arena','tic-tac-toe-duel','connect-four','memory-match','reaction-duel',
   'snake-arena','battleship','checkers','puzzle-quest','electric-arcade',
-  'spark-quiz','wild-eights','case-files','imposter','truth-or-dare'];
+  'spark-quiz','wild-eights','case-files','imposter','truth-or-dare',
+  'lantern-flip','river-stones','dots-and-boxes','mancala','guess-and-draw'];
 let fail = 0;
 const b = await chromium.launch({ args: ['--no-sandbox','--disable-gpu'] });
 const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });

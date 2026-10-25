@@ -16,9 +16,15 @@ export default function PlayTogether() {
   useAmbience('hub');
 
   const games = onlineGames();
-  const [tab, setTab] = useState<'create' | 'join'>(params.get('join') ? 'join' : 'create');
-  const [picked, setPicked] = useState<GameMeta>(games[0]);
-  const [settings, setSettings] = useState<Record<string, unknown>>(() => defaultsFor(games[0]));
+  /* Other screens deep-link here: `?game=chess` from a game's title bar, `?join=1`
+     from the home panel, `?code=ABCDE` from an invite. All three used to be ignored
+     except `join`, so "Play online" silently opened whichever game happened to be
+     first in the list. */
+  const wanted = params.get('game');
+  const initial = games.find((g) => g.id === wanted) ?? games[0];
+  const [tab, setTab] = useState<'create' | 'join'>(params.get('join') || params.get('code') ? 'join' : 'create');
+  const [picked, setPicked] = useState<GameMeta>(initial);
+  const [settings, setSettings] = useState<Record<string, unknown>>(() => defaultsFor(initial));
   const [roomName, setRoomName] = useState('');
   const [code, setCode] = useState((params.get('code') ?? '').toUpperCase());
   const [name, setName] = useState(identity.name);

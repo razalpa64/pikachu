@@ -111,7 +111,7 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
         </Panel>
       }>
       <div className="relative flex flex-col xl:flex-row gap-5 items-start justify-center w-full">
-        <div className="relative mx-auto">
+        <div className="relative w-full min-w-0 xl:flex-1">
           <ChessBoard state={state} youSlot={mode === 'local' ? turn : 0} onMove={move}
             interactive={!state.over && (mode === 'local' || turn === 0)} names={['White', 'Black']} hint={settings.showHints} />
           {state.over && shown && (

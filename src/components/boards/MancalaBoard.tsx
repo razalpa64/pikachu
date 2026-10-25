@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { mancalaRules as R, myPits, storeOf, type MancalaState } from '../../games/mancala/rules';
 import type { BoardProps } from './types';
 import { BoardPlate, ScoreChip } from './BoardPlate';
+import { BoardStage } from './BoardStage';
 
 const GOLD = '#e8a21c';
 const ROSE = '#d9456f';
@@ -39,65 +40,82 @@ export default function MancalaBoard({ state, youSlot, onMove, interactive, name
         </div>
       }
     >
+      {/* The tray is one grid: a store, six pits, six pits, a store. Every track is
+          a fraction of the stage, so the twelve pits stay round and equal from a
+          360 px phone to a 1440 px desktop — before, each pit was
+          `clamp(34px,11.4vw,52px)`, which totalled 394 px on a 360 px phone (the
+          right-hand store fell off the screen) and 460 px on a desktop. */}
+      <BoardStage ratio={7.56 / 2} max={700} min={286} reserve={150} chrome={22}>
       <div
-        className="flex items-stretch gap-2 p-2.5 sm:p-3 rounded-[20px]"
+        className="grid gap-[clamp(4px,1.6%,12px)] p-[clamp(5px,1.9%,12px)] rounded-[clamp(12px,2.4%,20px)]"
         style={{
+          gridTemplateColumns: '0.78fr repeat(6, minmax(0, 1fr)) 0.78fr',
+          gridTemplateRows: 'repeat(2, minmax(0, 1fr))',
+          aspectRatio: '7.56 / 2',
           background: 'linear-gradient(165deg,#f6d3a8,#e3b482)',
           border: '3px solid #c99b78',
           boxShadow: 'inset 0 2px 0 rgba(255,255,255,.6), inset 0 -6px 14px rgba(150,100,70,.22)',
         }}
       >
-        <Store
-          count={state.board[storeOf(state, them)]}
-          label={names[them]}
-          tone="rose"
-          active={state.turn === them && !state.over}
-        />
+        <div className="row-span-2 min-h-0 min-w-0">
+          <Store
+            count={state.board[storeOf(state, them)]}
+            label={names[them]}
+            tone="rose"
+            active={state.turn === them && !state.over}
+          />
+        </div>
 
-        <div className="flex flex-col gap-2 min-w-0">
-          <div className="flex gap-1.5" role="row" aria-label={`${names[them]}'s pits`}>
-            {theirRow.map((i) => (
+        {/* `display: contents` so the pits stay direct grid children (and keep their
+            exact tracks) while the two rows still carry a name for a screen
+            reader: "Your pits", "Zoe's pits". */}
+        <div role="group" aria-label={`${names[them]}'s pits`} className="contents">
+          {theirRow.map((i, idx) => (
+            <Pit
+              key={i}
+              count={state.board[i]}
+              label={`${names[them]}'s pit, ${state.board[i]} seeds`}
+              tone="rose"
+              justSown={sown.has(i)}
+              /* you can't play these, but hover still reads them as a set */
+              onHover={() => setHover(i)}
+              onLeave={() => setHover((h) => (h === i ? null : h))}
+              style={{ gridColumn: idx + 2, gridRow: 1 }}
+            />
+          ))}
+        </div>
+
+        <div role="group" aria-label="Your pits" className="contents">
+          {myRow.map((i, pit) => {
+            const can = legal.has(pit);
+            return (
               <Pit
                 key={i}
                 count={state.board[i]}
-                label={`${names[them]}'s pit, ${state.board[i]} seeds`}
-                tone="rose"
+                label={`Pit ${pit + 1}, ${state.board[i]} seeds${can ? ', playable' : ''}`}
+                tone="gold"
+                playable={can}
+                hovered={hover === i}
                 justSown={sown.has(i)}
-                /* you can't play these, but hover still reads them as a set */
+                onClick={() => can && onMove({ pit })}
                 onHover={() => setHover(i)}
                 onLeave={() => setHover((h) => (h === i ? null : h))}
+                style={{ gridColumn: pit + 2, gridRow: 2 }}
               />
-            ))}
-          </div>
-
-          <div className="flex gap-1.5" role="row" aria-label="Your pits">
-            {myRow.map((i, pit) => {
-              const can = legal.has(pit);
-              return (
-                <Pit
-                  key={i}
-                  count={state.board[i]}
-                  label={`Pit ${pit + 1}, ${state.board[i]} seeds${can ? ', playable' : ''}`}
-                  tone="gold"
-                  playable={can}
-                  hovered={hover === i}
-                  justSown={sown.has(i)}
-                  onClick={() => can && onMove({ pit })}
-                  onHover={() => setHover(i)}
-                  onLeave={() => setHover((h) => (h === i ? null : h))}
-                />
-              );
-            })}
-          </div>
+            );
+          })}
         </div>
 
-        <Store
-          count={state.board[storeOf(state, youSlot)]}
-          label={names[youSlot]}
-          tone="gold"
-          active={state.turn === youSlot && !state.over}
-        />
+        <div className="row-span-2 min-h-0 min-w-0" style={{ gridColumn: 8 }}>
+          <Store
+            count={state.board[storeOf(state, youSlot)]}
+            label={names[youSlot]}
+            tone="gold"
+            active={state.turn === youSlot && !state.over}
+          />
+        </div>
       </div>
+      </BoardStage>
 
       <div className="flex items-center justify-between px-1 pt-2 min-h-[18px]">
         <p className="text-[10.5px] text-cream-500 font-bold">
@@ -115,11 +133,12 @@ export default function MancalaBoard({ state, youSlot, onMove, interactive, name
 }
 
 function Pit({
-  count, label, tone, playable, hovered, justSown, onClick, onHover, onLeave,
+  count, label, tone, playable, hovered, justSown, onClick, onHover, onLeave, style,
 }: {
   count: number; label: string; tone: 'gold' | 'rose';
   playable?: boolean; hovered?: boolean; justSown?: boolean;
   onClick?: () => void; onHover?: () => void; onLeave?: () => void;
+  style?: React.CSSProperties;
 }) {
   const seedTone = tone === 'gold' ? GOLD : ROSE;
   const Tag = onClick ? 'button' : 'div';
@@ -129,11 +148,10 @@ function Pit({
       onPointerEnter={onHover}
       onPointerLeave={onLeave}
       aria-label={label}
-      className={`relative grid place-items-center rounded-full transition-all duration-150 no-tap shrink-0
+      className={`board-cell rounded-full transition-all duration-150 no-tap w-full h-full
         ${playable ? 'cursor-pointer' : 'cursor-default'}`}
       style={{
-        width: 'clamp(34px, 11.4vw, 52px)',
-        height: 'clamp(34px, 11.4vw, 52px)',
+        ...style,
         background: 'radial-gradient(circle at 50% 22%, #fff6e6, #f0d3b0 62%, #dcb68c 100%)',
         border: `2.5px solid ${playable && hovered ? seedTone : '#b98a63'}`,
         boxShadow: playable && hovered
@@ -143,10 +161,10 @@ function Pit({
         animation: justSown ? 'pksow .34s ease-out' : undefined,
       }}
     >
-      <span className="display tabnum text-[13px] sm:text-[15px] leading-none text-cream-100 relative z-10">{count}</span>
+      <span className="display tabnum leading-none text-cream-100 relative z-10" style={{ fontSize: 'clamp(10px, 32cqw, 19px)' }}>{count}</span>
       {count > 0 && (
         <span aria-hidden className="absolute inset-0 grid place-items-center overflow-hidden rounded-full">
-          <span className="grid grid-cols-3 gap-[2px] opacity-70 translate-y-[7px]">
+          <span className="grid grid-cols-3 gap-[2px] opacity-70 translate-y-[24%]">
             {Array.from({ length: Math.min(9, Math.max(1, count)) }).map((_, i) => (
               <span
                 key={i}
@@ -165,9 +183,11 @@ function Store({ count, label, tone, active }: { count: number; label: string; t
   const seedTone = tone === 'gold' ? GOLD : ROSE;
   return (
     <div
-      className="relative flex flex-col items-center justify-end gap-0.5 rounded-full px-1 py-2 shrink-0"
+      className="relative flex flex-col items-center justify-end gap-0.5 rounded-full px-1 py-2 w-full h-full"
       style={{
-        width: 'clamp(38px, 12vw, 54px)',
+        /* the store is its own size container (not `.board-cell`, which would
+           force `display: grid` over the flex column the pile needs) */
+        containerType: 'size',
         background: 'linear-gradient(180deg,#efd0ac,#d9b083)',
         border: `2.5px solid ${active ? seedTone : '#b98a63'}`,
         boxShadow: 'inset 0 4px 10px rgba(150,100,70,.3)',
@@ -182,7 +202,7 @@ function Store({ count, label, tone, active }: { count: number; label: string; t
           ))}
         </span>
       </span>
-      <span className="display tabnum text-[13px] leading-none text-cream-100">{count}</span>
+      <span className="display tabnum leading-none text-cream-100" style={{ fontSize: 'clamp(10px, 30cqw, 18px)' }}>{count}</span>
     </div>
   );
 }

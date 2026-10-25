@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BoardProps } from './types';
 import { Button, Icon, Panel } from '../ui';
+import { BoardStage } from './BoardStage';
 import {
   BRUSHES, PALETTE, DRAW_MS, MAX_POINTS, ERASER_COLOR_INDEX, CANVAS_BG,
   type SketchState, type Stroke,
@@ -219,6 +220,11 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
               style={{ width: `${pct * 100}%` }} />
           </div>
 
+          {/* The canvas was a fixed 4:3 block in a 1020 px column — 765 px tall, which
+              pushed the brush tray and the guess box under the fold on a laptop and
+              left the drawer scrolling mid-round. The stage caps it against the
+              viewport height as well as the column width. */}
+          <BoardStage ratio={4 / 3} max={760} min={220} reserve={210} chrome={64}>
           <canvas
             ref={cv}
             onPointerDown={onDown}
@@ -234,6 +240,7 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
               ? `Your drawing canvas for the word ${state.word ?? ''}. ${state.strokes.length} strokes so far.`
               : `${names[state.drawer]}'s drawing, ${state.strokes.length} strokes so far. Type your guess below.`}
           />
+          </BoardStage>
         </Panel>
 
         {/* ---------------- drawer tools ---------------- */}

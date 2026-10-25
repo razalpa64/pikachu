@@ -107,7 +107,7 @@ export default function MemorySolo({ game }: { game: GameMeta }) {
           )}
         </Panel>
       }>
-      <div className="relative">
+      <div className="relative w-full">
         <MemoryBoard state={state} youSlot={state.turn} onMove={act} interactive={interactive} names={['You', mode === 'ai' ? 'AI' : 'Player 2']} />
         {state.over && shown && (
           <ResultOverlay

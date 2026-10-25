@@ -67,7 +67,7 @@ export default function CheckersSolo({ game }: { game: GameMeta }) {
           </span>
         </Panel>
       }>
-      <div className="relative pb-7">
+      <div className="relative w-full pb-7">
         <CheckersBoard state={state} youSlot={mode === 'local' ? state.turn : 0} onMove={(m) => setState((s) => (R.isLegal(s, s.turn, m) ? (sfx(Math.abs(m.to - m.from) > 9 ? 'capture' : 'move'), R.applyMove(s, s.turn, m)) : s))}
           interactive={!state.over && (mode === 'local' || state.turn === 0)} names={['Gold', 'Charcoal']} hint={settings.showHints} />
         {state.over && shown && (

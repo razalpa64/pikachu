@@ -90,7 +90,7 @@ export default function BattleshipSolo({ game }: { game: GameMeta }) {
           </span>
         </Panel>
       }>
-      <div className="relative">
+      <div className="relative w-full">
         <BattleshipBoard state={state} youSlot={0} onMove={act}
           interactive={!state.over && (state.phase === 'placement' ? !state.ready[0] : state.turn === 0)}
           names={['You', 'AI Commander']} />

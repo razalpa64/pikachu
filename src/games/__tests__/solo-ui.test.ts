@@ -157,7 +157,7 @@ describe('the new solo screens respond to a click', () => {
 
   it('Mancala sows the pit you click', async () => {
     await mount('mancala');
-    const row = host.querySelector('[role="row"][aria-label="Your pits"]');
+    const row = host.querySelector('[role="group"][aria-label="Your pits"]');
     expect(row, 'your row of pits exists').toBeTruthy();
     const pits = enabled([...row!.querySelectorAll<HTMLElement>('button')]);
     expect(pits.length, 'every pit with seeds is playable').toBe(6);
@@ -166,7 +166,7 @@ describe('the new solo screens respond to a click', () => {
     await click(pits[2]);
     await settle(1500);
 
-    const after = enabled([...host.querySelectorAll<HTMLElement>('[role="row"][aria-label="Your pits"] button')])
+    const after = enabled([...host.querySelectorAll<HTMLElement>('[role="group"][aria-label="Your pits"] button')])
       .map((p) => p.getAttribute('aria-label'));
     expect(after, 'the pits no longer hold what they held before').not.toEqual(before);
   });

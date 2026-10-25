@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { VOLT_CARDS, type MemState, type CardId } from '../../games/memory/rules';
 import type { BoardProps } from './types';
 import { useStore } from '../../lib/store';
+import { BoardGrid, BoardStage } from './BoardStage';
 
 const BY_ID = new Map(VOLT_CARDS.map((c) => [c.id, c]));
 
@@ -34,14 +35,15 @@ export default function MemoryBoard({ state, onMove, interactive }: BoardProps<M
 
   const cols = state.cols;
   const rows = Math.max(1, Math.ceil(state.deck.length / cols));
-  // cards grow to use the room they are given: bounded by width, by height (3:4 cards) and a hard cap
-  // 75vh - 225px ≈ the height left under the nav, game bar, controls and HUD; cards are 3:4
-  const w = `min(${(80 / cols).toFixed(2)}vw, calc((75vh - 225px) / ${rows}), 126px)`;
-
+  /* Cards are 3:4 and there are up to 24 of them. This board used to carry its
+     own height model — `calc((75vh - 225px) / rows)` — guesswork against a
+     magical 225 px, which is why it looked right on one laptop and squashed on
+     the next. The stage measures the real space under the board and the cards
+     are fractions of it. */
   return (
-    <div className="relative inline-block">
-      <div className="absolute -inset-4 panel notch-sm" aria-hidden />
-      <div className="relative grid gap-2 p-2" style={{ gridTemplateColumns: `repeat(${cols}, ${w})` }} role="grid" aria-label="Memory board">
+    <BoardStage ratio={(cols * 3) / (rows * 4)} max={840} min={250} reserve={150} chrome={20}>
+      <div className="relative panel notch-sm p-[clamp(4px,1.4%,10px)]">
+      <BoardGrid cellRatio={3 / 4} cols={cols} rows={rows} gap="clamp(4px,1.6%,10px)" role="grid" aria-label="Memory board">
         {state.deck.map((card, i) => {
           const faceUp = state.revealed.includes(i) || state.matched.includes(i);
           const matched = state.matched.includes(i);
@@ -50,19 +52,19 @@ export default function MemoryBoard({ state, onMove, interactive }: BoardProps<M
           return (
             <button key={i} role="gridcell" disabled={!canFlip} onClick={() => { sfx('flip'); onMove({ flip: i }); }}
               aria-label={faceUp ? `Card ${i + 1}: ${card ? BY_ID.get(card as CardId)?.name : 'hidden'}` : `Card ${i + 1}, face down`}
-              className="relative no-tap" style={{ width: w, aspectRatio: '3/4', perspective: '700px' }}>
+              className="board-cell no-tap" style={{ perspective: '700px' }}>
               <span className="absolute inset-0 transition-transform duration-[420ms]"
                 style={{ transformStyle: 'preserve-3d', transform: faceUp ? 'rotateY(180deg)' : 'none' }}>
                 {/* back */}
-                <span className="absolute inset-0 grid place-items-center border-2 border-ink-500 rounded-2xl overflow-hidden"
+                <span className="absolute inset-0 grid place-items-center border-2 border-ink-500 rounded-[clamp(8px,12cqw,16px)] overflow-hidden"
                   style={{ backfaceVisibility: 'hidden', background: 'linear-gradient(150deg,#ffe3ec,#ffd0de)' }}>
                   <svg width="40%" viewBox="0 0 24 34" aria-hidden>
                     <path d="M14,1 L2,19 H10 L8,33 L22,13 H13 Z" fill="#fff4f7" stroke="#e58aa8" strokeWidth="2.2" strokeLinejoin="round" />
                   </svg>
-                  {canFlip && <span className="absolute inset-0 rounded-2xl border-[3px] border-blush-400/0 hover:border-blush-400/90 transition-colors" />}
+                  {canFlip && <span className="absolute inset-0 rounded-[clamp(8px,12cqw,16px)] border-[3px] border-blush-400/0 hover:border-blush-400/90 transition-colors" />}
                 </span>
                 {/* face */}
-                <span className="absolute inset-0 grid place-items-center border-2 rounded-2xl overflow-hidden"
+                <span className="absolute inset-0 grid place-items-center border-2 rounded-[clamp(8px,12cqw,16px)] overflow-hidden"
                   style={{
                     backfaceVisibility: 'hidden', transform: 'rotateY(180deg)',
                     background: card
@@ -81,15 +83,16 @@ export default function MemoryBoard({ state, onMove, interactive }: BoardProps<M
                         className="w-[72%] select-none pointer-events-none"
                         style={{ transform: 'translateY(-5%)', filter: 'drop-shadow(0 3px 4px rgba(140,94,70,.28))' }} />
                     : <Glyph id={card as CardId} />)}
-                  {card && <span className="absolute bottom-0 inset-x-0 text-[8px] font-extrabold uppercase tracking-wider text-center py-[3px] bg-white/90 text-cream-100 truncate px-1 rounded-b-[14px]">{BY_ID.get(card as CardId)?.name}</span>}
+                  {card && <span className="absolute bottom-0 inset-x-0 font-extrabold uppercase tracking-wider text-center py-[3px] bg-white/90 text-cream-100 truncate px-1 rounded-b-[clamp(7px,10cqw,14px)]" style={{ fontSize: 'clamp(6px, 11cqw, 9px)' }}>{BY_ID.get(card as CardId)?.name}</span>}
                   {matched && <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full" style={{ background: owner === 0 ? '#f0b429' : '#4a9fd8' }} />}
                 </span>
               </span>
             </button>
           );
         })}
+      </BoardGrid>
       </div>
-    </div>
+    </BoardStage>
   );
 }
 

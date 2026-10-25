@@ -186,6 +186,38 @@ The art direction is **soft, warm and romantic** rather than neon-arcade:
   is a single `<img>`, and the licence is recorded in `public/art/chess/CREDITS.md`.
 - **Real Pokémon cries** back the key moments — 21 clips, see *Sound* below.
 
+### Board geometry: one rule, not twenty
+
+Every board used to size its own cells from the **viewport width** — `min(10.2vw, 62px)`
+for chess, `min(5.6vw, 29px)` for River Stones, a hand-tuned `calc((75vh − 225px) / rows)`
+for Pika Pairs — and hang its cream plate *outside* that width as an `-inset` overlay.
+Three faults fell out of that, all of them felt rather than reported:
+
+- **`vw` is not the space a board is in.** In a private room the board column is ~324 px
+  narrower than the window (the chat is docked beside it) and the solo column is capped at
+  1120 px, so the board was sized against a width it never had.
+- **Height was ignored** by eleven of the twelve lattice boards, so on a 1280×800 laptop a
+  chessboard pushed the clock, the controls and the rulebook below the fold.
+- **Fixed px caps made a stamp of a big screen** — River Stones stayed ~360 px in a 1120 px
+  column — while an `-inset-5` plate on a 360 px phone reached past the edge of the screen.
+
+`src/components/boards/BoardStage.tsx` is now the only thing that decides how big a board
+is. It measures the column it is dropped into and the room left under it, then joins them
+into one number:
+
+```
+width = clamp(min, min(column, (roomUnderTheBoard − chrome) × ratio), max)
+```
+
+Cells are then fractions of that stage (`grid-template-columns: repeat(n, minmax(0,1fr))`
+plus an `aspect-ratio`), so squares stay square at every size and nothing inside can push
+the page sideways. Each cell is its own CSS container, so marks, crowns and coordinate
+labels are sized in `cqw` — a share of the square they sit in — instead of a guess from the
+window. `BoardPlate`'s frame became real padding (it can no longer be wider than the
+column), `docs/board-geometry.png` plots the result at phone / laptop-with-chat-rail /
+desktop, and `src/components/__tests__/board-geometry.test.ts` pins the rule, the caps and
+the "no board sizes itself from the viewport" invariant.
+
 Source GIFs were cleaned by `scripts/gifs.py` (border-seeded flood fill for background knockout,
 then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP re-encode).
 
@@ -285,9 +317,10 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
   `scripts/e2e/mobile.mjs` loads all nineteen games that have a solo view at 390×844 and asserts **zero** horizontal
   overflow, no undersized tap target, a **sticky-chrome budget of 150 px**, and that the playfield
   is actually on screen. It uses two tap-target bars rather than one, because they are two
-  different questions: board squares are held to the WCAG 2.5.8 (AA) floor of 24×24 — a 10×10 fleet
-  grid on a 390 px phone physically cannot have 44 px cells and still be one board — while all
-  other controls are held to a 32 px comfort floor. The last full run before the four new boards were added was **15/15 clean**; the new boards are in the list now and `npm run e2e` re-measures all nineteen.
+  different questions: board squares are held to the WCAG 2.5.8 (AA) floor of 24×24 — a 15×15
+  River Stones lattice on a 390 px phone physically cannot have 44 px cells and still be one board;
+  the new geometry gets it to ~23 px where the old `vw` maths gave ~17 px — while all other controls
+  are held to a 32 px comfort floor. The last full run before the four new boards were added was **15/15 clean**; the new boards are in the list now and `npm run e2e` re-measures all nineteen.
 - Instruction copy follows the input device (`src/lib/useTouch.ts`, `(pointer: coarse)`). A phone is
   never told to press space or an arrow key.
 - Volt Runner re-tunes itself for the screen (`tuneFor` in `src/games/arcade/SoloView.tsx`): a phone
@@ -480,6 +513,8 @@ src/
     views.ts          id → lazily imported SoloView, read by Solo.tsx *and* lib/prefetch.ts
     howToPlay.ts      the rules card for every game, rendered by components/HowToPlay.tsx
   components/boards/  presentational boards: {state, youSlot, onMove, interactive, names}
+    BoardStage.tsx    the one sizing rule: column + headroom → stage width (fitBoardWidth)
+    BoardPlate.tsx    the cream table every board sits on (padding, never an overlay)
     registry.tsx      id → board component, the one map Room.tsx renders from
   components/artManifest.ts  artKey → cover file, importable without React
   workers/            chessEngine.worker.ts — search off the main thread

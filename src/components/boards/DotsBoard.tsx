@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { dotsRules as R, isDrawn, sidesOf, type DotsEdge, type DotsState } from '../../games/dots/rules';
 import type { BoardProps } from './types';
 import { BoardPlate, ScoreChip } from './BoardPlate';
+import { BoardGrid, BoardStage } from './BoardStage';
 
 const GOLD = '#e8a21c';
 const ROSE = '#d9456f';
@@ -22,12 +23,10 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
     () => new Set(interactive && !state.over ? R.legalMoves(state, youSlot).map((e) => `${e.o}${e.i}`) : []),
     [state, youSlot, interactive],
   );
-  /* one size drives the whole lattice, so an 8x8-dot board shrinks to fit a phone */
+  /* the lattice is one grid of (2·dots − 1) tracks: dots, the lines between them,
+     and the boxes those lines enclose. Tracks are fractions of the stage, so an
+     8-dot board fits a phone and fills a desktop without a second formula. */
   const span = cols * 2 - 1;
-  const unit = `min(${(92 / span).toFixed(2)}vw, ${Math.max(15, Math.floor(320 / span))}px)`;
-  const line = unit;
-  const dot = `calc(${unit} * 0.55)`;
-  const box = unit;
   const hot = (e: DotsEdge) => legal.has(`${e.o}${e.i}`);
 
   return (
@@ -40,17 +39,17 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
         </div>
       }
     >
+      <BoardStage ratio={(cols * 2 - 1) / (rows * 2 - 1)} max={560} min={250} reserve={150} chrome={20}>
       <div
-        className="rounded-[16px] p-2.5 sm:p-3"
+        className="rounded-[clamp(10px,2.6%,16px)] p-[clamp(4px,1.5%,10px)]"
         style={{ background: 'linear-gradient(170deg,#fffaf0,#fff0e0)', border: '2.5px solid #e2c6a6' }}
       >
-        <div
+        <BoardGrid
+          cols={cols * 2 - 1}
+          rows={rows * 2 - 1}
+          gap="0"
           role="grid"
           aria-label={`Dots and boxes, ${cols - 1} by ${rows - 1} boxes`}
-          className="grid gap-0"
-          style={{
-            gridTemplateColumns: `repeat(${cols * 2 - 1}, auto)`,
-          }}
         >
           {Array.from({ length: rows * 2 - 1 }).map((_, gr) =>
             Array.from({ length: cols * 2 - 1 }).map((__, gc) => {
@@ -58,8 +57,8 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
               const key = `${gr}-${gc}`;
               if (evenR && evenC) {
                 return (
-                  <span key={key} className="grid place-items-center" style={{ width: line, height: dot }} aria-hidden>
-                    <span className="rounded-full bg-[#c9a888]" style={{ width: Math.max(5, 6), height: Math.max(5, 6) }} />
+                  <span key={key} className="grid place-items-center" aria-hidden>
+                    <span className="rounded-full bg-[#c9a888] w-[26%] h-[26%] max-w-[7px] max-h-[7px] min-w-[4px] min-h-[4px]" />
                   </span>
                 );
               }
@@ -79,19 +78,17 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
                     onPointerEnter={() => setHover(id)}
                     onPointerLeave={() => setHover((h) => (h === id ? null : h))}
                     aria-label={`Horizontal line, row ${r + 1}, column ${c + 1}${drawn ? ', drawn' : ''}`}
-                    className={`group grid place-items-center no-tap ${can ? 'cursor-pointer' : 'cursor-default'}`}
-                    /* The drawn line is 5px of ink on a ~7px track, which made a
-                       finger-sized tap almost impossible. The hit box is padded
-                       out (and the padding cancelled with a negative margin, so
-                       the lattice keeps its geometry) to roughly 26px. */
-                    style={{ width: line, height: `calc(${dot} + 20px)`, marginBlock: -10 }}
+                    className={`group board-cell no-tap ${can ? 'cursor-pointer' : 'cursor-default'}`}
+                    /* The button now *is* the whole track — a full lattice cell,
+                       so the tap target is as big as the square a finger aims at,
+                       with no negative-margin workaround. */
                   >
                     <span
                       aria-hidden
                       className="rounded-full transition-all"
                       style={{
                         width: drawn ? '100%' : hover === id && can ? '84%' : '0%',
-                        height: 5,
+                        height: 'clamp(4px, 9%, 6px)',
                         background: drawn ? (owner === 0 ? GOLD : owner === 1 ? ROSE : '#c9a888') : 'rgba(217,69,111,.45)',
                       }}
                     />
@@ -114,15 +111,14 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
                     onPointerEnter={() => setHover(id)}
                     onPointerLeave={() => setHover((h) => (h === id ? null : h))}
                     aria-label={`Vertical line, row ${r + 1}, column ${c + 1}${drawn ? ', drawn' : ''}`}
-                    className={`grid place-items-center no-tap ${can ? 'cursor-pointer' : 'cursor-default'}`}
-                    style={{ width: `calc(${dot} + 20px)`, height: line, marginInline: -10 }}
+                    className={`board-cell no-tap ${can ? 'cursor-pointer' : 'cursor-default'}`}
                   >
                     <span
                       aria-hidden
                       className="rounded-full transition-all"
                       style={{
                         height: drawn ? '100%' : hover === id && can ? '84%' : '0%',
-                        width: 5,
+                        width: 'clamp(4px, 9%, 6px)',
                         background: drawn ? (owner === 0 ? GOLD : owner === 1 ? ROSE : '#c9a888') : 'rgba(217,69,111,.45)',
                       }}
                     />
@@ -139,23 +135,22 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
                   key={key}
                   role="gridcell"
                   aria-label={`Box row ${br + 1}, column ${bc + 1}${owner === null ? ', unclaimed' : owner === 0 ? `, ${names[0]}` : `, ${names[1]}`}`}
-                  className="grid place-items-center rounded-[3px] transition-colors"
+                  className="board-cell rounded-[6%] transition-colors"
                   style={{
-                    width: box,
-                    height: box,
                     background: owner === 0 ? 'rgba(255,210,77,.34)' : owner === 1 ? 'rgba(242,119,154,.26)' : 'transparent',
                   }}
                 >
                   {owner !== null && (
-                    <span aria-hidden className="text-[10px] leading-none" style={{ color: owner === 0 ? GOLD : ROSE }}>{owner === 0 ? '★' : '♥'}</span>
+                    <span aria-hidden className="leading-none" style={{ color: owner === 0 ? GOLD : ROSE, fontSize: 'clamp(9px, 34cqw, 16px)' }}>{owner === 0 ? '★' : '♥'}</span>
                   )}
-                  {owner === null && close && <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-blush-400/50" />}
+                  {owner === null && close && <span aria-hidden className="w-[12%] h-[12%] rounded-full bg-blush-400/50" />}
                 </div>
               );
             }),
           )}
-        </div>
+        </BoardGrid>
       </div>
+      </BoardStage>
       <div className="flex items-center justify-between px-1 pt-2 min-h-[18px]">
         <p className="text-[10.5px] text-cream-500 font-bold">
           {state.over

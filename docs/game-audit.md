@@ -1,10 +1,14 @@
 # Game audit — design, UI, UX and logic
 
-A pass over all 20 games, checking four things per game: does the **referee** obey
-its own contract, is the **board** readable and tappable, does the **screen** tell
-you what is happening, and does the **flow** lead anywhere sensible when the match
-ends. Everything listed as *fixed* is in this branch; everything listed under
-*not changed* is a deliberate decision, not an oversight.
+A pass over the 20 games that existed at the time, checking four things per game:
+does the **referee** obey its own contract, is the **board** readable and tappable,
+does the **screen** tell you what is happening, and does the **flow** lead anywhere
+sensible when the match ends. Everything listed as *fixed* is in this branch;
+everything listed under *not changed* is a deliberate decision, not an oversight.
+
+> The six games added since have their own section at the end — see
+> **Addendum: the party shelf**. The numbers in this opening section are the ones
+> that pass actually reported and are left as they were.
 
 Verification: `npm run build`, `npx vitest run` → **419 tests / 22 files**, `npx
 oxlint src server` → 0 errors. Two new suites were added (see the end).
@@ -135,3 +139,39 @@ There is no browser in this environment, so "it renders and responds" is proven
 in jsdom and by build, not by screenshot. The contrast numbers are computed, the
 hit areas are computed from the CSS, and the referee behaviour is executed — but
 a final eyeball on a real phone is still worth doing.
+
+---
+
+## Addendum: the party shelf
+
+Six games were added after the audit above: **Would You Rather**, **Word Bomb**,
+**Daily Puzzle**, **Berry Catch**, **Bluff Trivia** and **Spyfall**. They are
+checked against the same four questions, and the answers are worth writing down
+because three of them fail in ways the older games could not.
+
+| Game | Referee | Board | Screen | Flow |
+| --- | --- | --- | --- | --- |
+| Would You Rather | Server-refereed, deadline-driven; both answers are withheld until both are in or the window closes | Two large choice cards, tap targets ≥ 44 px, no third option | Says who is answering and who is betting, and never labels the answer before the reveal | Reveals both picks with the dilemma, then swaps roles |
+| Word Bomb | Server clock owns the fuse; a repeat, a wrong letter or a timeout is a strike | A lit letter, a burning fuse, and a real text field | Says whose turn it is, what letter is live, and how many strikes are left | Two strikes ends it with the word that was not found |
+| Daily Puzzle | None (solo, generated from the date) | 5×5 nonogram with row/column counts on both axes | Says which puzzle today is, and that the grid is the same for everyone | Ends on a share line that gives away no cells |
+| Berry Catch | None (solo canvas) | Full-bleed field, basket follows pointer and keys | Lives, score and streak are separate readouts, and the streak multiplier says what it will pay | Ends with score and best |
+| Bluff Trivia | Server-refereed; writing and voting each have a deadline, and the relay ticks them | Three ballot buttons, each labelled with its owner only once the vote is over | Never names the truth while the ballot is open; your own lie is disabled and marked | Reveal shows who wrote what, plus points per author |
+| Spyfall | Pure and seeded in `round.ts`; the screen only renders it | One card at a time behind a curtain, then a secret ballot | Says which player's card or vote is on screen, and never carries the last card forward | Tally, the spy's one guess, then a scorecard for every seat |
+
+Things that were deliberately **not** done:
+
+- **Spyfall and Imposter are local-only.** Both need 3–8 seats; a room seats two.
+  They say so where you pick them rather than pretending a two-player version is
+  the game.
+- **Guess & Draw is online-only.** Drawing needs a canvas on the drawer's device
+  and a text box on the guesser's; the state is a server-owned stroke list, so
+  there is no honest single-device version.
+- **No decorative animation was added to any of the six.** The only motion is the
+  berry falling, the fuse burning and the card curtain, and `prefers-reduced-motion`
+  removes all three.
+
+Test coverage at the time of writing: **560 tests across 37 files**, including
+`spyfall.test.ts` (19), `spyfall-ui.test.ts` (7), `bluff.test.ts` (16),
+`bluff-ui.test.ts` (6), `berry.test.ts` (11), `berry-ui.test.ts` (3) and
+`shelf.test.ts` (4) — the last one names the ten requested games and fails if any
+of them loses its cover, its rules card or the screen that plays it.

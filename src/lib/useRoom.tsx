@@ -31,8 +31,12 @@ interface RoomCtx {
   finished: { matchId: string; winnerSlot: 0 | 1 | null; reason: string } | null;
   error: RoomError | null;
   messages: ChatMessage[];
+  /** true while the other player is composing — expires on its own if the
+      "stopped typing" event never arrives (closed tab, dropped socket) */
+  peerTyping: boolean;
   clearError: () => void;
   sendChat: (text: string) => void;
+  sendTyping: (on: boolean) => void;
   clearMessages: () => void;
   create: (gameId: string, settings: Record<string, unknown>, roomName: string, mode?: 'online' | 'coop') => void;
   join: (code: string) => void;
@@ -63,6 +67,9 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [finished, setFinished] = useState<RoomCtx['finished']>(null);
   const [error, setError] = useState<RoomError | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [peerTyping, setPeerTyping] = useState(false);
+  const typingTimer = useRef<number | null>(null);
+  const typingLastSent = useRef(0);
   const relayRef = useRef<Relay | null>(null);
   const seqRef = useRef(0);
 
@@ -90,9 +97,13 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       chat: (p) => {
         setMessages((prev) => [...prev.slice(-99), { ...p, isSelf: p.senderId === ident.playerId }]);
         if (p.senderId !== ident.playerId) {
+          setPeerTyping(false);
           sfx('spark');
         }
       },
+      // the relay only forwards typing to the *other* player, so anything that
+      // arrives here is genuinely theirs
+      typing: (p) => setPeerTyping(p.on),
       error: (p) => {
         setError({ ...p, at: Date.now() });
         sfx('error');
@@ -100,7 +111,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       },
       nudge: (p) => { sfx('spark'); toast({ kind: 'info', title: `${p.from} says`, body: p.text }); },
       left: () => {
-        setRoom(null); setYou(null); setMatch(null); setFinished(null); setMessages([]);
+        setRoom(null); setYou(null); setMatch(null); setFinished(null); setMessages([]); setPeerTyping(false);
         try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
       },
     });
@@ -114,15 +125,38 @@ export function RoomProvider({ children }: { children: ReactNode }) {
 
   const connect = useCallback(() => relayRef.current?.connect(), []);
   const api = useMemo<RoomCtx>(() => ({
-    conn, rtt, room, you, match, finished, error, messages,
+    conn, rtt, room, you, match, finished, error, messages, peerTyping,
     clearError: () => setError(null),
     clearMessages: () => setMessages([]),
     sendChat: (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       relayRef.current?.send({ t: 'chat', text: trimmed });
+      // we just sent: stop claiming to be typing, and drop the throttle so the
+      // next keystroke is announced immediately
+      typingLastSent.current = 0;
+      if (typingTimer.current) { clearTimeout(typingTimer.current); typingTimer.current = null; }
+      relayRef.current?.send({ t: 'typing', on: false });
       if (room && you) {
         void logRoomMessage(room.code, you.id, ident.name, trimmed);
+      }
+    },
+    sendTyping: (on: boolean) => {
+      const now = Date.now();
+      if (typingTimer.current) { clearTimeout(typingTimer.current); typingTimer.current = null; }
+      if (on) {
+        if (now - typingLastSent.current > 1500) {
+          typingLastSent.current = now;
+          relayRef.current?.send({ t: 'typing', on: true });
+        }
+        // self-heal: if no further keystroke arrives, tell the other side we stopped
+        typingTimer.current = window.setTimeout(() => {
+          typingLastSent.current = 0;
+          relayRef.current?.send({ t: 'typing', on: false });
+        }, 2600);
+      } else {
+        typingLastSent.current = 0;
+        relayRef.current?.send({ t: 'typing', on: false });
       }
     },
     connect,
@@ -164,7 +198,7 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
     },
     nudge: (text) => relayRef.current?.send({ t: 'nudge', text }),
-  }), [conn, rtt, room, you, match, finished, error, messages, connect, ident.name]);
+  }), [conn, rtt, room, you, match, finished, error, messages, peerTyping, connect, ident.name]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

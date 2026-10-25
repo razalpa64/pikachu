@@ -1,11 +1,12 @@
 import { useMemo, useState, useDeferredValue } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { GAMES, GENRE_LABEL } from '../games/registry';
 import type { GameMeta } from '../games/types';
 import { GameCard } from '../components/GameCard';
 import { PikaScene } from '../mascot';
 import { Button, EmptyState, Icon, Panel, Segmented } from '../components/ui';
 import { useStore, useAmbience } from '../lib/store';
+import { LIBRARY_FAQ } from '../lib/seo';
 import { BoltRule } from '../mascot';
 
 type Filter = 'all' | 'online' | 'solo' | 'ai' | 'coop' | 'favourites' | 'recent'
@@ -131,6 +132,46 @@ export default function Library() {
           </p>
         </>
       )}
+
+      {/* The library is the page people land on from a search, so it answers the
+          things a stranger actually wants to know: no account, free, works on a
+          phone, what happens if the wifi drops. These same questions feed the
+          FAQPage structured data in src/lib/seo.ts — one array, so the visible
+          copy and the markup can never disagree. */}
+      <section aria-labelledby="arcade-faq-h" className="mt-12 pt-8 border-t-2 border-ink-600">
+        <div className="max-w-[820px]">
+          <p className="eyebrow text-volt-700 mb-2">Good to know</p>
+          <h2 id="arcade-faq-h" className="display text-[24px] sm:text-[30px] text-cream-100 leading-tight">
+            Playing in this arcade
+          </h2>
+          <p className="mt-2 text-[13.5px] text-cream-300 leading-relaxed">
+            Twenty games, one or two players, nothing to install. A private room is a five-letter code you
+            send to the person you want to play with — and because the server referees every move, the board
+            survives a dropped connection.
+          </p>
+
+          <div className="mt-5 flex flex-col gap-2">
+            {LIBRARY_FAQ.map((item) => (
+              <details key={item.q} className="panel notch-sm px-4 py-3">
+                <summary className="cursor-pointer text-[13.5px] font-extrabold text-cream-100 marker:text-blush-600">
+                  {item.q}
+                </summary>
+                <p className="mt-2 text-[13px] text-cream-300 leading-relaxed">{item.a}</p>
+              </details>
+            ))}
+          </div>
+
+          <p className="mt-6 text-[13px] text-cream-300 leading-relaxed">
+            Ready to start?{' '}
+            <Link to="/together" className="font-bold text-blush-600 hover:text-[#8f1740]">Open a private room</Link>
+            {' '}for the two of you, browse the{' '}
+            <Link to="/solo" className="font-bold text-blush-600 hover:text-[#8f1740]">single-player games</Link>
+            {' '}for a quiet match against the AI, or{' '}
+            <Link to="/feedback" className="font-bold text-blush-600 hover:text-[#8f1740]">suggest a game</Link>
+            {' '}you would like to see here next.
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

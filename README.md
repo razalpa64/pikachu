@@ -52,6 +52,62 @@ dynamic and gated, so the default setup ships ~200 kB less JavaScript.
 
 ---
 
+## Search, sharing and structured data
+
+The app is client-rendered, so SEO work here is really two separate jobs — one for
+crawlers that run JavaScript, one for everything else.
+
+**Static shell (`index.html`)** — what a link unfurler, a non-JS crawler or a slow
+phone sees: the real title and description, canonical, `robots`, Open Graph and
+Twitter tags with a hand-built 1200×630 card (`public/og/pikachu-og.png`), the web
+manifest and icons, and a site-level JSON-LD graph (`WebSite`, `Organization`,
+`WebApplication`). Below the app root sits a generated `<noscript>` index of all
+twenty games with followable links.
+
+**Per route (`src/lib/seo.ts`)** — `SeoHead` runs on every navigation and rewrites
+the *same* tags in place (never appending a second canonical). It owns the title,
+description, canonical, OG/Twitter values and the route's JSON-LD: `WebPage` plus,
+depending on the page, `VideoGame` (+`HowTo`), `BreadcrumbList`, `CollectionPage`,
+`ItemList` and `FAQPage`. `/room/:code`, `/profile`, `/settings` and unknown paths
+are sent out as `noindex, follow` — the room pages are infinite and private.
+
+**Content** — the in-play rulebook is a closed disclosure, so it is not in the DOM
+until someone opens it. Every game page therefore also renders `<GameAbout>` below
+the board: the goal, the steps, the tip, the modes, the genre and three neighbouring
+games as ordinary prose and ordinary links. `/library` carries a visible FAQ whose
+questions are the *same array* the `FAQPage` markup is built from, so the page can
+never promise answers it does not show.
+
+### Files that must stay in step with the registry
+
+```bash
+npm run seo      # runs automatically before `npm run build`
+```
+
+regenerates `public/robots.txt`, `public/sitemap.xml` and the `<noscript>` block in
+`index.html` from `GAMES`. Add a game, run the build, and all three update. Output is
+deterministic (no timestamps), so it will not dirty the working tree — and
+`src/lib/__tests__/seo.test.ts` fails if the committed files ever drift from what the
+registry would produce.
+
+### The canonical origin
+
+`SITE_URL` in `src/lib/seo.ts` is `https://pikachu-bay.vercel.app` (the same host as
+`SITE_URL` in the static head, the sitemap and `robots.txt`). Change it in one place
+when a custom domain lands, then re-run `npm run seo`.
+
+### Honest limits
+
+Metadata, sitemaps and structured data make a site *eligible* to rank; they do not
+guarantee a position, and nobody can promise first place for a query like "g".
+What is actually in our control is done: unique titles and descriptions on every
+route, crawlable prose on every game page, honest structured data, fast first paint
+(self-hosted fonts, preloaded hero, route-split chunks), and no doorway pages. The
+two remaining jobs are off-repo: verify the domain in Google Search Console and Bing
+Webmaster Tools, submit `sitemap.xml`, and earn a few real inbound links.
+
+---
+
 ## Deploying to Vercel & Cloud
 
 ### 1. Frontend on Vercel
@@ -435,7 +491,7 @@ Nothing calls a language model to pick a move. Everything runs locally and finis
 npm test
 ```
 
-345 tests in 17 files covering: legality and junk-payload rejection for all fourteen turn-based
+366 tests in 20 files covering: legality and junk-payload rejection for all fourteen turn-based
 games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs, mandatory capture and
 promotion in checkers, memory redaction and streaks, fleet placement validation plus a full
 AI-vs-AI battle, reaction-duel timing on a real clock, snake collision/growth/wrap, puzzle
@@ -446,6 +502,13 @@ passes and the wipe-out ending in Reversi, five-in-a-row in every direction plus
 in Gomoku, the extra-turn/chain rule and the box count in Dots & Boxes, and the store-extra-turn,
 opposite-pit capture and endgame sweep in Mancala. Each of the four AI tiers is played against the
 tier below it to confirm the ordering is real rather than cosmetic.
+
+`src/lib/__tests__/seo.test.ts`, `seo-dom.test.ts` and `src/components/__tests__/seo-content.test.ts`
+guard the search-facing surface the same way: every game gets a unique, length-checked title and a
+description built from its own rules; private and device-local routes stay `noindex`; the sitemap and
+the committed `<noscript>` index must match what the registry would generate today; `applySeo` may
+only ever leave one canonical, one description and one JSON-LD script behind; and the FAQ rendered on
+`/library` has to be the same array the `FAQPage` markup is built from.
 
 `src/games/__tests__/catalog.test.ts` is the guard rail around the *catalogue itself*, and it exists
 because every bug of this kind is a consistency bug rather than a logic bug. It asserts that game

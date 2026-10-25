@@ -5,6 +5,7 @@ import { RoomProvider } from './lib/useRoom';
 import { ToastStack } from './components/ui';
 import { ElectricLoader } from './mascot';
 import AppShell from './components/AppShell';
+import { SeoHead } from './components/SeoHead';
 import { idlePrefetch } from './lib/prefetch';
 import Intro from './screens/Intro';
 import Home from './screens/Home';
@@ -71,6 +72,10 @@ function Shell() {
 export default function App() {
   return (
     <StoreProvider>
+      {/* Above the shell on purpose: a first-time visitor — or a crawler — sees
+          the three-second intro first, and the <head> should already describe the
+          page they asked for while that plays. */}
+      <SeoHead />
       <Shell />
     </StoreProvider>
   );

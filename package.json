@@ -17,7 +17,9 @@
     "e2e": "node scripts/e2e/audio.mjs && node scripts/e2e/routes.mjs && node scripts/e2e/play.mjs && node scripts/e2e/reconnect.mjs && node scripts/e2e/audit-games.mjs && node scripts/e2e/_new5.mjs && node scripts/e2e/online-cards.mjs && node scripts/e2e/online-quiz.mjs && node scripts/e2e/online-audio.mjs && node scripts/e2e/online-close.mjs && node scripts/e2e/online-sketch.mjs && node scripts/e2e/runner.mjs && node scripts/e2e/runner.mjs --phone && node scripts/e2e/close.mjs && node scripts/e2e/mobile.mjs",
     "smoke": "tsx scripts/smoke.ts && tsx scripts/smoke-cards.ts && tsx scripts/smoke-quiz.ts && tsx scripts/smoke-online-lifecycle.ts",
     "smoke:newgames": "tsx scripts/smoke-newgames.ts",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "seo": "tsx scripts/seo.ts",
+    "prebuild": "npm run seo"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

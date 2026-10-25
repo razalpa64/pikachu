@@ -4,6 +4,7 @@ import { gameBySlug } from '../games/registry';
 import { SOLO_VIEWS } from '../games/views';
 import type { GameMeta } from '../games/types';
 import { ElectricLoader } from '../mascot';
+import { GameAbout } from '../components/GameAbout';
 import { Button, EmptyState, Icon } from '../components/ui';
 import { useStore } from '../lib/store';
 
@@ -14,7 +15,6 @@ export default function Solo() {
   const game = useMemo(() => gameBySlug(slug), [slug]);
 
   useEffect(() => { if (game) visit(game.id, 'solo'); }, [game?.id]);
-  useEffect(() => { if (game) document.title = `${game.title} — PIKACHU`; return () => { document.title = 'PIKACHU'; }; }, [game?.id]);
 
   if (!game) {
     return (
@@ -38,12 +38,18 @@ export default function Solo() {
   }
 
   return (
-    <Suspense fallback={
-      <div className="min-h-[70vh] grid place-items-center">
-        <ElectricLoader status={`Loading ${game.title}`} detail="Fetching the engine for this game." />
-      </div>
-    }>
-      <View game={game} />
-    </Suspense>
+    <>
+      <Suspense fallback={
+        <div className="min-h-[70vh] grid place-items-center">
+          <ElectricLoader status={`Loading ${game.title}`} detail="Fetching the engine for this game." />
+        </div>
+      }>
+        <View game={game} />
+      </Suspense>
+      {/* rules, modes and related games as plain prose — below the board, so it
+          never delays the first move (see GameAbout for why it also matters
+          off-screen: the in-play rulebook is a closed disclosure) */}
+      <GameAbout game={game} />
+    </>
   );
 }

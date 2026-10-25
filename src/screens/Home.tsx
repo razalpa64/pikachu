@@ -221,22 +221,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ============================ DEDICATION ============================ */}
-        <section aria-labelledby="dedication-h" className="pt-1">
+        {/* ============================ CLOSING ILLUSTRATION ============================ */}
+        <section aria-label="Pikachu and a friend waving goodbye" className="pt-1">
           <BoltRule />
           <div className="mt-6 pb-3 flex flex-col items-center text-center">
-            <div className="flex items-end gap-1 mb-1">
+            <div className="flex items-end gap-1">
               <PikachuMascot state="excited" size={78} />
               <PikachuMascot state="idle" size={78} flip />
             </div>
-            <p className="eyebrow text-volt-700">Ten games, one reason</p>
-            <h2 id="dedication-h" className="display leading-none text-[clamp(30px,6.5vw,52px)] text-cream-100 mt-1">
-              Made For Julian
-            </h2>
-            <p className="mt-2.5 text-[13px] text-cream-500 max-w-[44ch] leading-relaxed">
-              Every board, every sound and every little drawing in here was put together
-              for one person. Press play whenever you like — I'll be waiting.
-            </p>
           </div>
         </section>
       </div>

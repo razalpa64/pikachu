@@ -77,7 +77,10 @@
   --ink: #5c4035;
   --line: #e0c3a2;
   --line-strong: #c89b78;
-  --shadow-soft: 0 10px 24px -14px rgba(140, 94, 70, .55);
+  /* Two layers instead of one: a tight contact shadow that gives paper its
+     edge, plus a wide soft one that lifts it off the page. Single-layer
+     shadows read as grey smudges; the pair reads as depth. */
+  --shadow-soft: 0 1px 2px -1px rgba(120, 80, 55, .16), 0 14px 30px -18px rgba(140, 94, 70, .55);
   --shadow-pop: 0 4px 0 0 var(--line-strong);
   color-scheme: light;
 }
@@ -132,7 +135,7 @@ button { font-family: inherit; }
   background: linear-gradient(180deg, #fffefb, #fff7ea);
   border: 2px solid var(--line);
   border-radius: 22px;
-  box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, var(--shadow-soft);
+  box-shadow: 0 1px 0 rgba(255,255,255,.95) inset, var(--shadow-soft);
 }
 .panel-notch { border-radius: 26px; }
 .notch-sm { border-radius: 16px; }
@@ -173,6 +176,12 @@ button { font-family: inherit; }
 /* ============================================================
    Typography
    ============================================================ */
+/* Headings break into even lines instead of leaving one orphan word; body copy
+   avoids the same orphan and stops hyphenating oddly. Both degrade silently in
+   browsers that do not support them. */
+h1, h2, h3, h4, .display, .wordmark { text-wrap: balance; }
+p, li, dd { text-wrap: pretty; }
+
 .display {
   font-family: var(--font-display);
   font-weight: 800;
@@ -213,13 +222,13 @@ button { font-family: inherit; }
   font-family: var(--font-display);
   color: var(--btn-fg); background: var(--btn-bg);
   border: 2.5px solid var(--btn-br); border-radius: 999px;
-  box-shadow: 0 4px 0 0 var(--btn-br);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 4px 0 0 var(--btn-br);
   transition: transform .09s ease, box-shadow .09s ease, filter .15s, background .15s;
   user-select: none; white-space: nowrap;
 }
-.btn:hover:not(:disabled) { transform: translateY(-1.5px); box-shadow: 0 5.5px 0 0 var(--btn-br); filter: brightness(1.03); }
-.btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 0 var(--btn-br); }
-.btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: 0 4px 0 0 var(--btn-br); }
+.btn:hover:not(:disabled) { transform: translateY(-1.5px); box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 5.5px 0 0 var(--btn-br); filter: brightness(1.03); }
+.btn:active:not(:disabled) { transform: translateY(4px); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 0 0 0 var(--btn-br); }
+.btn:disabled { opacity: .45; cursor: not-allowed; box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 4px 0 0 var(--btn-br); }
 
 .btn-primary {
   --btn-fg: #5a3a12; --btn-br: #e0a21f;
@@ -233,8 +242,8 @@ button { font-family: inherit; }
 }
 .btn-danger { --btn-fg: #fff3f5; --btn-br: #c73f5c; background: linear-gradient(180deg, #f6869a, #de5273); }
 .btn-mint { --btn-fg: #175c45; --btn-br: #5fbf96; background: linear-gradient(180deg, #d6f3e7, var(--color-mint-400) 65%, #74cfa9); }
-.btn-sm { padding: .4rem .85rem; font-size: 12.5px; border-width: 2px; box-shadow: 0 3px 0 0 var(--btn-br); }
-.btn-sm:hover:not(:disabled) { box-shadow: 0 4.5px 0 0 var(--btn-br); }
+.btn-sm { padding: .4rem .85rem; font-size: 12.5px; border-width: 2px; box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 3px 0 0 var(--btn-br); }
+.btn-sm:hover:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 4.5px 0 0 var(--btn-br); }
 .btn-lg { padding: .95rem 1.9rem; font-size: 17.5px; }
 
 /* ============================================================
@@ -267,6 +276,7 @@ button { font-family: inherit; }
 @keyframes pk-wobble { 0%,100%{transform:rotate(-2.5deg)} 50%{transform:rotate(2.5deg)} }
 @keyframes pk-hop { 0%,100%{transform:translateY(0)} 28%{transform:translateY(-14px) scaleY(1.04)} 55%{transform:translateY(0) scaleY(.97)} }
 @keyframes pk-heartbeat { 0%,100%{transform:scale(1)} 14%{transform:scale(1.18)} 28%{transform:scale(1)} 42%{transform:scale(1.12)} }
+@keyframes pk-check { 0%,100%{opacity:.72} 50%{opacity:1} }
 
 .a-float { animation: pk-float 3.8s ease-in-out infinite; }
 .a-breathe { animation: pk-breathe 3.2s ease-in-out infinite; }
@@ -308,9 +318,23 @@ html[data-quality="balanced"] .fx-heavy { opacity: .6; }
 /* board helpers */
 .board-shadow {
   border-radius: 26px;
-  box-shadow: 0 26px 48px -26px rgba(140,94,70,.75), 0 0 0 3px #fff, 0 0 0 5px var(--line-strong);
+  box-shadow: 0 26px 48px -26px rgba(140,94,70,.75), 0 0 0 3px #fff, 0 0 0 5px var(--line-strong),
+              inset 0 0 0 1px rgba(120,80,55,.10);
 }
 .no-tap { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+/* --------- chess squares ---------
+   A hover wash so the square under the pointer answers before you commit to a
+   move. It sits under the piece (which carries z-index 1) and never captures a
+   tap, so the board still behaves exactly as before. */
+.chess-sq { isolation: isolate; }
+.chess-sq::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: rgba(255, 255, 255, 0);
+  transition: background .12s ease;
+}
+.chess-sq[data-playable="true"]:hover::after { background: rgba(255, 255, 255, .16); }
+.chess-sq[data-playable="true"]:active::after { background: rgba(255, 255, 255, .28); }
 
 /* pixel art must stay crisp */
 .pixelated { image-rendering: pixelated; }

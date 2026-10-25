@@ -56,20 +56,30 @@ export default function CheckersBoard({ state, youSlot, onMove, interactive, hin
                 {pc && (
                   <span className="relative grid place-items-center rounded-full transition-transform"
                     style={{
-                      width: '78%', height: '78%',
-                      boxShadow: isSel ? '0 0 0 3px rgba(217,69,111,.55)' : undefined,
+                      width: '84%', height: '84%',
+                      boxShadow: isSel ? '0 0 0 3px rgba(217,69,111,.6)' : undefined,
                       borderRadius: 999,
                       transform: isSel ? 'translateY(-2px) scale(1.04)' : undefined,
                     }}>
                     <img
                       src={pc.p === 0 ? '/art/piece/checker-gold.webp' : '/art/piece/checker-blush.webp'}
-                      alt="" aria-hidden draggable={false}
+                      alt="" aria-hidden draggable={false} decoding="async"
                       className="absolute inset-0 w-full h-full select-none"
-                      style={{ filter: 'drop-shadow(0 3px 4px rgba(140,94,70,.4))' }}
+                      style={{ filter: isSel
+                        ? 'drop-shadow(0 5px 6px rgba(120,80,55,.45))'
+                        : 'drop-shadow(0 3px 4px rgba(120,80,55,.38))' }}
                     />
                     {pc.king && (
-                      <svg className="absolute" width="48%" viewBox="0 0 24 18" aria-hidden>
-                        <path d="M2,16 L4,3 L9,9 L12,1 L15,9 L20,3 L22,16 Z" fill={pc.p === 0 ? '#fffdf2' : '#fff2f6'} stroke={pc.p === 0 ? '#b87c12' : '#c75f85'} strokeWidth="1.6" strokeLinejoin="round" />
+                      /* a crown that reads at 30px: three points, a band under them, and a
+                         cocoa outline heavy enough to hold on both coin colours */
+                      <svg className="absolute" viewBox="0 0 24 21" aria-hidden
+                        style={{ width: '52%', height: '45.5%', filter: 'drop-shadow(0 1px 1px rgba(120,80,55,.35))' }}>
+                        <g fill={pc.p === 0 ? '#fffdf2' : '#fff2f6'}
+                          stroke={pc.p === 0 ? '#9a6408' : '#a8425f'} strokeWidth="1.7"
+                          strokeLinejoin="round" strokeLinecap="round">
+                          <path d="M3.2 14.6 4.4 4.6l4.6 3.6L12 2.9l3 5.3 4.6-3.6 1.2 10z" />
+                          <rect x="3.2" y="15.2" width="17.6" height="3.1" rx="1.3" />
+                        </g>
                       </svg>
                     )}
                   </span>

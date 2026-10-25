@@ -75,9 +75,11 @@ function Disc({ who, size, win, drop }: { who: 0 | 1; size: number | string; win
       }}>
       <img
         src={gold ? '/art/piece/volt.webp' : '/art/piece/spark.webp'}
-        alt="" aria-hidden draggable={false}
+        alt="" aria-hidden draggable={false} decoding="async"
         className="block w-full h-full select-none"
-        style={{ filter: 'drop-shadow(0 2px 3px rgba(140,94,70,.35))' }}
+        /* two shadows: a tight one that seats the disc in its hole and a wider
+           one that lifts it — a single soft shadow just looks like grey haze */
+        style={{ filter: 'drop-shadow(0 1px 1px rgba(120,80,55,.35)) drop-shadow(0 3px 4px rgba(120,80,55,.26))' }}
       />
       <style>{`@keyframes c4drop { 0% { transform: translateY(-340%) scaleY(1.18) } 72% { transform: translateY(6%) scaleY(.92) } 100% { transform: none } }`}</style>
     </span>

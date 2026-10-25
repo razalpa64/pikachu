@@ -100,6 +100,10 @@ The art direction is **soft, warm and romantic** rather than neon-arcade:
 - **Game art is painted, not CSS.** Ten cover illustrations in `public/art/game/*.webp` plus the
   hero scene, served through `<GameArtwork artKey … />` with real `alt` text where the image
   carries meaning and `aria-hidden` where it is decorative.
+- **Chess pieces are real artwork too.** The twelve pieces in `public/art/chess/*.svg` are the
+  "Staunty" set lichess uses — transparent SVGs, so they sit on any square without a halo and
+  stay sharp from 18 px in the captured row to a full square. `<ChessPiece type colour size />`
+  is a single `<img>`, and the licence is recorded in `public/art/chess/CREDITS.md`.
 - **Real Pokémon cries** back the key moments — 21 clips, see *Sound* below.
 
 Source GIFs were cleaned by `scripts/gifs.py` (border-seeded flood fill for background knockout,
@@ -734,6 +738,18 @@ browser:
     but obvious to `close.mjs`, which navigates by role and name the way a screen reader does. They
     carry explicit `aria-label`s now. Two regressions from one three-word change, each found by a
     different suite.
+51. **The chess board was the last board still drawn with hand-written SVG paths.** Every other
+    board had moved to painted artwork; the chess set was a `PATHS` map of six hand-plotted
+    `d` strings, which is why it looked like clip art beside the painted checkers coins. The
+    pieces are now real transparent SVGs in `public/art/chess` (the same Staunty set lichess
+    uses), so `<ChessPiece>` is one `<img>` and the twelve files cache once per session. Sizing
+    moved from a fixed 78% to 88% of the square, legal-move dots and capture rings now sit above
+    the piece instead of behind it, a checked king gets a red bloom under the artwork, and the
+    promotion chooser and captured-material strip use the same source, so nothing can drift out
+    of sync. Attribution and licence live next to the files.
+52. **The dedication under the home page is gone.** "Made For Julian" and its paragraph were
+    removed at the owner's request; the closing illustration (the divider plus the two mascots)
+    stays, so the page still ends on a picture rather than on the game grid.
 
 
 ---
@@ -820,7 +836,10 @@ artwork.
 ## Credits
 
 Game design, engines, interface, layout, typography, boards, icons and the synthesised sound layer
-are original to this project. Mascot clips are cleaned and re-encoded from supplied source GIFs;
+are original to this project. The chess piece artwork in `public/art/chess` is the **Staunty** set
+by **sadsnake1** (CC BY-NC-SA 4.0), taken unmodified from the lichess repository — see
+`public/art/chess/CREDITS.md`. It is used here under the non-commercial clause, which this personal
+project satisfies. Mascot clips are cleaned and re-encoded from supplied source GIFs;
 character cries are the public Pokémon Showdown cry files. Runtime dependencies are React, React
 Router, `chess.js` (move legality), `ws` (relay) and the optional Supabase client.
 

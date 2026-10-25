@@ -1,10 +1,26 @@
-import { Fragment, useMemo, useState, useEffect } from 'react';
+import { Fragment, useMemo, useState, useEffect, type CSSProperties } from 'react';
 import { FLEET, autoPlace, validPlacement, rcOf, type BSState } from '../../games/battleship/rules';
 import type { BoardProps } from './types';
 import { Button, Icon } from '../ui';
 import { useStore } from '../../lib/store';
 
 const LETTERS = 'ABCDEFGHIJ';
+
+/**
+ * One definition for a ship hull. A flat fill read as a coloured rectangle, so
+ * it is now three things at once: a top-lit gradient, a hairline of foam along
+ * the deck, and a soft shadow that seats it in the water.
+ */
+const SHIP: CSSProperties = {
+  background: 'linear-gradient(180deg,#b9e4f8,#6fb9e4 46%,#3f92c6)',
+  border: '1.5px solid #2f6f9e',
+  boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,.75), 0 2px 3px rgba(45,95,135,.35)',
+};
+const SUNK: CSSProperties = {
+  background: 'linear-gradient(180deg,#ffc9d4,#f3869f 48%,#d9547a)',
+  border: '1.5px solid #c73f5c',
+  boxShadow: 'inset 0 1.5px 0 rgba(255,255,255,.55), 0 2px 3px rgba(150,50,80,.32)',
+};
 
 export default function BattleshipBoard({ state, youSlot, onMove, interactive, names }: BoardProps<BSState>) {
   const { sfx } = useStore();
@@ -58,7 +74,7 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
           <p className="eyebrow mb-2">Deploy your fleet</p>
           <Grid size={size} label="Your waters" cellRender={(cell) => {
             const id = draftCells.get(cell);
-            return id ? <span className="absolute inset-[9%] rounded-[2px]" style={{ background: 'linear-gradient(150deg,#8fd0f2,#4a9fd8)', border: '1.5px solid #2f6f9e', borderRadius: 5 }} /> : null;
+            return id ? <span className="absolute inset-[8%] rounded-[5px]" style={SHIP} /> : null;
           }} onCell={ready ? undefined : placeAt} />
         </div>
         <div className="panel notch-sm p-4 w-full lg:w-[290px]">
@@ -131,7 +147,8 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
                     <path d="M4 4 20 20M20 4 4 20" />
                   </svg>
                 </span>
-              : <span className="absolute w-[26%] h-[26%] rounded-full bg-spark-400/55" />;
+              : <span className="absolute inset-[32%] rounded-full"
+                  style={{ background: 'rgba(217,69,111,.5)', boxShadow: 'inset 0 1px 2px rgba(140,40,70,.45)' }} />;
           }} />
       </div>
       <div>
@@ -143,10 +160,13 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
             const shot = theirShots.has(cell);
             return (
               <>
-                {ship && <span className="absolute inset-[9%] rounded-[2px]"
-                  style={{ background: sunkOfMine.has(ship) ? 'linear-gradient(150deg,#ffb3c4,#e05a74)' : 'linear-gradient(150deg,#8fd0f2,#4a9fd8)', borderRadius: 5, border: `1.5px solid ${sunkOfMine.has(ship) ? '#c73f5c' : '#2f6f9e'}` }} />}
+                {ship && <span className="absolute inset-[8%] rounded-[5px]"
+                  style={sunkOfMine.has(ship) ? SUNK : SHIP} />}
                 {hit && <span className="absolute inset-[22%]"><svg viewBox="0 0 24 24" className="w-full h-full" stroke="#e05a74" strokeWidth="4" strokeLinecap="round" fill="none"><path d="M4 4 20 20M20 4 4 20" /></svg></span>}
-                {shot && !hit && <span className="absolute w-[22%] h-[22%] rounded-full bg-cream-500/50" />}
+                {shot && !hit && (
+                  <span className="absolute inset-[30%] rounded-full"
+                    style={{ background: 'rgba(120,100,88,.55)', boxShadow: 'inset 0 1px 2px rgba(60,45,38,.5)' }} />
+                )}
               </>
             );
           }} />

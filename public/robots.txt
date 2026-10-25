@@ -14,4 +14,4 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
-Sitemap: https://pikachu-bay.vercel.app/sitemap.xml
+Sitemap: https://pikachu.invytra.in/sitemap.xml

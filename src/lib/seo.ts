@@ -20,8 +20,12 @@ import { GAMES, gameBySlug, GENRE_LABEL } from '../games/registry';
 import { howToFor } from '../games/howToPlay';
 import type { GameMeta } from '../games/types';
 
-/** Canonical production origin. Preview deploys deliberately point here too. */
-export const SITE_URL = 'https://pikachu-bay.vercel.app';
+/**
+ * Canonical production origin — the custom domain, not the *.vercel.app host.
+ * Preview deploys deliberately point here too, so a preview URL never competes
+ * with production in an index.
+ */
+export const SITE_URL = 'https://pikachu.invytra.in';
 export const SITE_NAME = 'Pikachu Arcade';
 export const SITE_SHORT = 'PIKACHU';
 export const OG_IMAGE = '/og/pikachu-og.png';

@@ -4,7 +4,7 @@ import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { act } from 'react';
 import { MemoryRouter, useNavigate } from 'react-router-dom';
-import { applySeo, seoForPath } from '../seo';
+import { SITE_URL, applySeo, seoForPath } from '../seo';
 import { SeoHead } from '../../components/SeoHead';
 
 /**
@@ -18,7 +18,7 @@ beforeEach(() => {
     '<meta name="description" content="static default" />',
     '<meta name="robots" content="index, follow" />',
     '<meta property="og:title" content="static default" />',
-    '<link rel="canonical" href="https://pikachu-bay.vercel.app/" />',
+    `<link rel="canonical" href="${SITE_URL}/" />`,
   ].join('');
 });
 
@@ -35,9 +35,9 @@ describe('applySeo', () => {
 
     expect(document.title).toBe(seoForPath('/solo/chess-arena').title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href'))
-      .toBe('https://pikachu-bay.vercel.app/solo/chess-arena');
+      .toBe(`${SITE_URL}/solo/chess-arena`);
     expect(document.querySelector('meta[property="og:url"]')?.getAttribute('content'))
-      .toBe('https://pikachu-bay.vercel.app/solo/chess-arena');
+      .toBe(`${SITE_URL}/solo/chess-arena`);
   });
 
   it('replaces the graph, so a game never leaks into the next page', () => {
@@ -83,13 +83,13 @@ describe('SeoHead on navigation', () => {
 
     expect(document.title).toBe(seoForPath('/library').title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href'))
-      .toBe('https://pikachu-bay.vercel.app/library');
+      .toBe(`${SITE_URL}/library`);
 
     await act(async () => { (host.querySelector('#go') as HTMLButtonElement).click(); });
 
     expect(document.title).toContain('Chess Arena');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href'))
-      .toBe('https://pikachu-bay.vercel.app/solo/chess-arena');
+      .toBe(`${SITE_URL}/solo/chess-arena`);
     expect(document.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
 
     await act(async () => { root.unmount(); });

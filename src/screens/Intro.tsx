@@ -98,7 +98,15 @@ export default function Intro({ onDone }: { onDone: () => void }) {
       className={`fixed inset-0 z-[200] overflow-hidden select-none transition-opacity duration-300 ${leaving ? 'opacity-0' : 'opacity-100'}`}
       aria-label="Welcome to Pikachu"
     >
-      <p className="sr-only">Welcome to Pikachu — a little arcade for two. The arcade is opening.</p>
+      {/* Screen readers get the same promise the app is about to make, instead of
+          "the arcade is opening". It is also the only sentence a crawler that
+          snapshots the intro (rather than waiting out its 3.7s) can read, so it
+          states plainly what the site is rather than teasing it. */}
+      <p className="sr-only">
+        Welcome to Pikachu Arcade — twenty free browser games for one or two people, including chess,
+        checkers, battleship, Wild Eights and a picture quiz. Open a private room, share the five-letter
+        code, and play from anywhere. The arcade is opening.
+      </p>
 
       {/* warm paper, with the light following the pointer */}
       <div ref={backdrop} aria-hidden className="absolute inset-0 intro-glow" />

@@ -198,6 +198,18 @@ describe('cartridge validation', () => {
     return rom;
   };
 
+  it('accepts a homebrew GBA build that blanks the Nintendo logo', () => {
+    /* `grimlight` ships `2e 00 00 ea` at 0x00 with a zeroed logo area. The shelf
+       hosts it, so the drop zone has to take it back. */
+    const rom = new Uint8Array(0x1000);
+    rom.set([0x2e, 0x00, 0x00, 0xea]);
+    expect(looksLikeGbaRom(rom)).toBe(true);
+    expect(detectCartridge(rom)).toBe('gba');
+    rom[3] = 0x00;
+    expect(looksLikeGbaRom(rom)).toBe(false);
+    expect(detectCartridge(rom)).toBeNull();
+  });
+
   it('tells a Game Boy dump from a Game Boy Advance one', () => {
     const gb = gbRom();
     expect(looksLikeGbRom(gb)).toBe(true);

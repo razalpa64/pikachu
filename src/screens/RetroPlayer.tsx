@@ -13,6 +13,7 @@ import {
   type PlayerStatus,
   type RetroGame,
 } from '../lib/retro';
+import { openRememberedCartridge } from '../lib/localCartridge';
 import { Button, EmptyState, Icon } from '../components/ui';
 import { useStore } from '../lib/store';
 
@@ -144,6 +145,13 @@ export default function RetroPlayer() {
   const [muted, setMuted] = useState(false);
   const [panel, setPanel] = useState<'none' | 'keys' | 'about'>('none');
   const [stalled, setStalled] = useState(false);
+  /* `/retro/local` reached by a reload or a direct link has no route state. The
+     cartridge is in this browser's own store, so it is recovered from there
+     rather than given up on. */
+  const [recovered, setRecovered] = useState<Boot>(undefined);
+  const [recovering, setRecovering] = useState(isLocal && !boot?.file);
+  /** Route state wins; otherwise the cartridge this browser kept, if any. */
+  const cartridge = boot?.file ? boot : recovered;
   /* `full` is true for either kind of fullscreen: the browser's, or ours. Safari
      on iOS does not implement element fullscreen at all, and a phone is exactly
      the device where "the game covers the screen" matters most — so when the
@@ -157,7 +165,7 @@ export default function RetroPlayer() {
   const game = library ? retroGameById(library, id) : null;
   /* Nothing was mounted to play: the page shows a note instead of a console. */
   const blocked =
-    (isLocal && !boot?.file) ||
+    (isLocal && !cartridge?.file) ||
     (!isLocal && libraryError) ||
     (!isLocal && !!library && !game);
 
@@ -204,7 +212,7 @@ export default function RetroPlayer() {
           if (!data.dataUrl) break;
           const a = document.createElement('a');
           a.href = data.dataUrl;
-          a.download = `${(game?.title ?? boot?.name ?? 'retro').replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
+          a.download = `${(game?.title ?? cartridge?.name ?? 'retro').replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.png`;
           document.body.appendChild(a);
           a.click();
           a.remove();
@@ -220,7 +228,7 @@ export default function RetroPlayer() {
     };
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [game?.title, boot?.name, say, sfx]);
+  }, [game?.title, cartridge?.name, say, sfx]);
 
   /* An honest signal while a big cartridge is still streaming. */
   useEffect(() => {
@@ -251,20 +259,36 @@ export default function RetroPlayer() {
     win.postMessage({ channel: RETRO_CHANNEL, type: 'cmd', cmd, value }, window.location.origin);
   }, []);
 
+  useEffect(() => {
+    if (!isLocal || boot?.file) { setRecovering(false); return; }
+    let alive = true;
+    openRememberedCartridge()
+      .then((cart) => {
+        if (!alive || !cart) return;
+        setRecovered({
+          name: cart.file.name.replace(/\.(gba|agb|bin|gb|gbc)$/i, ''),
+          file: cart.file,
+          kind: cart.kind,
+        });
+      })
+      .finally(() => { if (alive) setRecovering(false); });
+    return () => { alive = false; };
+  }, [boot?.file, isLocal]);
+
   const onFrameLoad = useCallback(() => {
     if (!isLocal) return;
-    const file = boot?.file;
+    const file = cartridge?.file;
     const win = iframeRef.current?.contentWindow;
     if (!file || !win) return;
     win.postMessage(
       {
         channel: RETRO_CHANNEL,
         type: 'boot',
-        game: { name: boot?.name ?? file.name, romFile: file, kind: boot?.kind ?? 'gba' },
+        game: { name: cartridge?.name ?? file.name, romFile: file, kind: cartridge?.kind ?? 'gba' },
       },
       window.location.origin,
     );
-  }, [boot?.file, boot?.kind, boot?.name, isLocal]);
+  }, [cartridge?.file, cartridge?.kind, cartridge?.name, isLocal]);
 
   /* Fullscreen is requested on the *stage*, which is also where our own
      full-bleed mode lives. */
@@ -328,10 +352,17 @@ export default function RetroPlayer() {
     </div>
   );
 
-  if (isLocal && !boot?.file) {
+  if (isLocal && !boot?.file && recovering) {
+    return (
+      <div className="min-h-dvh grid place-items-center px-[var(--shell-pad)] py-10">
+        <EmptyState mascot="waiting" title="Reading your cartridge" body="Looking for it in this browser's own store — nothing leaves the device." />
+      </div>
+    );
+  }
+  if (isLocal && !cartridge?.file) {
     return notFound(
-      'That cartridge is no longer in memory',
-      'A ROM you open from your device is never stored, so reloading the page forgets it. Pick the file again and it starts from the top.',
+      'No cartridge in the handheld',
+      'Drop a ROM you own on the shelf and it stays in this browser, so this page can start it again. Nothing is uploaded, and Eject on the shelf removes it.',
     );
   }
   if (!isLocal && libraryError) {
@@ -344,7 +375,7 @@ export default function RetroPlayer() {
     return notFound('No such cartridge', `Nothing in the shelf matches “${id}”.`);
   }
 
-  const title = game?.title ?? boot?.name ?? 'Your cartridge';
+  const title = game?.title ?? cartridge?.name ?? 'Your cartridge';
   const statusCopy = STATUS_COPY[status];
   const src = isLocal ? RETRO_PLAYER_URL : `${RETRO_PLAYER_URL}?game=${encodeURIComponent(id)}`;
   const lampState = status === 'running' ? 'on' : status === 'paused' ? 'paused' : status === 'error' ? 'off' : 'waiting';
@@ -363,7 +394,7 @@ export default function RetroPlayer() {
           <p className="gb-head-meta">
             {game
               ? `Game Boy Advance · ${game.author}${game.year ? ` · ${game.year}` : ''}`
-              : boot?.kind === 'gb'
+              : cartridge?.kind === 'gb'
                 ? 'Game Boy · from your device'
                 : 'Game Boy Advance · from your device'}
           </p>
@@ -420,7 +451,7 @@ export default function RetroPlayer() {
 
             {/* A Game Boy dump is 10:9, not the GBA's 3:2, so the iframe is
                 narrowed inside the LCD instead of being stretched to fill it. */}
-            <div className="gb-screen" data-system={boot?.kind === 'gb' && isLocal ? 'gb' : 'gba'}>
+            <div className="gb-screen" data-system={cartridge?.kind === 'gb' && isLocal ? 'gb' : 'gba'}>
               <iframe
                 ref={iframeRef}
                 src={src}

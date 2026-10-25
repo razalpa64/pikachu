@@ -718,6 +718,13 @@ scripts/e2e/retro.mjs  the proof (see below)
   player through route state. The player turns it into a `blob:` URL in memory.
   No request is made, nothing is written to storage, and a reload forgets it —
   `retro.mjs` asserts both the boot and the absence of an upload.
+* **Your cartridge is remembered.** Dropping a ROM writes it into this
+  browser's own IndexedDB (one slot, capped at the same 32 MB), so a reload does
+  not eject it and the save file has something to belong to. The shelf card shows
+  what is in the handheld with **Continue** and **Eject**; `/retro/local` on its
+  own recovers the cartridge from the store instead of giving up, and says so
+  plainly when there is nothing stored. Nothing is uploaded, ever — the same rule
+  as the jukebox, which stores its tracks the same way.
 * **Dumps of Game Boy and Game Boy Color cartridges play too.** The mGBA core
   runs all three consoles, so `.gb` and `.gbc` files are accepted as well; the
   header check tells them apart (`detectCartridge`), and a 10:9 Game Boy picture

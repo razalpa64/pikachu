@@ -124,6 +124,28 @@ await page.getByRole('radio', { name: 'All carts' }).click();
 await page.waitForTimeout(200);
 check('the lens goes back to the whole shelf', (await cards.count()) === manifest.games.length);
 
+/* ------------------------------------------------------- the hidden desk */
+/* Nothing about /admin may be discoverable, and it must stay shut on a build
+   with no Supabase configuration — which is what this one is. */
+const sitemap = await (await fetch(`${BASE}/sitemap.xml`)).text();
+check('the sitemap does not list the admin desk', !/\/admin/.test(sitemap));
+check('no page links to the admin desk', (await page.locator('a[href$="/admin"]').count()) === 0);
+
+await page.goto(`${BASE}/admin`, { waitUntil: 'networkidle' });
+await page.waitForTimeout(400);
+const robots = await page.getAttribute('meta[name="robots"]', 'content');
+check('/admin is noindex', /noindex/.test(robots ?? ''), String(robots));
+const deskText = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
+check(
+  'and stays shut: no desk, no upload form',
+  !/Publish to the shelf|Cartridges on the shelf/i.test(deskText),
+);
+check(
+  'with an honest reason instead',
+  /not wired up on this build|Sign in to continue/i.test(deskText),
+  deskText.slice(0, 120),
+);
+
 /* ------------------------------------------------------- launch a game */
 const requests = [];
 page.on('request', (r) => requests.push(r.url()));

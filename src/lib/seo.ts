@@ -351,6 +351,13 @@ const STATIC_PAGES: Record<string, PageCopy> = {
     description: 'Motion, sound, quality and privacy settings for this device.',
     noindex: true,
   },
+  /* Unlinked, unlisted and noindex: the door is a URL plus a roster row in
+     Postgres. Nothing on the public site points here. */
+  '/admin': {
+    title: 'Maintainer Desk',
+    description: 'The back office for the arcade shelf.',
+    noindex: true,
+  },
 };
 
 const NOT_FOUND: PageCopy = {

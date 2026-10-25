@@ -72,8 +72,20 @@ export const RETRO_MANIFEST_URL = '/retro/roms.json';
 export const RETRO_PLAYER_URL = '/retro/player.html';
 
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const ROM_RE = /^roms\/[a-z0-9]+(?:-[a-z0-9]+)*\.gba$/;
-const COVER_RE = /^covers\/[a-z0-9]+(?:-[a-z0-9]+)*\.png$/;
+/**
+ * Cartridge assets are either a path inside this site's own `/retro/` folder, or
+ * an absolute https URL for a cartridge an admin uploaded to storage. Nothing
+ * else: a `javascript:` or protocol-relative source must never reach the
+ * emulator, and `player.html` re-resolves the same manifest the shelf used.
+ */
+const ROM_PATH_RE = /^roms\/[a-z0-9]+(?:-[a-z0-9]+)*\.gba$/;
+const COVER_PATH_RE = /^covers\/[a-z0-9]+(?:-[a-z0-9]+)*\.png$/;
+const ROM_URL_RE = /^https:\/\/[^\s"'<>]+\.gba$/i;
+const COVER_URL_RE = /^https:\/\/[^\s"'<>]+\.png$/i;
+const ROM_RE = { test: (v: string) => ROM_PATH_RE.test(v) || ROM_URL_RE.test(v) };
+const COVER_RE = { test: (v: string) => COVER_PATH_RE.test(v) || COVER_URL_RE.test(v) };
+/** Assets that live off-site are fetched as-is; our own are served from /retro/. */
+const isAbsolute = (path: string) => /^https:\/\//i.test(path);
 const ACCENT_RE = /^#[0-9a-fA-F]{6}$/;
 export const MAX_ROM_BYTES = 32 * 1024 * 1024;
 
@@ -106,16 +118,28 @@ const httpsUrl = (v: unknown): string | null => {
   }
 };
 
-/** Validates one manifest entry. Returns null instead of throwing so one bad
- *  row cannot take down the whole shelf. */
-export function validateRetroGame(raw: unknown): RetroGame | null {
+/**
+ * Validates one manifest entry. Returns null instead of throwing so one bad row
+ * cannot take down the whole shelf.
+ *
+ * Two doors, deliberately unequal. The committed `/retro/roms.json` is only
+ * allowed to point inside this site (`remote` stays off), which is what stops a
+ * hand-edited manifest from smuggling in a file from elsewhere. An uploaded
+ * cartridge lives in storage and *must* be an absolute https URL, so the shelf
+ * merge opts in with `{ remote: true }` — still https-only, still `.gba`/`.png`.
+ */
+export function validateRetroGame(raw: unknown, options: { remote?: boolean } = {}): RetroGame | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
+  const romRule = options.remote ? ROM_RE : ROM_PATH_RE;
+  const coverRule = options.remote ? COVER_RE : COVER_PATH_RE;
 
   const id = str(r.id, 48);
   const title = str(r.title, 60);
-  const rom = str(r.rom, 120);
-  const cover = str(r.cover, 120);
+  /* 300, not 120: a storage URL with a project ref and a 48-character id runs
+     past 120 characters, and it is the *host* that makes it safe, not its size. */
+  const rom = str(r.rom, 300);
+  const cover = str(r.cover, 300);
   const licenseUrl = httpsUrl(r.licenseUrl);
   const sourceUrl = httpsUrl(r.sourceUrl);
   const accent = str(r.accent, 7);
@@ -123,11 +147,11 @@ export function validateRetroGame(raw: unknown): RetroGame | null {
   const year = typeof r.year === 'number' && r.year >= 1990 && r.year <= 2100 ? Math.round(r.year) : null;
 
   if (!id || !ID_RE.test(id)) return null;
-  if (!title || !rom || !ROM_RE.test(rom) || !cover || !COVER_RE.test(cover)) return null;
+  if (!title || !rom || !romRule.test(rom) || !cover || !coverRule.test(cover)) return null;
   if (!licenseUrl || !sourceUrl || !accent || !ACCENT_RE.test(accent) || !bytes) return null;
 
-  const marqueeRaw = r.marquee === null || r.marquee === undefined ? null : str(r.marquee, 120);
-  if (marqueeRaw && !COVER_RE.test(marqueeRaw)) return null;
+  const marqueeRaw = r.marquee === null || r.marquee === undefined ? null : str(r.marquee, 300);
+  if (marqueeRaw && !coverRule.test(marqueeRaw)) return null;
 
   const tags = Array.isArray(r.tags)
     ? r.tags.filter((t): t is string => typeof t === 'string' && t.length > 0 && t.length <= 24).slice(0, 6)
@@ -173,7 +197,35 @@ export function parseRetroLibrary(raw: unknown): RetroLibrary {
   };
 }
 
+/**
+ * Two shelves, one list.
+ *
+ * The committed manifest is the default shelf and always loads. Cartridges an
+ * admin uploaded are merged on top of it — same ids, same shape, validated the
+ * same way — so the public page does not know or care which is which. A failure
+ * in the remote half (offline, migration not deployed, RLS refusing) must never
+ * take the committed shelf down with it, so it resolves to nothing.
+ */
+export function mergeLibraries(base: RetroLibrary, extra: RetroGame[]): RetroLibrary {
+  const seen = new Set(base.games.map((g) => g.id));
+  const merged = [...base.games];
+  for (const game of extra) {
+    /* Uploaded rows are https URLs, which the committed-manifest rule refuses. */
+    const valid = validateRetroGame(game, { remote: true });
+    if (!valid || seen.has(valid.id)) continue;
+    seen.add(valid.id);
+    merged.push(valid);
+  }
+  merged.sort((a, b) => a.title.localeCompare(b.title));
+  return { ...base, games: merged };
+}
+
 let cache: Promise<RetroLibrary> | null = null;
+
+/** Drops the cached shelf, so a screen mounts with the admin's latest change. */
+export function resetRetroLibrary() {
+  cache = null;
+}
 
 /** Fetches and validates the shelf. Cached for the life of the tab. */
 export function loadRetroLibrary(): Promise<RetroLibrary> {
@@ -184,6 +236,12 @@ export function loadRetroLibrary(): Promise<RetroLibrary> {
         return res.json() as Promise<unknown>;
       })
       .then(parseRetroLibrary)
+      .then(async (base) => {
+        /* Loaded lazily: a build without cloud sync must not import the SDK. */
+        const { listPublishedGames } = await import('./admin');
+        const extra = await listPublishedGames().catch(() => []);
+        return mergeLibraries(base, extra);
+      })
       .catch((err) => {
         // Let the next mount retry instead of caching a failure forever.
         cache = null;
@@ -198,9 +256,10 @@ export const retroGameById = (games: RetroGame[] | null, id: string | undefined)
   return games.find((g) => g.id === id) ?? null;
 };
 
-export const romUrlFor = (game: RetroGame): string => `/retro/${game.rom}`;
-export const coverUrlFor = (game: RetroGame): string => `/retro/${game.cover}`;
-export const marqueeUrlFor = (game: RetroGame): string | null => (game.marquee ? `/retro/${game.marquee}` : null);
+export const romUrlFor = (game: RetroGame): string => (isAbsolute(game.rom) ? game.rom : `/retro/${game.rom}`);
+export const coverUrlFor = (game: RetroGame): string => (isAbsolute(game.cover) ? game.cover : `/retro/${game.cover}`);
+export const marqueeUrlFor = (game: RetroGame): string | null =>
+  game.marquee ? (isAbsolute(game.marquee) ? game.marquee : `/retro/${game.marquee}`) : null;
 
 /**
  * Reads a ROM's first 0xC0 bytes and checks the cartridge header: the Nintendo

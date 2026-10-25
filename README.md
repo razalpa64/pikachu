@@ -158,9 +158,12 @@ Because Vercel serverless functions are stateless and do not maintain persistent
 
 ### 3. Database (Supabase)
 1. Create a free database at [supabase.com](https://supabase.com).
-2. Go to **SQL Editor** and run [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
+2. Go to **SQL Editor** and run the migrations in order: `0001_init.sql` → `0002_accounts_and_chat.sql` →
+   `0003_feedback.sql` → `0004_admin.sql`. Each is idempotent, so re-running the set is safe.
 3. Copy your project URL and **Anon / Publishable Key** into Vercel environment variables (`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`).
-4. Profiles and match history will automatically sync under secure Row Level Security policies!
+4. Profiles and match history will automatically sync under secure Row Level Security policies! `0004` adds
+   the hidden `/admin` desk — see [`supabase/README.md`](supabase/README.md) for the one-row allowlist that
+   turns it on, and note that no password belongs in this repository.
 
 ---
 
@@ -697,6 +700,10 @@ scripts/retro/import.ts    the admin command
 src/lib/retro.ts       manifest validation, cartridge-header check, shared types
 src/screens/Retro.tsx  /retro — the searchable shelf
 src/screens/RetroPlayer.tsx  /retro/:id — the console
+src/lib/admin.ts       the maintainer API: gate, upload, edit, delete, copy
+src/screens/Admin.tsx  /admin — the desk (unlinked, noindex)
+src/lib/content.ts     editable copy, with the shipped words as the fallback
+supabase/migrations/0004_admin.sql  roster, RLS, storage bucket, audit log
 scripts/e2e/retro.mjs  the proof (see below)
 ```
 
@@ -711,7 +718,14 @@ scripts/e2e/retro.mjs  the proof (see below)
   against a strict shape (id slug, `roms/<slug>.gba`, `covers/<slug>.png`,
   `https` source, a sane byte count and accent colour) and drops anything that
   fails; `player.html` re-resolves the `?game=` id against the same manifest, so
-  a hand-edited URL cannot point the emulator at a remote file.
+  a hand-edited URL cannot point the emulator at a remote file. A cartridge an
+  admin uploaded is the one exception, and it is not an exception in the
+  validator: the committed manifest may only ever point inside `/retro`, while
+  the merge of uploaded rows calls the same function with `{ remote: true }`,
+  which accepts an absolute `https` URL and still refuses a relative path, a
+  `javascript:` URL, a protocol-relative `//host` or a non-`.gba` file. The
+  player receives it as an `https` `.gba` URL over a same-origin `postMessage`
+  and re-checks that pattern before handing anything to the core.
 * **Your own ROM never leaves the device.** Both entry points — the file picker
   and a drop on the "your own cartridge" card — read the header, check the
   Nintendo logo the boot ROM itself checks for, then hand the `File` to the
@@ -737,6 +751,37 @@ scripts/e2e/retro.mjs  the proof (see below)
   this site a download proxy for exactly the commercial ROM sites it refuses to
   touch. The honest version of that affordance is the drop zone: you supply the
   file you are allowed to play, and it stays in your tab.
+
+### A cartridge added later, without a deploy
+
+The shelf is a file in this repo, but it does not have to be the only source. There is a hidden desk
+at `/admin`: no link points to it, it is `noindex` and absent from the sitemap, and for every account
+except the allowlisted one it renders as a locked page that gives nothing away. Signing in at
+**Settings → Cloud sync** with a maintainer's account is the only path to it — the redirect happens
+once, silently, and only when `public.is_admin()` says yes.
+
+It can upload a `.gba` (header-checked, ≤ 32 MB), describe it, publish or unpublish it, edit a
+description, delete it again, and rewrite the Retro Arcade and Library headings. Uploaded cartridges
+appear on `/retro` for everybody, merged into the committed shelf by id and sorted by title, and the
+player boots them from an `https` storage URL.
+
+Two things make that safe to expose:
+
+* **The page decides nothing.** Authority is a row in `public.admin_users`; the `retro_games` table
+  and the `retro` storage bucket enforce admin-only writes in RLS, and the audit log's actor is
+  filled in by Postgres (`default auth.uid()`), not by the browser. Deleting `Admin.tsx` from the
+  bundle would not grant anyone a single byte. `supabase-schema.test.ts` proves this by connecting
+  as `anon`, as an ordinary member and as the admin, and asserting the first two cannot write and
+  the draft rows are invisible to them.
+* **The licence gate is the importer's gate.** `ruleOnSpdx` refuses NC, ND and unrecognised ids in
+  the upload form, and an SPDX id that does not permit redistribution cannot be published later
+  either. The upload form requires an explicit rights attestation, which is stored in `rights_note`.
+  **No commercial ROMs** — Pokémon, Mario, Contra or anything else all-rights-reserved — belong here;
+  they go through “your own cartridge”, where the file never leaves the browser.
+
+Setup (one auth user, one `insert` into the roster, run `0004_admin.sql`) and the revoke procedure are
+in [`supabase/README.md`](supabase/README.md). No password is stored in this repository — it is a
+public repo, and a credential committed once stays in the history.
 
 ### Controls
 
@@ -849,12 +894,16 @@ EmulatorJS is MIT — `public/retro/data/LICENSE-EmulatorJS.txt`.
 npm test
 ```
 
-607 tests across 42 files covering: legality and junk-payload rejection for all seventeen
+684 tests across 46 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake
 collision/growth/wrap, puzzle solvability (including 15-puzzle parity), and the XP /
-achievement / daily-challenge system.
+achievement / daily-challenge system. The four Supabase migrations are executed against a real
+PostgreSQL (PGlite) with the Supabase roles stubbed in, then driven as `anon`, as an ordinary member
+and as the allowlisted admin — the admin tests assert that the first two cannot write a cartridge,
+read the roster, publish a draft or touch the site copy, which is the claim the hidden `/admin` desk
+rests on.
 
 The party shelf carries its own suites, because those are the games where a bug is invisible until
 somebody at the table is embarrassed. Would You Rather and Word Bomb have rule tests plus a relay

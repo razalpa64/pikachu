@@ -40,7 +40,7 @@ export const SITE_LANG = 'en-GB';
 
 export const DEFAULT_TITLE = 'Pikachu Arcade — Free Two-Player Browser Games';
 export const DEFAULT_DESCRIPTION =
-  'Twenty free browser games for two: chess, checkers, battleship, cards, quizzes and more. Open a private room, share a five-letter code, play from anywhere. No downloads, no accounts.';
+  'Twenty-six free browser games for two: chess, checkers, battleship, cards, quizzes and more. Open a private room, share a five-letter code, play from anywhere. No downloads, no accounts.';
 
 const INDEX = 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1';
 const NOINDEX = 'noindex, follow';

@@ -196,7 +196,7 @@ export default function Library() {
             Playing in this arcade
           </h2>
           <p className="mt-2 text-[13.5px] text-cream-300 leading-relaxed">
-            Twenty games, one or two players, nothing to install. A private room is a five-letter code you
+            Twenty-six games, one or two players, nothing to install. A private room is a five-letter code you
             send to the person you want to play with — and because the server referees every move, the board
             survives a dropped connection.
           </p>

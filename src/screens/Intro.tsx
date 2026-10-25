@@ -123,7 +123,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
           snapshots the intro (rather than waiting out its 3.7s) can read, so it
           states plainly what the site is rather than teasing it. */}
       <p className="sr-only">
-        Welcome to Pikachu Arcade — twenty free browser games for one or two people, including chess,
+        Welcome to Pikachu Arcade — twenty-six free browser games for one or two people, including chess,
         checkers, battleship, Wild Eights and a picture quiz. Open a private room, share the five-letter
         code, and play from anywhere. The arcade is opening.
       </p>

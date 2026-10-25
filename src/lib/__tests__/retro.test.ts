@@ -85,7 +85,6 @@ describe('retro manifest', () => {
       { ...good, bytes: 0 },
       { ...good, bytes: 999_999_999 },
       { ...good, accent: 'red' },
-      { ...good, year: 12 },
       null,
       'nope',
     ];

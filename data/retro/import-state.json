@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "failures": {},
+  "installed": {
+    "apotris": {
+      "slug": "apotris",
+      "bytes": 4194304,
+      "sha256": "e5e7b124407d97cb1268b3bde4239bd2f018e133b1cb7990a635fc01937e78f6",
+      "license": "GPL-3.0-only",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "attack-on-voxelburg": {
+      "slug": "attack-on-voxelburg",
+      "bytes": 827676,
+      "sha256": "9522f3e7a89640616c5397cf259785a85839692df9099a6caf73cc8a422a80ec",
+      "license": "GPL-3.0-or-later",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "breadmakesyoufull-gbadev-containers": {
+      "slug": "breadmakesyoufull_gbadev-containers",
+      "bytes": 2593252,
+      "sha256": "d33fcfe3cdf70316550e7b29a4caa16c2104c6fd8fa6ecc31752a702210b7438",
+      "license": "Zlib",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "gbatris": {
+      "slug": "gbatris",
+      "bytes": 2343292,
+      "sha256": "607ba9f6ad2a3b7af9863bc8ee979fe77c77619119c22e8ab04cfa4729255c67",
+      "license": "GPL-3.0-or-later",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "goldcube-cat-fish": {
+      "slug": "goldcube_cat-fish",
+      "bytes": 1404824,
+      "sha256": "86d556a11c083733b341eb387681202b7de6dbad7cfaad0d9574bf54ca0a1c46",
+      "license": "MIT",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "meteorain-gba-jam-2021": {
+      "slug": "meteorain-gba-jam-2021",
+      "bytes": 1710503,
+      "sha256": "ce45d4624c385bf2aa4545aee8613cfff5f4b1f3879a0c704dfc5e349f64798d",
+      "license": "MIT",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "solar-guard": {
+      "slug": "solar-guard",
+      "bytes": 4272776,
+      "sha256": "cfd07990e0fa05611fb36b3230d68cea4b65ae11482e822b5b6f97a32a8b88b0",
+      "license": "GPL-3.0-only",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "the-hat-chooses-the-wizard": {
+      "slug": "the-hat-chooses-the-wizard",
+      "bytes": 2097152,
+      "sha256": "77d180e4d4668256e7af39403d107ff522bdaa0ede27a206772ac05d5b36a066",
+      "license": "MPL-2.0",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "the-purple-night": {
+      "slug": "the-purple-night",
+      "bytes": 8388608,
+      "sha256": "646c2a5d3405c82c7f165bfdff99e3ffd372b02f861017da9ec1f623cdfb3edc",
+      "license": "MPL-2.0",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "xniq": {
+      "slug": "xniq",
+      "bytes": 1436448,
+      "sha256": "49da35070ebfc3760a07354a0f90a68c16bd0590046cc99d8a7dfcd947563cc1",
+      "license": "MIT",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "grimlight": {
+      "slug": "grimlight",
+      "bytes": 51716,
+      "sha256": "440759f57cde56652713421c1d537c9742363981fe5a3190960962a46f6f8132",
+      "license": "MIT",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "origamiscienceguy-galactic-quest": {
+      "slug": "origamiscienceguy_galactic-quest",
+      "bytes": 2687076,
+      "sha256": "fc998703b8abd960e718c76facab75ed89fa4e7eb3ff8fad6ebf9ea23475770a",
+      "license": "GPL-3.0-only",
+      "at": "2026-10-25T15:32:07.671Z"
+    },
+    "ucity-advance": {
+      "slug": "ucity-advance",
+      "bytes": 1925124,
+      "sha256": "c94413b46c45af5d4ba050f69a53db0df7a4bd5f58b13e347f64f8eed03cff7a",
+      "license": "GPL-3.0-or-later",
+      "at": "2026-10-25T15:32:07.671Z"
+    }
+  }
+}

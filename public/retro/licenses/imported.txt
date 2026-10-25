@@ -1,0 +1,91 @@
+IMPORTED FROM THE HOMEBREW HUB ARCHIVE
+======================================
+
+Source: https://github.com/gbadev-org/games — the JSON database behind Homebrew Hub.
+The archive itself is GPL-3.0-only, but that licence covers the database, not the
+games in it: each cartridge below was imported because its own entry declares a
+redistributable licence. The catalogue in public/retro/catalog.json records that
+per-entry licence, and each player page links back to the entry it came from.
+
+Every cartridge here was downloaded and checked against the archive blob size and
+the GBA cartridge header, then its git blob hash was compared with the archive
+tree's. Where an entry publishes its own sha256 it is checked too; a mismatch is
+listed at the bottom of this file rather than quietly accepted.
+
+Each cartridge was then booted in Chromium against this site's own player, and
+only marked playable if the LCD repainted after a START/A/D-pad sequence.
+
+  Apotris                            GPL-3.0-only      
+                                         4.00 MB  sha256 e5e7b124407d97cb1268b3bde4239bd2f018e133b1cb7990a635fc01937e78f6
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/apotris
+                                         upstream  https://gitea.com/akouzoukos/apotris
+
+  Attack on Voxelburg                GPL-3.0-or-later  
+                                         0.79 MB  sha256 9522f3e7a89640616c5397cf259785a85839692df9099a6caf73cc8a422a80ec
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/attack-on-voxelburg
+                                         upstream  https://github.com/MutantStargoat/voxelburg
+
+  GBADEV Containers                  Zlib              
+                                         2.47 MB  sha256 d33fcfe3cdf70316550e7b29a4caa16c2104c6fd8fa6ecc31752a702210b7438
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/breadmakesyoufull_gbadev-containers
+                                         upstream  https://github.com/BreadMakesYouFull/gbadev-containers
+
+  GBAtris                            GPL-3.0-or-later  
+                                         2.23 MB  sha256 607ba9f6ad2a3b7af9863bc8ee979fe77c77619119c22e8ab04cfa4729255c67
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/gbatris
+                                         upstream  https://github.com/jtsiomb/gbatris
+
+  Cat Fish                           MIT               
+                                         1.34 MB  sha256 86d556a11c083733b341eb387681202b7de6dbad7cfaad0d9574bf54ca0a1c46
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/goldcube_cat-fish
+                                         upstream  https://goldcube.itch.io/cat-fish
+                                         licence   public/retro/LICENSE (copied from the entry)
+
+  GRIMLIGHT: The Hollow Bell         MIT               
+                                         0.05 MB  sha256 440759f57cde56652713421c1d537c9742363981fe5a3190960962a46f6f8132
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/grimlight
+                                         upstream  https://github.com/retroromrunner/grimlight
+
+  MeteoRain (GBA Jam 2021)           MIT               
+                                         1.63 MB  sha256 ce45d4624c385bf2aa4545aee8613cfff5f4b1f3879a0c704dfc5e349f64798d
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/meteorain-gba-jam-2021
+                                         upstream  https://github.com/drludos/meteorain-gba
+
+  Galactic Quest                     GPL-3.0-only      
+                                         2.56 MB  sha256 fc998703b8abd960e718c76facab75ed89fa4e7eb3ff8fad6ebf9ea23475770a
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/origamiscienceguy_galactic-quest
+                                         upstream  https://github.com/origamiscienceguy/Galactic_Quest
+
+  Solar Guard                        GPL-3.0-only      
+                                         4.07 MB  sha256 cfd07990e0fa05611fb36b3230d68cea4b65ae11482e822b5b6f97a32a8b88b0
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/solar-guard
+                                         upstream  https://github.com/Deft-Spade/Solar-Guard
+
+  The Hat Chooses the Wizard         MPL-2.0           
+                                         2.00 MB  sha256 77d180e4d4668256e7af39403d107ff522bdaa0ede27a206772ac05d5b36a066
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/the-hat-chooses-the-wizard
+                                         upstream  https://github.com/agbrs/agb/tree/master/examples/the-hat-chooses-the-wizard
+
+  The purple night                   MPL-2.0           
+                                         8.00 MB  sha256 646c2a5d3405c82c7f165bfdff99e3ffd372b02f861017da9ec1f623cdfb3edc
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/the-purple-night
+                                         upstream  https://github.com/agbrs/agb/tree/master/examples/the-purple-night
+
+  uCity Advance                      GPL-3.0-or-later  
+                                         1.84 MB  sha256 c94413b46c45af5d4ba050f69a53db0df7a4bd5f58b13e347f64f8eed03cff7a
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/ucity-advance
+                                         upstream  https://github.com/AntonioND/ucity-advance
+
+  xniq                               MIT               
+                                         1.37 MB  sha256 49da35070ebfc3760a07354a0f90a68c16bd0590046cc99d8a7dfcd947563cc1
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/xniq
+                                         upstream  https://git.sr.ht/~exelotl/xniq
+
+METADATA THAT DID NOT MATCH THE FILE
+-----------------------------------
+
+These entries publish a hash for an older build. The bytes here were verified
+against the archive's own git blob, so they are exactly what the archive ships.
+
+  ucity-advance: published sha256 is stale; content matches the archive blob c6c58d11ced3
+

@@ -1,0 +1,138 @@
+{
+  "generatedAt": "2026-10-25T15:32:07.680Z",
+  "source": {
+    "repo": "gbadev-org/games",
+    "branch": "master",
+    "tree": "6d707b4c2df62d49209278dc80cbaa3a1c951de2"
+  },
+  "counts": {
+    "discovered": 251,
+    "gbaGames": 240,
+    "authorised": 14,
+    "importable": 13,
+    "downloaded": 13,
+    "tested": 13,
+    "installed": 13,
+    "skipped": 237,
+    "failed": 0,
+    "shelf": 20
+  },
+  "skippedByReason": {
+    "license-missing": 215,
+    "rom-too-big": 2,
+    "platform": 1,
+    "no-rom": 4,
+    "typetag": 10,
+    "third-party-ip": 3,
+    "asset-license": 1,
+    "license-unknown": 1
+  },
+  "hashNotes": [
+    {
+      "slug": "ucity-advance",
+      "id": "ucity-advance",
+      "detail": "published sha256 is stale; content matches the archive blob c6c58d11ced3"
+    }
+  ],
+  "failures": {},
+  "imported": [
+    {
+      "id": "apotris",
+      "slug": "apotris",
+      "title": "Apotris",
+      "license": "GPL-3.0-only",
+      "bytes": 4194304
+    },
+    {
+      "id": "attack-on-voxelburg",
+      "slug": "attack-on-voxelburg",
+      "title": "Attack on Voxelburg",
+      "license": "GPL-3.0-or-later",
+      "bytes": 827676
+    },
+    {
+      "id": "goldcube-cat-fish",
+      "slug": "goldcube_cat-fish",
+      "title": "Cat Fish",
+      "license": "MIT",
+      "bytes": 1404824
+    },
+    {
+      "id": "origamiscienceguy-galactic-quest",
+      "slug": "origamiscienceguy_galactic-quest",
+      "title": "Galactic Quest",
+      "license": "GPL-3.0-only",
+      "bytes": 2687076
+    },
+    {
+      "id": "breadmakesyoufull-gbadev-containers",
+      "slug": "breadmakesyoufull_gbadev-containers",
+      "title": "GBADEV Containers",
+      "license": "Zlib",
+      "bytes": 2593252
+    },
+    {
+      "id": "gbatris",
+      "slug": "gbatris",
+      "title": "GBAtris",
+      "license": "GPL-3.0-or-later",
+      "bytes": 2343292
+    },
+    {
+      "id": "grimlight",
+      "slug": "grimlight",
+      "title": "GRIMLIGHT: The Hollow Bell",
+      "license": "MIT",
+      "bytes": 51716
+    },
+    {
+      "id": "meteorain-gba-jam-2021",
+      "slug": "meteorain-gba-jam-2021",
+      "title": "MeteoRain (GBA Jam 2021)",
+      "license": "MIT",
+      "bytes": 1710503
+    },
+    {
+      "id": "solar-guard",
+      "slug": "solar-guard",
+      "title": "Solar Guard",
+      "license": "GPL-3.0-only",
+      "bytes": 4272776
+    },
+    {
+      "id": "the-hat-chooses-the-wizard",
+      "slug": "the-hat-chooses-the-wizard",
+      "title": "The Hat Chooses the Wizard",
+      "license": "MPL-2.0",
+      "bytes": 2097152
+    },
+    {
+      "id": "the-purple-night",
+      "slug": "the-purple-night",
+      "title": "The purple night",
+      "license": "MPL-2.0",
+      "bytes": 8388608
+    },
+    {
+      "id": "ucity-advance",
+      "slug": "ucity-advance",
+      "title": "uCity Advance",
+      "license": "GPL-3.0-or-later",
+      "bytes": 1925124
+    },
+    {
+      "id": "xniq",
+      "slug": "xniq",
+      "title": "xniq",
+      "license": "MIT",
+      "bytes": 1436448
+    }
+  ],
+  "alreadyPresent": [
+    {
+      "slug": "edefelice_lander-advance",
+      "id": "edefelice-lander-advance",
+      "detail": "already on the shelf"
+    }
+  ]
+}

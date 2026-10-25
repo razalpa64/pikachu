@@ -112,7 +112,10 @@ function CartridgeCard({ game, onPlay }: { game: RetroGame; onPlay: (g: RetroGam
         </div>
 
         <div className="flex items-center justify-between gap-2 mt-3 pt-2.5 border-t border-ink-600/70">
-          <span className="text-[10.5px] text-cream-500 font-bold truncate">{game.author} · {game.year}</span>
+          <span className="text-[10.5px] text-cream-500 font-bold truncate">
+            {game.author}
+            {game.year ? ` · ${game.year}` : ''}
+          </span>
           <Button size="sm" onClick={() => onPlay(game)} icon={<Icon name="play" size={12} />}>
             Insert
           </Button>

@@ -54,8 +54,17 @@ const button = (text: RegExp | string) =>
 const panelButton = (text: RegExp | string) =>
   Array.from(host.querySelectorAll<HTMLButtonElement>('.panel button'))
     .find((b) => (typeof text === 'string' ? (b.textContent ?? '').trim() === text : text.test(b.textContent ?? '')));
+/**
+ * The card's title, read from the game surface only.
+ *
+ * This used to search every `<p>` in the document. The rulebook is a `<details>`
+ * whose body sits in the DOM even while closed, so on some shuffles the query
+ * matched a line of rules text and returned the *next* element's text instead of
+ * the card — producing a "the curtain leaks the card" failure that had nothing
+ * to do with the curtain. `.panel` is where the dealt card lives.
+ */
 const cardTitle = () =>
-  Array.from(host.querySelectorAll('p'))
+  Array.from(host.querySelectorAll('.panel p'))
     .find((p) => /Private card/.test(p.textContent ?? ''))
     ?.nextElementSibling?.textContent?.trim() ?? '';
 

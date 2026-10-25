@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { reversiRules as R, flipsFor, legalCells, type ReversiState } from '../../games/reversi/rules';
 import type { BoardProps } from './types';
 import { BoardPlate, ScoreChip } from './BoardPlate';
+import { BoardGrid, BoardStage } from './BoardStage';
 
 const GOLD = '#e8a21c';
 const ROSE = '#d9456f';
@@ -21,7 +22,7 @@ export default function ReversiBoard({ state, youSlot, onMove, interactive, hint
   );
   /* every disc that changed owner this turn, so it can animate */
   const flipped = useMemo(() => new Set(state.last?.flipped ?? []), [state.last]);
-  const cell = size <= 6 ? 'min(15vw,72px)' : size <= 8 ? 'min(11.2vw,60px)' : 'min(9vw,48px)';
+  const max = size <= 6 ? 500 : 560;
 
   return (
     <BoardPlate
@@ -33,11 +34,16 @@ export default function ReversiBoard({ state, youSlot, onMove, interactive, hint
         </div>
       }
     >
+      <BoardStage ratio={1} max={max} min={264} reserve={150} chrome={20}>
       <div
-        role="grid"
+        className="p-[clamp(4px,1.4%,8px)] rounded-[clamp(10px,2.6%,16px)]"
+        style={{ background: 'linear-gradient(180deg,#d8f3e7,#bfe8d6)', border: '3px solid #8fcbb2' }}
+      >
+      <BoardGrid
+        cols={size}
         aria-label={`${size} by ${size} Reversi board`}
-        className="grid gap-[3px] p-[7px] rounded-[16px]"
-        style={{ gridTemplateColumns: `repeat(${size}, ${cell})`, background: 'linear-gradient(180deg,#d8f3e7,#bfe8d6)', border: '3px solid #8fcbb2' }}
+        role="grid"
+        gap="clamp(2px,1%,4px)"
       >
         {state.board.map((v, i) => {
           const playable = legal.has(i);
@@ -54,10 +60,10 @@ export default function ReversiBoard({ state, youSlot, onMove, interactive, hint
                 `Row ${Math.floor(i / size) + 1}, column ${(i % size) + 1}, ` +
                 (v === null ? (playable ? `flips ${wouldFlip}` : 'empty') : v === 0 ? 'gold coin' : 'rose coin')
               }
-              className={`relative grid place-items-center rounded-[9px] transition-colors duration-150 no-tap
+              className={`board-cell rounded-[12%] transition-colors duration-150 no-tap
                 ${playable ? 'cursor-pointer hover:bg-white/55' : 'cursor-default'}
                 ${isLast ? 'ring-2 ring-[#7a4a12] ring-inset' : ''}`}
-              style={{ width: cell, height: cell, border: '2px solid rgba(143,163,150,.35)', background: 'rgba(255,255,255,.32)' }}
+              style={{ border: '2px solid rgba(143,163,150,.35)', background: 'rgba(255,255,255,.32)' }}
             >
               {v !== null && <Coin who={v} toggle={toggle} pop={isLast} />}
               {/* Only squares that would actually flip something get a ghost.
@@ -72,14 +78,16 @@ export default function ReversiBoard({ state, youSlot, onMove, interactive, hint
                   {/* the count is the loudest hint a beginner can get: "this one
                       turns four of theirs" beats a bare circle */}
                   {hint && wouldFlip > 1 && (
-                    <span className="text-[9px] font-extrabold leading-none" style={{ color: youSlot === 0 ? '#8d5a05' : '#a83350' }}>{wouldFlip}</span>
+                    <span className="font-extrabold leading-none" style={{ color: youSlot === 0 ? '#8d5a05' : '#a83350', fontSize: 'clamp(8px, 26cqw, 13px)' }}>{wouldFlip}</span>
                   )}
                 </span>
               )}
             </button>
           );
         })}
+      </BoardGrid>
       </div>
+      </BoardStage>
       <div className="flex items-center justify-between px-1 pt-2 min-h-[18px]">
         <p className="text-[10.5px] text-cream-500 font-bold">
           {state.over ? 'No moves left — counted up.' : state.passed !== null ? `${names[state.passed]} had no move and passed.` : 'Corners can never be retaken.'}

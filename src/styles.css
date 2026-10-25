@@ -461,3 +461,45 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     justify-content: flex-start !important;
   }
 }
+@layer components {
+
+/* ============================================================
+   Board stage — one spatial system for every board
+   ------------------------------------------------------------
+   A board is as large as the page can honestly afford: the narrower of
+   (the column it is in) and (the room left under it on screen), at the
+   game's own ratio, between a floor and a ceiling. `--stage-w` is set in
+   px by `useBoardFit`; the declarations below are the no-measurement
+   fallback (first paint, and jsdom), not a second sizing system.
+   ============================================================ */
+.board-stage {
+  position: relative;
+  width: var(--stage-w, 100%);
+  max-width: min(100%, var(--stage-max, 620px));
+  margin-inline: auto;
+}
+/* everything a board draws is inside the stage, so it can never be wider than
+   the stage and never push the page sideways on a phone */
+.board-stage > * { width: 100%; }
+
+/* A cell is a grid cell: it fills whatever the stage decided. Boards that used
+   to compute a px size per square get the same result with none of the maths. */
+.board-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  /* every cell is its own container, so marks, crowns and coordinate labels can
+     be sized in `cqw` — a share of the square they sit in — instead of guessing
+     from the viewport width, which is what made phone boards illegible */
+  container-type: size;
+}
+
+/* In landscape on a phone the chrome above the board eats most of the screen.
+   Rather than shrink the board past playability, let the page scroll: the stage
+   keeps its floor and the whole board is one short scroll away. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .board-stage { padding-block-end: 4px; }
+}
+}

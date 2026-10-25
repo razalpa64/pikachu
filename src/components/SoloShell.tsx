@@ -113,7 +113,13 @@ export default function SoloShell({
 
       {/* content */}
       <div className={`relative flex-1 mx-auto w-full ${wide ? 'max-w-[1340px]' : 'max-w-[1120px]'} px-[var(--shell-pad)] py-2 sm:py-5`}>
-        {hud && <div className="hud-strip mb-2 sm:mb-4">{hud}</div>}
+        {/* The HUD used to stretch the full 1120 px column above a board that is
+            at most ~660 px, which read as a wide pale band over a small board.
+            It is now centred to roughly the board's width (a little wider for the
+            `wide` games, whose HUD carries a clock, move number and eval). */}
+        {hud && (
+          <div className={`hud-strip mb-2 sm:mb-4 sm:mx-auto ${wide ? 'sm:max-w-[1180px]' : 'sm:max-w-[880px]'}`}>{hud}</div>
+        )}
         <div className="flex flex-col items-center gap-3 sm:gap-5">{children}</div>
         {/* the rulebook sits under the board, closed: it never pushes the game down
             the screen, and it is where a puzzled player is already looking */}

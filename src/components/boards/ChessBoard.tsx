@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { load, type ChessState, type ChessMove } from '../../games/chess/rules';
 import ChessPiece from './ChessPiece';
 import type { BoardProps } from './types';
+import { BoardGrid, BoardStage } from './BoardStage';
 import { useStore } from '../../lib/store';
 
 const FILES = 'abcdefgh';
@@ -65,14 +66,22 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
     setSel(null);
   };
 
-  const sqSize = 'repeat(8, min(10.2vw, 62px))';
-
   return (
-    <div className="relative inline-block">
+    /* The board used to be `repeat(8, min(10.2vw, 62px))`, which is 496 px on any
+       screen wider than 610 px and 8×36 px on a 360 px phone — too big for a
+       phone, and a 496 px postage stamp in a 1340 px room with a chat rail. The
+       stage measures the column and the viewport height instead; the 8x8 lives
+       inside it as fractions, so the squares are exactly square at every size. */
+    <BoardStage ratio={1} max={664} min={288} reserve={140} chrome={26} label="Chess board">
       {/* chamber plinth */}
-      <div className="relative p-2.5 sm:p-3.5"
-        style={{ background: 'linear-gradient(170deg,#f6e0c0,#e8c9a0)', border: '3px solid #c99b78', borderRadius: 22, boxShadow: '0 26px 54px -28px rgba(140,94,70,.65), inset 0 2px 0 rgba(255,255,255,.7)' }}>
-        <div className="grid board-shadow board-inner" style={{ gridTemplateColumns: sqSize }} role="grid" aria-label="Chess board">
+      <div className="relative p-[clamp(5px,1.6%,14px)] rounded-[clamp(14px,4%,22px)]"
+        style={{
+          background: 'linear-gradient(170deg,#f6e0c0,#e8c9a0)',
+          border: '3px solid #c99b78',
+          boxShadow: '0 26px 54px -28px rgba(140,94,70,.65), inset 0 2px 0 rgba(255,255,255,.7)',
+        }}>
+        <BoardGrid cols={8} gap="0" role="grid" aria-label="Chess board" className="board-shadow overflow-hidden"
+          style={{ borderRadius: 'clamp(3px, 1.2%, 9px)' }}>
           {ordered.map((sq) => {
             const f = FILES.indexOf(sq[0]);
             const r = Number(sq[1]);
@@ -87,9 +96,8 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
               <button key={sq} role="gridcell" onClick={() => onSquare(sq)}
                 aria-label={`${sq}${piece ? `, ${piece.color === 'w' ? 'white' : 'black'} ${piece.type}` : ', empty'}${isCheck ? ', in check' : ''}${isSel ? ', selected' : ''}`}
                 data-playable={interactive && playable ? 'true' : undefined}
-                className="chess-sq relative grid place-items-center no-tap"
+                className="board-cell chess-sq no-tap"
                 style={{
-                  aspectRatio: '1', width: '100%',
                   background: isSel ? '#ffd84f'
                     : isCheck ? 'linear-gradient(160deg,#d94f37,#9c2b1a)'
                     : isLast ? (dark ? '#efc39c' : '#ffe6cd')
@@ -106,12 +114,12 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
                 )}
                 {/* coordinates — small, tucked into the corner, like a printed board */}
                 {sq[1] === (flipped ? '8' : '1') && (
-                  <span className="absolute bottom-[1px] right-[3px] text-[8.5px] font-extrabold leading-none pointer-events-none"
-                    style={{ color: dark ? '#8a6448' : '#b08a63' }}>{sq[0]}</span>
+                  <span className="absolute bottom-[3%] right-[6%] font-extrabold leading-none pointer-events-none"
+                    style={{ color: dark ? '#8a6448' : '#b08a63', fontSize: 'clamp(7px, 15cqw, 11px)' }}>{sq[0]}</span>
                 )}
                 {sq[0] === (flipped ? 'h' : 'a') && (
-                  <span className="absolute top-[1px] left-[3px] text-[8.5px] font-extrabold leading-none pointer-events-none"
-                    style={{ color: dark ? '#8a6448' : '#b08a63' }}>{sq[1]}</span>
+                  <span className="absolute top-[3%] left-[6%] font-extrabold leading-none pointer-events-none"
+                    style={{ color: dark ? '#8a6448' : '#b08a63', fontSize: 'clamp(7px, 15cqw, 11px)' }}>{sq[1]}</span>
                 )}
 
                 {/* the piece itself — transparent artwork, sized like a real set */}
@@ -137,7 +145,7 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
               </button>
             );
           })}
-        </div>
+        </BoardGrid>
       </div>
 
       {/* promotion chooser */}
@@ -159,7 +167,7 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
           </div>
         </div>
       )}
-    </div>
+    </BoardStage>
   );
 }
 

@@ -186,7 +186,11 @@ export default function Room() {
                 lastAction={match.lastAction} onResign={() => setConfirmResign(true)}
                 onDraw={offerDraw} canDraw={room.gameId === 'chess' || room.gameId === 'checkers'} />
 
-              <div className="flex justify-center py-5 overflow-x-auto">
+              {/* centring is done by the stage's own auto margins rather than
+                  `justify-center`, which would clip the left edge of a board
+                  wider than the column (landscape phones) with no way to scroll
+                  back to it */}
+              <div className="py-4 sm:py-5">
                 <Suspense fallback={<ElectricLoader status="Loading the arena" compact />}>
                   <Board state={match.state} youSlot={slot} onMove={act} interactive={!!live && myTurn} names={names} hint />
                 </Suspense>

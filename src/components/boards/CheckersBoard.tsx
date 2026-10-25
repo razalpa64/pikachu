@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { checkersRules as R, isDark, type CKState } from '../../games/checkers/rules';
 import type { BoardProps } from './types';
+import { BoardGrid, BoardStage } from './BoardStage';
 import { useStore } from '../../lib/store';
 
 export default function CheckersBoard({ state, youSlot, onMove, interactive, hint = true }: BoardProps<CKState>) {
@@ -34,10 +35,13 @@ export default function CheckersBoard({ state, youSlot, onMove, interactive, hin
   };
 
   return (
-    <div className="relative inline-block">
-      <div className="relative p-2.5 sm:p-3.5"
-        style={{ background: 'linear-gradient(170deg,#f6e0c0,#e8c9a0)', border: '3px solid #c99b78', borderRadius: 22, boxShadow: '0 26px 54px -28px rgba(140,94,70,.65), inset 0 2px 0 rgba(255,255,255,.7)' }}>
-        <div className="grid board-shadow" style={{ gridTemplateColumns: 'repeat(8, min(10.2vw, 62px))' }} role="grid" aria-label="Checkers board">
+    /* same stage as chess: the two 8x8 boards now share one geometry, so they
+       line up with each other and neither overflows a phone */
+    <BoardStage ratio={1} max={600} min={288} reserve={148} chrome={26} label="Checkers board">
+      <div className="relative p-[clamp(5px,1.6%,14px)] rounded-[clamp(14px,4%,22px)]"
+        style={{ background: 'linear-gradient(170deg,#f6e0c0,#e8c9a0)', border: '3px solid #c99b78', boxShadow: '0 26px 54px -28px rgba(140,94,70,.65), inset 0 2px 0 rgba(255,255,255,.7)' }}>
+        <BoardGrid cols={8} gap="0" role="grid" aria-label="Checkers board" className="board-shadow overflow-hidden"
+          style={{ borderRadius: 'clamp(3px, 1.2%, 9px)' }}>
           {ordered.map((i) => {
             const dark = isDark(i);
             const pc = state.board[i];
@@ -47,9 +51,8 @@ export default function CheckersBoard({ state, youSlot, onMove, interactive, hin
             return (
               <button key={i} role="gridcell" onClick={() => tap(i)} disabled={!dark}
                 aria-label={`Square ${i}${pc ? `, ${pc.p === 0 ? 'gold' : 'charcoal'}${pc.king ? ' king' : ''}` : ', empty'}`}
-                className="relative grid place-items-center no-tap"
+                className="board-cell no-tap"
                 style={{
-                  aspectRatio: '1', width: '100%',
                   background: !dark ? '#fff6e6' : isSel ? '#ffd24d' : isTarget ? '#b7e6cf' : isLast ? '#f0bfa0' : '#dcb38a',
                   cursor: interactive && dark && (froms.has(i) || isTarget) ? 'pointer' : 'default',
                 }}>
@@ -89,13 +92,15 @@ export default function CheckersBoard({ state, youSlot, onMove, interactive, hin
               </button>
             );
           })}
-        </div>
+        </BoardGrid>
       </div>
+      {/* was `-bottom-7`, which sat on top of the rulebook toggle below the board;
+          inside the stage it stacks under the plinth like a printed note */}
       {state.mustContinueFrom !== null && (
-        <p className="absolute -bottom-7 left-0 right-0 text-center text-[11.5px] font-extrabold uppercase tracking-wider text-volt-700">
+        <p className="mt-2 text-center text-[11.5px] font-extrabold uppercase tracking-wider text-volt-700">
           Chain jump — keep capturing
         </p>
       )}
-    </div>
+    </BoardStage>
   );
 }

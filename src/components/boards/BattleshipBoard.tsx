@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState, useEffect, type CSSProperties } from 'reac
 import { FLEET, autoPlace, validPlacement, rcOf, type BSState } from '../../games/battleship/rules';
 import type { BoardProps } from './types';
 import { Button, Icon } from '../ui';
+import { BoardStage } from './BoardStage';
 import { useStore } from '../../lib/store';
 
 const LETTERS = 'ABCDEFGHIJ';
@@ -69,15 +70,15 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
   if (state.phase === 'placement') {
     const ready = state.ready[youSlot] || committed;
     return (
-      <div className="flex flex-col lg:flex-row gap-5 items-start">
-        <div>
+      <div className="w-full flex flex-col xl:flex-row gap-5 items-start">
+        <div className="w-full min-w-0 xl:flex-1">
           <p className="eyebrow mb-2">Deploy your fleet</p>
           <Grid size={size} label="Your waters" cellRender={(cell) => {
             const id = draftCells.get(cell);
             return id ? <span className="absolute inset-[8%] rounded-[5px]" style={SHIP} /> : null;
           }} onCell={ready ? undefined : placeAt} />
         </div>
-        <div className="panel notch-sm p-4 w-full lg:w-[290px]">
+        <div className="panel notch-sm p-4 w-full xl:w-[290px] xl:shrink-0">
           <p className="eyebrow mb-2">Fleet manifest</p>
           <div className="flex flex-col gap-1.5 mb-3">
             {FLEET.map((f, i) => {
@@ -132,8 +133,8 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
   const enemySunkCells = new Set(state.fleets[opp].flatMap((s) => (s.hits.length === s.len ? s.cells : [])));
 
   return (
-    <div className="flex flex-col xl:flex-row gap-5 items-start">
-      <div>
+    <div className="w-full grid gap-4 sm:gap-5 sm:grid-cols-2 items-start">
+      <div className="min-w-0">
         <p className="eyebrow mb-2 text-blush-600">Enemy waters — fire here</p>
         <Grid size={size} label="Enemy radar" radar onCell={interactive ? (c) => { if (!myShots.has(c)) { onMove({ type: 'fire', cell: c }); } } : undefined}
           disabledCell={(c) => myShots.has(c)}
@@ -152,9 +153,9 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
                   style={{ background: 'rgba(217,69,111,.5)', boxShadow: 'inset 0 1px 2px rgba(140,40,70,.45)' }} />;
           }} />
       </div>
-      <div>
+      <div className="min-w-0">
         <p className="eyebrow mb-2 text-volt-700">Your waters</p>
-        <Grid size={size} label="Your fleet" small
+        <Grid size={size} label="Your fleet"
           cellLabel={(c) => {
             const ship = myShipCells.get(c);
             const where = ship ? (sunkOfMine.has(ship) ? 'your ship, sunk' : 'your ship') : 'empty water';
@@ -182,38 +183,54 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
   );
 }
 
+/**
+ * One 10x10 grid, drawn twice (theirs and yours).
+ *
+ * Each square used to be `min(8.2vw,38px)` — so a 10-wide grid was 380 px on any
+ * screen, and the two grids side by side needed 800 px before a chat rail. The
+ * stage owns the width now and the 11 tracks (row labels + 10 columns, header
+ * row + 10 rows) are fractions of it, at an aspect ratio that keeps the squares
+ * exactly square: the header row is declared as half a track, so the ratio is
+ * (size + 1) : (size + 0.5).
+ */
 function Grid({
-  size, label, onCell, cellRender, radar, small, disabledCell, cellLabel,
+  size, label, onCell, cellRender, radar, disabledCell, cellLabel,
 }: {
   size: number; label: string; onCell?: (c: number) => void;
-  cellRender: (c: number) => React.ReactNode; radar?: boolean; small?: boolean; disabledCell?: (c: number) => boolean;
+  cellRender: (c: number) => React.ReactNode; radar?: boolean; disabledCell?: (c: number) => boolean;
   /** What the cell means, read after the coordinate: "B4, miss". A bare
    *  coordinate left a screen-reader user with 100 identical-sounding squares
    *  and no way to know which ones had already been fired at. */
   cellLabel?: (c: number) => string;
 }) {
-  const cw = small ? `min(6.4vw, 27px)` : `min(8.2vw, 38px)`;
+  const tracks = size + 1;
   return (
-    <div className="relative inline-block p-2.5"
-      style={{ background: 'linear-gradient(170deg,#eaf4fb,#d9ebf7)', border: '3px solid #9cc4de', borderRadius: 20, boxShadow: '0 22px 48px -26px rgba(90,110,130,.6), inset 0 2px 0 rgba(255,255,255,.8)' }}>
-      {radar && <div className="absolute inset-2.5 pointer-events-none fx-heavy" aria-hidden
+    <BoardStage ratio={tracks / (size + 0.5)} max={480} min={230} reserve={196} chrome={10}>
+    <div className="relative w-full p-[clamp(4px,1.8%,10px)]"
+      style={{ background: 'linear-gradient(170deg,#eaf4fb,#d9ebf7)', border: '3px solid #9cc4de', borderRadius: 'clamp(12px,3%,20px)', boxShadow: '0 22px 48px -26px rgba(90,110,130,.6), inset 0 2px 0 rgba(255,255,255,.8)' }}>
+      {radar && <div className="absolute inset-[clamp(4px,1.8%,10px)] rounded-[10px] pointer-events-none overflow-hidden fx-heavy" aria-hidden
         style={{ background: 'conic-gradient(from 0deg, rgba(111,182,232,.26), transparent 28%)', animation: 'pk-spark-spin 4.4s linear infinite' }} />}
-      <div className="relative grid" style={{ gridTemplateColumns: `${small ? '14px' : '18px'} repeat(${size}, ${cw})` }} role="grid" aria-label={label}>
-        <span />
+      <div className="relative grid" role="grid" aria-label={label}
+        style={{
+          gridTemplateColumns: `repeat(${tracks}, minmax(0, 1fr))`,
+          gridTemplateRows: `0.5fr repeat(${size}, minmax(0, 1fr))`,
+          aspectRatio: `${tracks} / ${size + 0.5}`,
+        }}>
+        <span aria-hidden />
         {Array.from({ length: size }).map((_, c) => (
-          <span key={c} className="grid place-items-center text-[8.5px] font-extrabold text-[#416a83]">{LETTERS[c]}</span>
+          <span key={c} className="board-cell font-extrabold text-[#416a83]" style={{ fontSize: 'clamp(6px, 30cqw, 10px)' }}>{LETTERS[c]}</span>
         ))}
         {Array.from({ length: size }).map((_, r) => (
           <Fragment key={`row-${r}`}>
-            <span className="grid place-items-center text-[8.5px] font-extrabold text-[#416a83]">{r + 1}</span>
+            <span className="board-cell font-extrabold text-[#416a83]" style={{ fontSize: 'clamp(6px, 30cqw, 10px)' }}>{r + 1}</span>
             {Array.from({ length: size }).map((__, c) => {
               const cell = r * size + c;
               const dis = disabledCell?.(cell);
               return (
                 <button key={cell} role="gridcell" disabled={!onCell || dis} onClick={() => onCell?.(cell)}
                   aria-label={`${LETTERS[c]}${r + 1}${cellLabel ? `, ${cellLabel(cell)}` : ''}`}
-                  className={`relative border border-[#b9d6e8] transition-colors ${onCell && !dis ? 'hover:bg-[#bfe0f5] cursor-crosshair' : ''}`}
-                  style={{ width: cw, height: cw, background: 'rgba(255,255,255,.72)' }}>
+                  className={`board-cell border border-[#b9d6e8] transition-colors ${onCell && !dis ? 'hover:bg-[#bfe0f5] cursor-crosshair' : ''}`}
+                  style={{ background: 'rgba(255,255,255,.72)' }}>
                   {cellRender(cell)}
                 </button>
               );
@@ -222,5 +239,6 @@ function Grid({
         ))}
       </div>
     </div>
+    </BoardStage>
   );
 }

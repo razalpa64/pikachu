@@ -4,6 +4,7 @@ import type { RDState } from '../../games/reaction/rules';
 import type { BoardProps } from './types';
 import { PikachuMascot } from '../../mascot';
 import { useStore } from '../../lib/store';
+import { BoardStage } from './BoardStage';
 
 /**
  * The visual signal is driven by SERVER state (`phase === 'signal'`), never by a local timer,
@@ -50,7 +51,7 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
     : 'linear-gradient(160deg,#fff4e2,#f6e3c9)';
 
   return (
-    <div className="w-full max-w-[720px]">
+    <div className="w-full max-w-[760px] mx-auto">
       {/* series tally */}
       <div className="flex items-center justify-between mb-3 gap-3">
         <Tally name={names[0]} wins={state.wins[0]} need={need} colour="#f0b429" me={youSlot === 0} />
@@ -58,6 +59,12 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
         <Tally name={names[1]} wins={state.wins[1]} need={need} colour="#4a9fd8" me={youSlot === 1} align="right" />
       </div>
 
+      {/* At 16:9 in a 720 px column this pad was 405 px tall on a desktop and 193 px
+          on a phone — shorter than the mascot, the word and the sub-line stacked
+          inside it, so the cue you are supposed to react to was clipped on mobile.
+          The stage fixes the height budget and the pad is never shorter than its
+          own content. */}
+      <BoardStage ratio={2} max={760} min={272} reserve={210} chrome={0}>
       <button
         onClick={() => { if (interactive) onMove({ type: 'press' }); }}
         disabled={!interactive}
@@ -66,7 +73,7 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
           : myFalse ? 'False start — this round is lost'
           : state.phase === 'reveal' || state.phase === 'done' ? 'Round result'
           : 'Wait for the signal'}
-        className="relative w-full aspect-[16/9] sm:aspect-[2/1] grid place-items-center border-2 overflow-hidden no-tap transition-[background] duration-75"
+        className="relative w-full min-h-[clamp(214px,30dvh,340px)] grid place-items-center border-2 overflow-hidden no-tap transition-[background] duration-75"
         style={{ background: bg, borderColor: live ? '#e8a21c' : myFalse ? '#d9456f' : '#c9a888', borderRadius: 26, cursor: interactive ? 'pointer' : 'default' }}>
 
         {/* The cue must never be covered. This used to be a full-pad white flash,
@@ -126,6 +133,7 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
           )}
         </div>
       </button>
+      </BoardStage>
 
       {/* round log */}
       {state.rounds.length > 0 && (

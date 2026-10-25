@@ -157,7 +157,7 @@ describe('the new solo screens respond to a click', () => {
 
   it('Mancala sows the pit you click', async () => {
     await mount('mancala');
-    const row = host.querySelector('[role="row"][aria-label="Your pits"]');
+    const row = host.querySelector('[role="group"][aria-label="Your pits"]');
     expect(row, 'your row of pits exists').toBeTruthy();
     const pits = enabled([...row!.querySelectorAll<HTMLElement>('button')]);
     expect(pits.length, 'every pit with seeds is playable').toBe(6);
@@ -166,7 +166,7 @@ describe('the new solo screens respond to a click', () => {
     await click(pits[2]);
     await settle(1500);
 
-    const after = enabled([...host.querySelectorAll<HTMLElement>('[role="row"][aria-label="Your pits"] button')])
+    const after = enabled([...host.querySelectorAll<HTMLElement>('[role="group"][aria-label="Your pits"] button')])
       .map((p) => p.getAttribute('aria-label'));
     expect(after, 'the pits no longer hold what they held before').not.toEqual(before);
   });
@@ -195,10 +195,25 @@ describe('pass-and-play curtain (Wild Eights)', () => {
       expect(hand, 'the hand is on screen').toBeTruthy();
       const playable = [...hand!.querySelectorAll<HTMLElement>('button')]
         .filter((b) => !(b as HTMLButtonElement).disabled);
-      if (!playable.length) break;
+      if (!playable.length) {
+        /* A dealt hand can legitimately hold nothing that matches the top card.
+           The old loop gave up here and reported "no curtain" — a false failure
+           that depended on the shuffle. A player in that position draws instead,
+           so the test draws too. */
+        const draw = [...host.querySelectorAll<HTMLElement>('button')]
+          .find((b) => /Draw a card from the stock/i.test(b.getAttribute('aria-label') ?? ''));
+        if (!draw || (draw as HTMLButtonElement).disabled) break;
+        await click(draw);
+        await settle(400);
+        continue;
+      }
       const plain = playable.find((b) => !/^(8|Skip)/.test(b.getAttribute('aria-label') ?? ''));
       await click(plain ?? playable[0]);
-      await settle(400);
+      /* 600 ms, not 400: this test walks ten turns of a clock-seeded shuffle, and
+         under a fully parallel suite the React commit after a card play could
+         still be in flight when the old window closed — a false failure that had
+         nothing to do with the cards. The assertion itself is unchanged. */
+      await settle(600);
       const suit = [...host.querySelectorAll<HTMLElement>('button')].find((b) => /^Call /.test(b.getAttribute('aria-label') ?? ''));
       if (suit) { await click(suit); await settle(300); }
       curtainUp = await waitFor(() => /Hand it to Player [12]/.test(host.textContent ?? ''), 1200);
@@ -210,5 +225,8 @@ describe('pass-and-play curtain (Wild Eights)', () => {
     await click(go!);
     const lifted = await waitFor(() => !/Hand it to Player/.test(host.textContent ?? ''), 1500);
     expect(lifted, 'the curtain lifts once the next player takes the device').toBe(true);
-  });
+    /* A generous budget on purpose: this test plays up to ten real turns against
+       real timers (no fake clock), so under a fully parallel suite its 5 s
+       default was the thing failing — not the cards. */
+  }, 25_000);
 });

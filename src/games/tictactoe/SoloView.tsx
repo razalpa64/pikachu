@@ -101,7 +101,7 @@ export default function TicTacToeSolo({ game }: { game: GameMeta }) {
           </span>
         </Panel>
       }>
-      <div className="relative">
+      <div className="relative w-full">
         <TicTacToeBoard state={state} youSlot={state.turn} onMove={(m) => play(m.cell)}
           interactive={myTurn} names={['You', mode === 'ai' ? 'AI' : 'Player 2']} hint={settings.showHints} />
         {state.over && shownResult && (

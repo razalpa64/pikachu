@@ -79,7 +79,7 @@ export default function ConnectFourSolo({ game }: { game: GameMeta }) {
           </span>
         </Panel>
       }>
-      <div className="relative">
+      <div className="relative w-full">
         <ConnectFourBoard state={state} youSlot={state.turn} onMove={(m) => drop(m.col)}
           interactive={!state.over && (mode === 'local' || state.turn === 0)} names={['You', 'AI']} />
         {state.over && shown && (

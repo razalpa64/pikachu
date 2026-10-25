@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { gomokuRules as R, type GomokuState } from '../../games/gomoku/rules';
 import type { BoardProps } from './types';
 import { BoardPlate, ScoreChip } from './BoardPlate';
+import { BoardGrid, BoardStage } from './BoardStage';
 
 const GOLD = '#e8a21c';
 const ROSE = '#d9456f';
@@ -18,7 +19,10 @@ const ROSE = '#d9456f';
 export default function GomokuBoard({ state, youSlot, onMove, interactive, hint, names }: BoardProps<GomokuState>) {
   const [hover, setHover] = useState<number | null>(null);
   const size = state.size;
-  const cell = size <= 11 ? 'min(7.4vw,34px)' : size <= 15 ? 'min(5.6vw,29px)' : 'min(4.4vw,24px)';
+  /* a 15x15 board at `min(5.6vw,29px)` was 435 px wide on a phone — wider than
+     the phone — and 435 px on a 1440 px desktop, a stamp. The stage sizes it;
+     the stones are fractions of a cell. */
+  const max = size <= 11 ? 560 : size <= 15 ? 604 : 640;
   const legal = useMemo(() => interactive && !state.over, [interactive, state.over]);
   const stars = useMemo(() => {
     const mid = Math.floor(size / 2);
@@ -37,18 +41,21 @@ export default function GomokuBoard({ state, youSlot, onMove, interactive, hint,
         </div>
       }
     >
-      <div className="rounded-[14px] p-[7px]" style={{ background: 'linear-gradient(160deg,#fff3dd,#ffe4c6)', border: '3px solid #d3ab86' }}>
-        <div
+      <BoardStage ratio={1} max={max} min={size <= 11 ? 260 : 300} reserve={150} chrome={16}>
+      <div className="rounded-[clamp(10px,2.6%,16px)] p-[clamp(4px,1.4%,8px)]" style={{ background: 'linear-gradient(160deg,#fff3dd,#ffe4c6)', border: '3px solid #d3ab86' }}>
+        <BoardGrid
+          cols={size}
+          gap="0"
           role="grid"
           aria-label={`${size} by ${size} Gomoku board, five in a row wins`}
-          className="grid"
+          className="overflow-hidden"
           style={{
-            gridTemplateColumns: `repeat(${size}, ${cell})`,
-            ['--c' as string]: cell,
+            /* the lattice: one line per track, offset by half a track so the lines
+               run through the intersections. Percentages, so it holds at every size. */
             backgroundImage:
               'linear-gradient(90deg, rgba(201,168,136,.55) 1.5px, transparent 1.5px), linear-gradient(180deg, rgba(201,168,136,.55) 1.5px, transparent 1.5px)',
-            backgroundSize: 'var(--c) var(--c), var(--c) var(--c)',
-            backgroundPosition: 'calc(var(--c) / 2) calc(var(--c) / 2), calc(var(--c) / 2) calc(var(--c) / 2)',
+            backgroundSize: `${100 / size}% ${100 / size}%, ${100 / size}% ${100 / size}%`,
+            backgroundPosition: `${50 / size}% ${50 / size}%, ${50 / size}% ${50 / size}%`,
           } as React.CSSProperties}
         >
         {state.board.map((v, i) => {
@@ -68,10 +75,9 @@ export default function GomokuBoard({ state, youSlot, onMove, interactive, hint,
                 `Row ${Math.floor(i / size) + 1}, column ${(i % size) + 1}, ` +
                 (v === null ? 'empty' : v === 0 ? 'gold stone' : 'rose stone')
               }
-              className={`relative grid place-items-center no-tap ${canPlay ? 'cursor-pointer' : 'cursor-default'}`}
-              style={{ width: cell, height: cell }}
+              className={`board-cell no-tap ${canPlay ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              {star && v === null && <span aria-hidden className="absolute w-[5px] h-[5px] rounded-full bg-[#c9a888]" />}
+              {star && v === null && <span aria-hidden className="absolute w-[16%] h-[16%] rounded-full bg-[#c9a888]" />}
               {v !== null && <Stone who={v} win={win} last={last} />}
               {v === null && canPlay && hover === i && (
                 <span aria-hidden className="w-[74%] h-[74%] rounded-full" style={{ background: youSlot === 0 ? 'rgba(232,162,28,.38)' : 'rgba(217,69,111,.34)' }} />
@@ -82,8 +88,9 @@ export default function GomokuBoard({ state, youSlot, onMove, interactive, hint,
             </button>
           );
         })}
-        </div>
+        </BoardGrid>
       </div>
+      </BoardStage>
       <div className="flex items-center justify-between px-1 pt-2 min-h-[18px]">
         <p className="text-[10.5px] text-cream-500 font-bold">
           {state.over ? (state.winner === null ? 'Board full — a draw.' : `${names[state.winner]} got five.`) : 'Five in a row, any direction.'}

@@ -44,7 +44,7 @@ export interface QuizState {
 }
 
 export const DEFAULT_CONFIG: QuizConfig = {
-  categories: ['science', 'history', 'general', 'maths', 'geography', 'nature'],
+  categories: ['science', 'history', 'general', 'maths', 'geography', 'nature', 'philippines', 'society'],
   rounds: 10,
   perQuestion: 20,
 };

@@ -1,10 +1,11 @@
-import { useMemo, useState, useDeferredValue } from 'react';
+import { useEffect, useMemo, useRef, useState, useDeferredValue } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { GAMES, GENRE_LABEL } from '../games/registry';
 import type { GameMeta } from '../games/types';
 import { GameCard } from '../components/GameCard';
 import { PikaScene } from '../mascot';
 import { Button, EmptyState, Icon, Panel, Segmented } from '../components/ui';
+import { AdSlot } from '../components/AdSlot';
 import { useStore, useAmbience } from '../lib/store';
 import { LIBRARY_FAQ } from '../lib/seo';
 import { BoltRule } from '../mascot';
@@ -12,6 +13,22 @@ import { BoltRule } from '../mascot';
 type Filter = 'all' | 'online' | 'solo' | 'ai' | 'coop' | 'favourites' | 'recent'
   | 'strategy' | 'arcade' | 'puzzle' | 'party';
 type Sort = 'featured' | 'name' | 'duration' | 'played';
+
+/** How many games each filter will actually show — the number comes from the
+ *  registry, so a chip can never advertise an empty shelf. */
+const countFor = (id: Filter, favourites: string[]): number => {
+  switch (id) {
+    case 'all': return GAMES.length;
+    case 'online': return GAMES.filter((g) => g.modes.includes('online')).length;
+    case 'solo': return GAMES.filter((g) => g.modes.includes('solo') || g.modes.includes('ai')).length;
+    case 'ai': return GAMES.filter((g) => g.modes.includes('ai')).length;
+    case 'coop': return GAMES.filter((g) => g.modes.includes('coop')).length;
+    case 'favourites': return favourites.length;
+    case 'recent': return -1; // dynamic: the count is whatever is in the profile
+    case 'strategy': case 'arcade': case 'puzzle': case 'party':
+      return GAMES.filter((g) => g.genre === id).length;
+  }
+};
 
 const FILTERS: { id: Filter; label: string; icon?: string }[] = [
   { id: 'all', label: 'All games', icon: 'grid' },
@@ -33,6 +50,22 @@ export default function Library() {
   useAmbience('hub');
   const [query, setQuery] = useState('');
   const deferred = useDeferredValue(query);
+  const searchRef = useRef<HTMLInputElement>(null);
+  const clearSearch = () => { setQuery(''); searchRef.current?.focus(); };
+
+  /* `/` focuses search from anywhere on the page — the convention people already
+     have from every other catalogue — and Escape clears it without leaving. The
+     handler must not fire while the user is typing in another field. */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = document.activeElement as HTMLElement | null;
+      const typing = !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+      if (e.key === '/' && !typing) { e.preventDefault(); searchRef.current?.focus(); }
+      if (e.key === 'Escape' && el === searchRef.current && query) { e.preventDefault(); clearSearch(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [query]);
   const [sort, setSort] = useState<Sort>('featured');
   const filter = (params.get('mode') as Filter) ?? 'all';
 
@@ -78,38 +111,53 @@ export default function Library() {
           <p className="eyebrow text-volt-700 mb-1.5">Everything here is playable today</p>
           <h1 className="display text-[30px] sm:text-[38px] text-cream-100">Game Library</h1>
           <p className="text-[13.5px] text-cream-500 mt-1.5 max-w-[62ch]">
-            {GAMES.length} finished games with real engines behind them. No placeholders, no “coming soon” tiles.
+            {GAMES.length} finished games with real engines behind them. No placeholders, no “coming soon” tiles —
+            search, filter, and start one in a click.
           </p>
         </div>
         <PikaScene clip="meadow" className="hidden lg:block w-[260px] shrink-0" rounded={20} tilt={1.5} />
       </header>
 
-      {/* controls */}
-      <Panel className="p-3 mb-5 flex flex-col lg:flex-row gap-3 lg:items-center">
-        <div className="relative flex-1 min-w-0">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-500"><Icon name="search" size={16} /></span>
-          <input value={query} onChange={(e) => setQuery(e.target.value)} type="search" placeholder="Search games, genres, mechanics…"
-            aria-label="Search games"
-            className="w-full bg-ink-800 border border-ink-500 pl-9 pr-3 py-2.5 text-[13.5px] text-cream-100 placeholder:text-cream-400 notch-sm focus:border-volt-500 outline-none" />
+      {/* Controls. Sticky under the header: on a long library page the search box
+          used to scroll away, so narrowing 20 games meant scrolling back to the
+          top to type. `top` matches the header's 58px row plus its 3px XP line. */}
+      <div className="sticky top-[61px] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-3 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
+        <div className="flex flex-col lg:flex-row gap-2.5 lg:items-center">
+          <div className="relative flex-1 min-w-0">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-500"><Icon name="search" size={16} /></span>
+            <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} type="search"
+              placeholder="Search games, genres, mechanics…"
+              aria-label="Search games"
+              className="w-full bg-ink-800 border-2 border-ink-500 pl-9 pr-16 py-2.5 text-[13.5px] text-cream-100 placeholder:text-cream-400 notch-sm focus:border-volt-500 outline-none" />
+            {query ? (
+              <button onClick={clearSearch} aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 grid place-items-center rounded-full text-cream-500 hover:text-cream-100 hover:bg-blush-100 no-tap">
+                <Icon name="x" size={13} />
+              </button>
+            ) : (
+              <kbd aria-hidden className="hidden sm:block absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-ink-400 bg-ink-850 text-[10px] font-bold text-cream-400">/</kbd>
+            )}
+          </div>
+          <div className="flex items-center justify-between gap-2 shrink-0">
+            <span className="eyebrow hidden sm:inline">Sort</span>
+            <Segmented value={sort} onChange={setSort} size="sm" label="Sort games"
+              options={[{ value: 'featured', label: 'Featured' }, { value: 'name', label: 'A–Z' }, { value: 'duration', label: 'Quickest' }, { value: 'played', label: 'Most played' }]} />
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="eyebrow hidden sm:inline">Sort</span>
-          <Segmented value={sort} onChange={setSort} size="sm" label="Sort games"
-            options={[{ value: 'featured', label: 'Featured' }, { value: 'name', label: 'A–Z' }, { value: 'duration', label: 'Quickest' }, { value: 'played', label: 'Most played' }]} />
-        </div>
-      </Panel>
+      </div>
 
       {/* filter rail */}
       <div className="flex gap-1.5 overflow-x-auto pb-2.5 mb-5 -mx-[var(--shell-pad)] px-[var(--shell-pad)] lg:mx-0 lg:px-0 lg:flex-wrap">
         {FILTERS.map((f) => {
           const active = filter === f.id;
-          const count = f.id === 'favourites' ? progress.favourites.length : undefined;
+          const n = countFor(f.id, progress.favourites);
+          const count = n >= 0 ? n : undefined;
           return (
             <button key={f.id} onClick={() => setFilter(f.id)} aria-pressed={active}
               className={`shrink-0 flex items-center gap-1.5 px-3 py-2 text-[11.5px] font-extrabold uppercase tracking-wider border transition-colors notch-sm no-tap
                 ${active ? 'bg-volt-400 text-[#5a3a12] border-volt-200' : 'bg-ink-800 text-cream-500 border-ink-600 hover:text-cream-100 hover:border-ink-400'}`}>
               {f.icon && <Icon name={f.icon} size={13} />}{f.label}
-              {count !== undefined && count > 0 && <span className="opacity-70">({count})</span>}
+              {count !== undefined && <span className="opacity-60 tabnum">{count}</span>}
             </button>
           );
         })}
@@ -130,6 +178,7 @@ export default function Library() {
           <p className="text-center text-[11.5px] text-cream-400 mt-4">
             Showing {results.length} of {GAMES.length} games
           </p>
+          <AdSlot placement="library-foot" className="mt-8 max-w-[860px] mx-auto" />
         </>
       )}
 

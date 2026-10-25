@@ -2,6 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type FormEvent, type React
 import { useStore, useAmbience } from '../lib/store';
 import { GAMES, gameById } from '../games/registry';
 import { Button, Icon, Panel, SectionTitle } from '../components/ui';
+import { AdSlot } from '../components/AdSlot';
 import { PikachuMascot } from '../mascot';
 import {
   KINDS, MAX_CONTACT, MAX_MESSAGE, MAX_NAME, MIN_MESSAGE, emptyDraft,
@@ -230,6 +231,10 @@ export default function Feedback() {
 
             </Panel>
           )}
+
+          {/* Below the form, after the thanks — never between the fields and the
+              button, and nothing renders at all until ads are configured. */}
+          <AdSlot placement="feedback-foot" className="mt-6" />
 
           {queued > 0 && (
             <p className="mt-3 text-[11.5px] text-cream-500 px-1">

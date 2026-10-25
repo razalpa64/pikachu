@@ -50,6 +50,22 @@ See [`supabase/README.md`](supabase/README.md) for the schema, RLS policies and 
 When the two `VITE_SUPABASE_*` vars are absent the SDK is never downloaded at all — the import is
 dynamic and gated, so the default setup ships ~200 kB less JavaScript.
 
+#### Advertising (off unless you switch it on)
+
+The build contains **no ad SDK and no publisher id**. Three slots exist — `home-foot`,
+`library-foot`, `feedback-foot`, all below real content and none inside a game — and each renders
+literally nothing until both halves of the switch are flipped:
+
+1. `VITE_ADSENSE_CLIENT` holds a real `ca-pub-` id (plus the matching `VITE_ADSENSE_SLOT_*` unit),
+   **and**
+2. the visitor presses *Allow ads* in the slot's consent strip.
+
+Only then is `pagead2.googlesyndication.com/pagead/js/adsbygoogle.js` fetched and an `<ins>` mounted;
+a visitor who declines is never asked again and never loads the script. The consent flag lives in
+`localStorage` under `pikachu.ads.consent` and the same behaviour is described on `/privacy`. To turn
+ads on, set the variables in `.env` (or your host's dashboard) — never by adding a script tag to
+`index.html`, which would load it before consent exists.
+
 ---
 
 ## Search, sharing and structured data

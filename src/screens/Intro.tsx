@@ -5,34 +5,40 @@ import { useStore } from '../lib/store';
 /**
  * The cold open.
  *
- * It runs once per session, so it has one job: make the first second feel like
- * something, then get out of the way. There is deliberately **no skip button** —
- * a skip button on a four-second splash is an admission that the splash is too
- * long. Instead the whole thing is built to be short enough to sit through:
+ * It is shown **only on the front page, once per session** — a link to a game, a
+ * search result or a shared room code now lands straight on the board instead of
+ * behind a three-second curtain. It has one job: make the first second feel like
+ * something, then get out of the way.
  *
  *   0.00  paper, warm light, a slow vignette
- *   0.30  a hairline of electricity crosses the screen
- *   0.75  the mascot rises, still a silhouette
- *   1.35  the strike — flash, two bolts, the zap
- *   1.75  colour, and it lands
- *   2.25  the wordmark, one letter at a time
- *   2.60  the tagline, and three of the covers fan out to say what is inside
- *   3.45  fade out, hand over to the app
+ *   0.25  a hairline of electricity crosses the screen
+ *   0.60  the mascot rises, still a silhouette
+ *   1.10  the strike — flash, two bolts, the zap
+ *   1.45  colour, and it lands
+ *   1.90  the wordmark, one letter at a time
+ *   2.20  the tagline, and three of the covers fan out to say what is inside
+ *   2.95  fade out, hand over to the app
  *
- * Anyone who prefers reduced motion gets a single static card for 1.2 s and no
- * animation at all — and because nothing is clickable, that is the *only* thing
- * that changes for them.
+ * There is no Skip button: this splash was asked for without one, and at 3.2 s
+ * from a cold start it is short enough that dismissing it is not worth a
+ * control. What replaces the skip button is the thing a skip button was really
+ * for — the intro never appears again in the session, and it never appears at all
+ * unless you arrived at the front page, so no deep link or room code ever waits
+ * behind it. Anyone who has turned motion off gets a one-second static card.
+ *
+ * Anyone who prefers reduced motion gets a single static card for 1 s and no
+ * animation at all.
  */
 const BEATS = [
   { at: 0,    name: 'dark' },
-  { at: 300,  name: 'pulse' },
-  { at: 750,  name: 'silhouette' },
-  { at: 1350, name: 'strike' },
-  { at: 1750, name: 'reveal' },
-  { at: 2250, name: 'title' },
-  { at: 2600, name: 'signature' },
-  { at: 3450, name: 'leaving' },
-  { at: 3720, name: 'done' },
+  { at: 250,  name: 'pulse' },
+  { at: 600,  name: 'silhouette' },
+  { at: 1100, name: 'strike' },
+  { at: 1450, name: 'reveal' },
+  { at: 1900, name: 'title' },
+  { at: 2200, name: 'signature' },
+  { at: 2950, name: 'leaving' },
+  { at: 3220, name: 'done' },
 ] as const;
 
 const WORDMARK = 'PIKACHU';
@@ -42,6 +48,20 @@ export default function Intro({ onDone }: { onDone: () => void }) {
   const { sfx, audioReady } = useStore();
   const [beat, setBeat] = useState<string>('dark');
   const timers = useRef<number[]>([]);
+  const done = useRef(false);
+
+  /* Idempotent: both natural ends (full sequence, and the reduced-motion card)
+     funnel through here, and the unmount cleanup clears the same list, so a tab
+     that is hidden mid-intro cannot fire onDone twice. */
+  const finish = () => {
+    if (done.current) return;
+    done.current = true;
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    setBeat('leaving');
+    window.setTimeout(onDone, 260);
+  };
+
   const reduce = typeof window !== 'undefined'
     && (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off');
 
@@ -55,12 +75,12 @@ export default function Intro({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (reduce) {
       setBeat('title');
-      const t = window.setTimeout(onDone, 1200);
+      const t = window.setTimeout(finish, 1000);
       return () => clearTimeout(t);
     }
     for (const b of BEATS) {
       timers.current.push(window.setTimeout(() => {
-        if (b.name === 'done') onDone();
+        if (b.name === 'done') finish();
         else setBeat(b.name);
       }, b.at));
     }

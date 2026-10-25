@@ -131,7 +131,7 @@ export const quizOnlineRules: TurnGameRules<OnlineQuizState, QuizMove> = {
     const cfg: QuizConfig = {
       categories: Array.isArray(config.categories) && config.categories.length
         ? (config.categories as QuizConfig['categories'])
-        : ['science', 'history', 'general', 'maths'],
+        : ['science', 'history', 'general', 'maths', 'geography', 'nature', 'philippines', 'society'],
       rounds: Math.max(1, Math.min(30, Number(config.rounds ?? 10))),
       perQuestion: Math.max(0, Math.min(90, Number(config.perQuestion ?? 20))),
     };

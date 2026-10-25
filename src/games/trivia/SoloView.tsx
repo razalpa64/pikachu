@@ -10,7 +10,7 @@ import {
   DEFAULT_CONFIG, type QuizState,
 } from './rules';
 
-const ALL_CATS: Category[] = ['science', 'history', 'general', 'maths', 'geography', 'nature'];
+const ALL_CATS: Category[] = ['science', 'history', 'general', 'maths', 'geography', 'nature', 'philippines', 'society'];
 const MODES = [
   { value: 'solo', label: 'Solo' },
   { value: 'ai', label: 'Vs AI' },

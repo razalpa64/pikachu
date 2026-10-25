@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Difficulty, Slot } from '../types';
 
-import { BANK, bankIsSound } from '../trivia/bank';
+import { BANK, bankIsSound, CATEGORY_LABEL, type Category } from '../trivia/bank';
 import { buildQueue, createQuiz, mathsQuestion, orderFor, answer, scoreAnswer, rivalAnswer, DEFAULT_CONFIG } from '../trivia/rules';
 
 import { DECK } from '../dare/deck';
@@ -36,9 +36,21 @@ describe('Spark Quiz', () => {
     expect(BANK.length).toBeGreaterThanOrEqual(60);
   });
 
-  it('covers every advertised category', () => {
-    for (const cat of ['science', 'history', 'general', 'geography', 'nature'] as const) {
-      expect(BANK.filter((q) => q.cat === cat).length).toBeGreaterThanOrEqual(15);
+  it('covers every advertised category, including the two extra topic sets', () => {
+    for (const cat of ['science', 'history', 'general', 'geography', 'nature', 'philippines', 'society'] as const) {
+      expect(BANK.filter((q) => q.cat === cat).length, `${cat} is thin`).toBeGreaterThanOrEqual(15);
+    }
+    // every category a player can tick must be reachable from the bank or the generator
+    expect(Object.keys(CATEGORY_LABEL).sort()).toEqual(
+      ['general', 'geography', 'history', 'maths', 'nature', 'philippines', 'science', 'society'],
+    );
+  });
+
+  it('builds a full round out of the new topic sets on their own', () => {
+    for (const cats of [['philippines'], ['society'], ['philippines', 'society']] as Category[][]) {
+      const q = buildQueue({ ...DEFAULT_CONFIG, categories: [...cats], rounds: 12 }, 'intermediate', 2026);
+      expect(q).toHaveLength(12);
+      expect(q.every((x) => x.cat === 'maths' || cats.includes(x.cat))).toBe(true);
     }
   });
 

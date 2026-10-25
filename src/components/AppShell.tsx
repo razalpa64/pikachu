@@ -187,6 +187,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <NavLink to="/feedback" className="text-[11.5px] font-bold text-cream-300 hover:text-volt-700 hover:underline">
                 Reviews &amp; ideas
               </NavLink>
+              <NavLink to="/privacy" className="text-[11.5px] font-bold text-cream-300 hover:text-volt-700 hover:underline">
+                Privacy
+              </NavLink>
               <SupportLink />
             </div>
           </div>

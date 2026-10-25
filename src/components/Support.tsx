@@ -56,8 +56,8 @@ export function SupportCard() {
             Made by one person, for two players
           </h2>
           <p className="text-[12.5px] text-cream-500 leading-relaxed mt-1 max-w-[62ch]">
-            No ads, no accounts, no paid tiers — every game here is free and stays free.
-            If the arcade earned an evening, a coffee keeps the servers awake.
+            No accounts, no paid tiers, no ads unless you allow them — every game here is free
+            and stays free. If the arcade earned an evening, a coffee keeps the servers awake.
           </p>
         </div>
         <div className="shrink-0 sm:pl-2 flex flex-col items-start sm:items-end gap-1.5">

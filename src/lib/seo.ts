@@ -307,6 +307,11 @@ const STATIC_PAGES: Record<string, PageCopy> = {
     description:
       'Tell us what to build next, review a game, or report something broken. Feedback is read by the person who made the arcade.',
   },
+  '/privacy': {
+    title: 'Privacy — No Account, No Tracking',
+    description:
+      'What this arcade stores (a few keys in your own browser), what a private room sends to the referee server, and the one switch that controls advertising.',
+  },
   '/profile': {
     title: 'Your Trainer Profile',
     description: 'Your name, mascot and level — stored only on this device.',

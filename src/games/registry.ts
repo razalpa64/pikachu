@@ -168,7 +168,7 @@ export const GAMES: GameMeta[] = [
   {
     id: 'trivia', slug: 'spark-quiz', title: 'Spark Quiz',
     tagline: 'Settle it with facts',
-    description: 'Science, history, general knowledge and mental maths, with a rival who actually gets better as you raise the level. Maths questions are generated fresh every round, so that category never runs out.',
+    description: 'Science, history, geography, animals, people and society, Filipino general knowledge and a little mental maths — with a rival who genuinely gets better as you raise the level. Maths questions are generated fresh every round, so that category never runs out.',
     genre: 'party', modes: ['solo', 'ai', 'online', 'local'], players: [1, 2], duration: 6,
     accent: '#96630c', artKey: 'trivia', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],

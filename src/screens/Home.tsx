@@ -56,6 +56,11 @@ export default function Home() {
   const quick = useMemo(() => live.filter((g) => g.duration <= 6).slice(0, 9), [live]);
   const together = useMemo(() => onlineGames().filter((g) => g.players[1] >= 2).slice(0, 9), []);
   const solo = useMemo(() => live.filter((g) => g.modes.includes('ai') || g.modes.includes('solo')).slice(0, 9), [live]);
+  /* Party and trivia — the games you put in the middle of the table, or the ones
+     you pass a phone around for. Kept as its own shelf because "something to play
+     with people in the room" is a different question from "something to play with
+     someone far away". */
+  const party = useMemo(() => live.filter((g) => g.genre === 'party' || g.modes.includes('local')).slice(0, 9), [live]);
 
   const featured = useMemo(() => {
     // one from each genre first, then fill — the front page should not be six
@@ -260,6 +265,10 @@ export default function Home() {
         <GameRail id="together-h" eyebrow="Two devices, one board" title="Best with two"
           note="Private rooms, refereed by the server, resume after a dropped connection." games={together}
           action={<Button variant="ghost" size="sm" onClick={() => nav('/together')}>Open a room</Button>} />
+
+        <GameRail id="party-h" eyebrow="Same table, one phone" title="Party & trivia"
+          note="Quiz nights, dares, word games and a room full of suspects." games={party}
+          action={<Button variant="ghost" size="sm" onClick={() => nav('/library')}>More</Button>} />
 
         <GameRail id="solo-h" eyebrow="Just you" title="Against the machine"
           note="Five AI levels, from forgiving to merciless." games={solo}

@@ -3,7 +3,9 @@
  * Auto-reconnects with backoff, replays `hello` + room resume, measures RTT,
  * and never applies a state update with a sequence number older than the one it holds.
  */
-import type { ClientMsg, ServerMsg, RoomView } from '../../../server/protocol';
+import type {
+  ClientMsg, PresenceView, QueueView, RoomView, ServerMsg,
+} from '../../../server/protocol';
 
 export type ConnState = 'idle' | 'connecting' | 'online' | 'reconnecting' | 'offline';
 
@@ -17,6 +19,8 @@ export interface RelayEvents {
   error?: (p: { code: string; message: string; recovery?: string }) => void;
   nudge?: (p: { from: string; text: string }) => void;
   left?: () => void;
+  presence?: (p: PresenceView) => void;
+  queue?: (q: QueueView) => void;
 }
 
 export class Relay {
@@ -27,6 +31,10 @@ export class Relay {
   private closedByUs = false;
   private lastSeq = -1;
   private lastMatchId: string | null = null;
+  /* Messages asked for while the socket is still opening. A button pressed one
+     millisecond after the page loads should not be swallowed; the outbox is
+     dropped on close, so a reconnect never replays a stale "find me a game". */
+  private outbox: ClientMsg[] = [];
 
   conn: ConnState = 'idle';
   rtt: number | null = null;
@@ -82,6 +90,9 @@ export class Relay {
       this.attempts = 0;
       this.setConn('online');
       this.send({ t: 'hello', ...this.identity, resumeCode: this.resumeCode ?? undefined });
+      for (const msg of this.outbox.splice(0, this.outbox.length)) {
+        if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+      }
       this.pingTimer = window.setInterval(() => this.send({ t: 'ping', ts: Date.now() }), 8000);
     };
     ws.onmessage = (ev) => {
@@ -109,11 +120,14 @@ export class Relay {
         case 'typing': this.events.typing?.(msg); break;
         case 'error': this.events.error?.(msg); break;
         case 'nudge': this.events.nudge?.(msg); break;
+        case 'presence': this.events.presence?.(msg.presence); break;
+        case 'queue': this.events.queue?.(msg.queue); break;
         case 'left': this.resumeCode = null; this.lastMatchId = null; this.lastSeq = -1; this.events.left?.(); break;
       }
     };
     ws.onclose = () => {
       if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null; }
+      this.outbox = [];
       this.ws = null;
       if (this.closedByUs) { this.setConn('idle'); return; }
       this.scheduleRetry();
@@ -129,7 +143,21 @@ export class Relay {
   }
 
   send(msg: ClientMsg) {
-    if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+    if (this.ws?.readyState === WebSocket.OPEN) { this.ws.send(JSON.stringify(msg)); return; }
+    if (msg.t === 'ping') return;
+    /* Held (a few at most) until the socket opens, then sent once. */
+    if (this.outbox.length < 8) this.outbox.push(msg);
+  }
+
+  /** "Find me an opponent." The server pairs us and opens the room itself. */
+  queueJoin(gameId: string, settings: Record<string, unknown>, roomName?: string) {
+    this.connect();
+    this.send({ t: 'queue', gameId, settings, roomName });
+  }
+
+  /** Stop waiting. Harmless if we were never in the queue. */
+  queueLeave() {
+    this.send({ t: 'unqueue' });
   }
 
   updateIdentity(id: { playerId: string; name: string; mascot: string }) {

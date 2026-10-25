@@ -71,6 +71,13 @@ export default function Privacy() {
             information — the opponent's fleet, their hand, their role in Imposter, the undealt cards — is
             stripped on the server before anything reaches your browser.
           </p>
+          <p>
+            <strong>Looking for a random opponent</strong> puts you in a queue on the same referee server for
+            as long as you keep looking; leaving the page, pressing “Stop looking”, being matched or waiting
+            five minutes takes you out of it. While you are connected, the server also publishes an anonymous
+            count — how many people are playing each game and how many are waiting — so the lobby can show it.
+            That count carries no names, no ids and nothing that survives a restart.
+          </p>
         </Section>
 
         <Section title={cloud ? 'Feedback, and the cloud sync that is switched on here' : 'Feedback'}>

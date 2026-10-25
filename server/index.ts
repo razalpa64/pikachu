@@ -21,9 +21,14 @@ import { REFEREES } from '../src/games/referees';
 import { chessRules, resign as chessResign, agreeDraw, startClock } from '../src/games/chess/rules';
 import { checkersRules, resignCheckers } from '../src/games/checkers/rules';
 import {
-  ROOM_TTL_MS, RECONNECT_GRACE_MS, START_COUNTDOWN_MS,
+  ROOM_TTL_MS, RECONNECT_GRACE_MS, START_COUNTDOWN_MS, MATCH_START_DELAY_MS,
   type ClientMsg, type ServerMsg, type RoomStatus, type RoomView, type MemberView,
+  type PresenceView, type QueueView,
 } from './protocol';
+import {
+  QUEUE_NOTICE_MS, dueForNotice, dequeue, enqueue, find as findInQueue, sweepQueue, takePair,
+  waitingCounts, type QueueEntry, type QueueTable,
+} from './queue';
 
 const PORT = Number(process.env.PORT ?? process.env.RELAY_PORT ?? 8787);
 const DATA_DIR = path.resolve(process.cwd(), '.pikachu-data');
@@ -73,10 +78,20 @@ interface Room {
   series: { games: number; wins: [number, number]; draws: number };
   history: { matchId: string; winnerSlot: Slot | null; reason: string; finishedAt: number }[];
   seedCounter: number;
+  /** Opened by matchmaking rather than by a host — the pair starts on its own. */
+  matchmade: boolean;
+  /** Still true until the first countdown completes: if somebody drops during
+      that countdown the pair must be able to start again without either of them
+      knowing to press "ready" at a stranger. Cleared by the first beginMatch. */
+  autoStart: boolean;
 }
 
 const rooms = new Map<string, Room>();
 const socketMeta = new WeakMap<WebSocket, { playerId: string; name: string; mascot: string; code: string | null }>();
+/** gameId → players waiting for a stranger. See ./queue.ts for the rules. */
+const queue: QueueTable = new Map();
+/** Last presence payload sent, so an unchanged lobby does not re-broadcast. */
+let lastPresence = '';
 
 /* ------------------------------------------------------------------ helpers */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -114,6 +129,154 @@ function broadcastRoom(room: Room) {
   const view = roomView(room);
   for (const m of room.members.values())
     for (const ws of m.sockets) send(ws, { t: 'room', room: view, you: { slot: m.slot, id: m.id } });
+}
+
+/* ---------------------------------------------------------------- presence */
+
+/**
+ * What the lobby is allowed to know: how many people are playing each game and
+ * how many are waiting for one. No names, no ids — a count is all a "quick
+ * match" button needs, and a count is all this ever returns.
+ */
+function presenceNow(): PresenceView {
+  const games: PresenceView['games'] = {};
+  const bump = (gameId: string, key: 'playing' | 'waiting', n = 1) => {
+    games[gameId] ??= { playing: 0, waiting: 0 };
+    games[gameId][key] += n;
+  };
+  for (const room of rooms.values()) {
+    if (room.status === 'EXPIRED' || room.status === 'CANCELLED') continue;
+    const seen = new Set<string>();
+    for (const m of room.members.values()) if (m.connected && !seen.has(m.id)) { seen.add(m.id); }
+    if (seen.size) bump(room.gameId, 'playing', seen.size);
+  }
+  for (const [gameId, n] of Object.entries(waitingCounts(queue))) bump(gameId, 'waiting', n);
+  const people = new Set<string>();
+  for (const ws of wss.clients) {
+    const meta = socketMeta.get(ws);
+    if (meta?.playerId) people.add(meta.playerId);
+  }
+  return { games, players: people.size, at: Date.now() };
+}
+
+function broadcastPresence() {
+  const presence = presenceNow();
+  const key = JSON.stringify([presence.games, presence.players]);
+  if (key === lastPresence) return;
+  lastPresence = key;
+  for (const ws of wss.clients) send(ws, { t: 'presence', presence });
+}
+
+function queueView(status: QueueView['status'], entry: QueueEntry | null, gameId: string | null): QueueView {
+  const waiting = gameId ? (queue.get(gameId)?.length ?? 0) : 0;
+  return { status, gameId, waiting, since: entry?.since ?? null };
+}
+
+/* ------------------------------------------------------------ room building */
+
+function seat(room: Room, meta: { playerId: string; name: string; mascot: string }, ws: WebSocket): Member {
+  const taken = new Set([...room.members.values()].map((m) => m.slot));
+  const slot: Slot = taken.has(0) ? 1 : 0;      // never two players in one slot
+  const member: Member = {
+    id: meta.playerId, name: meta.name, mascot: meta.mascot, slot,
+    ready: false, connected: true, lastSeen: Date.now(), rematchVote: false, sockets: new Set([ws]),
+  };
+  room.members.set(meta.playerId, member);
+  socketMeta.get(ws)!.code = room.code;
+  return member;
+}
+
+function openRoom(
+  meta: { playerId: string; name: string; mascot: string },
+  ws: WebSocket,
+  spec: { gameId: string; settings: Record<string, unknown>; roomName: string; mode: 'online' | 'coop'; matchmade?: boolean },
+): Room {
+  const code = newCode();
+  const room: Room = {
+    code, roomName: spec.roomName.slice(0, 40) || 'Private Arena',
+    gameId: spec.gameId, mode: spec.mode,
+    settings: sanitiseSettings(spec.settings), status: 'WAITING',
+    hostId: meta.playerId, members: new Map(),
+    createdAt: Date.now(), expiresAt: Date.now() + ROOM_TTL_MS, startsAt: null,
+    match: null, series: { games: 0, wins: [0, 0], draws: 0 }, history: [], seedCounter: 0,
+    matchmade: !!spec.matchmade, autoStart: !!spec.matchmade,
+  };
+  seat(room, meta, ws);
+  rooms.set(code, room);
+  return room;
+}
+
+/**
+ * Pair two queued players and open a room for them.
+ *
+ * The one who waited longer hosts and their settings are used, because they are
+ * the one who has been sitting there looking at the board they chose. Both are
+ * marked ready and the countdown starts immediately: a stranger does not need to
+ * press "ready" at a person they have never met, and a countdown is a fairer
+ * start signal than whoever's screen loaded first.
+ */
+function matchPair(gameId: string, first: QueueEntry, second: QueueEntry) {
+  const socketsFor = (playerId: string): WebSocket[] => {
+    const out: WebSocket[] = [];
+    for (const ws of wss.clients) {
+      const meta = socketMeta.get(ws);
+      if (meta?.playerId === playerId && ws.readyState === WebSocket.OPEN) out.push(ws);
+    }
+    return out;
+  };
+
+  const firstSockets = socketsFor(first.playerId);
+  const secondSockets = socketsFor(second.playerId);
+  if (!firstSockets.length || !secondSockets.length) {
+    /* One of them closed the tab between queueing and being picked. Put the
+       survivor back in the queue rather than pairing into a room nobody is
+       sitting in — and give them a fresh wait, not their old expired one. */
+    if (firstSockets.length) enqueue(queue, { ...first, since: Date.now(), noticed: true });
+    if (secondSockets.length) enqueue(queue, { ...second, since: Date.now(), noticed: true });
+    broadcastPresence();
+    return;
+  }
+
+  const room = openRoom(
+    { playerId: first.playerId, name: first.name, mascot: first.mascot },
+    firstSockets[0],
+    {
+      gameId,
+      settings: first.settings,
+      roomName: first.roomName || 'Quick match',
+      mode: 'online',
+      matchmade: true,
+    },
+  );
+  const host = room.members.get(first.playerId)!;
+  for (const ws of firstSockets.slice(1)) {
+    host.sockets.add(ws);
+    socketMeta.get(ws)!.code = room.code;
+  }
+
+  const guest = seat(room, { playerId: second.playerId, name: second.name, mascot: second.mascot }, secondSockets[0]);
+  for (const ws of secondSockets.slice(1)) {
+    guest.sockets.add(ws);
+    socketMeta.get(ws)!.code = room.code;
+  }
+
+  /* Both ready, countdown running: a stranger should not have to press "ready"
+     at someone they have never met, and a shared countdown is a fairer start
+     than whoever's screen happened to load first. */
+  room.status = 'STARTING';
+  room.startsAt = Date.now() + MATCH_START_DELAY_MS;
+  room.autoStart = true;
+  for (const m of room.members.values()) { m.ready = true; m.rematchVote = false; }
+  touch(room);
+
+  for (const player of [first, second])
+    for (const ws of [...firstSockets, ...secondSockets])
+      if (socketMeta.get(ws)?.playerId === player.playerId)
+        send(ws, { t: 'queue', queue: queueView('matched', null, gameId) });
+
+  broadcastRoom(room);
+  broadcastPresence();
+  console.log(`[relay] matched ${first.playerId.slice(0, 8)} + ${second.playerId.slice(0, 8)} → ${room.code} (${gameId})`);
 }
 
 function stateFor(room: Room, slot: Slot) {
@@ -165,6 +328,7 @@ function beginMatch(room: Room) {
   };
   room.status = 'IN_GAME';
   room.startsAt = null;
+  room.autoStart = false;
   for (const m of room.members.values()) m.rematchVote = false;
   broadcastRoom(room);
   broadcastState(room);
@@ -202,8 +366,30 @@ function completeMatch(room: Room) {
 }
 
 /* ------------------------------------------------------------------ ticking */
+let lastQueueSweep = 0;
 setInterval(() => {
   const now = Date.now();
+
+  /* Queue housekeeping, once a second rather than every tick: tell anyone who
+     has waited 30s that the room is still empty (once), and drop waits older
+     than five minutes. Presence follows every change, throttled by the diff. */
+  if (now - lastQueueSweep > 1000) {
+    lastQueueSweep = now;
+    for (const entry of dueForNotice(queue, now, QUEUE_NOTICE_MS)) {
+      for (const ws of wss.clients) {
+        if (socketMeta.get(ws)?.playerId !== entry.playerId) continue;
+        send(ws, { t: 'queue', queue: { status: 'timeout', gameId: entry.gameId, waiting: queue.get(entry.gameId)?.length ?? 0, since: entry.since } });
+      }
+    }
+    for (const entry of sweepQueue(queue, now)) {
+      for (const ws of wss.clients) {
+        if (socketMeta.get(ws)?.playerId !== entry.playerId) continue;
+        send(ws, { t: 'queue', queue: { status: 'expired', gameId: entry.gameId, waiting: 0, since: null } });
+      }
+    }
+    broadcastPresence();
+  }
+
   for (const [code, room] of rooms) {
     // expiry
     if (now > room.expiresAt) {
@@ -223,6 +409,19 @@ setInterval(() => {
         }
         broadcastRoom(room);
       }
+    }
+    // a matchmade pair whose countdown was broken by a drop starts again
+    if (
+      room.autoStart &&
+      (room.status === 'WAITING' || room.status === 'READY_CHECK') &&
+      room.members.size === 2 &&
+      [...room.members.values()].every((m) => m.connected)
+    ) {
+      for (const m of room.members.values()) { m.ready = true; m.rematchVote = false; }
+      room.status = 'STARTING';
+      room.startsAt = now + MATCH_START_DELAY_MS;
+      broadcastRoom(room);
+      continue;
     }
     // countdown → start
     if (room.status === 'STARTING' && room.startsAt !== null && now >= room.startsAt) {
@@ -268,7 +467,17 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   if (url.pathname === '/api/health') {
-    res.end(JSON.stringify({ ok: true, rooms: rooms.size, uptime: process.uptime(), games: Object.keys(RULES) }));
+    res.end(JSON.stringify({
+      ok: true, rooms: rooms.size, uptime: process.uptime(), games: Object.keys(RULES),
+      waiting: waitingCounts(queue),
+    }));
+    return;
+  }
+  /* The same counts the socket pushes, for a lobby that wants to ask before it
+     connects — and for the e2e script, which should not have to speak WebSocket
+     to check that a queue is empty again. */
+  if (url.pathname === '/api/presence') {
+    res.end(JSON.stringify(presenceNow()));
     return;
   }
   if (url.pathname.startsWith('/api/room/')) {
@@ -310,7 +519,24 @@ function memberOf(ws: WebSocket): { room: Room; me: Member } | null {
   return me ? { room, me } : null;
 }
 
+/** Every other live socket belonging to one player (two tabs, same trainer). */
+function otherSocketsFor(playerId: string, except: WebSocket): WebSocket[] {
+  const out: WebSocket[] = [];
+  for (const ws of wss.clients) {
+    if (ws === except) continue;
+    const meta = socketMeta.get(ws);
+    if (meta?.playerId === playerId && ws.readyState === WebSocket.OPEN) out.push(ws);
+  }
+  return out;
+}
+
 function detach(ws: WebSocket) {
+  const meta = socketMeta.get(ws);
+  /* A closed tab cannot keep waiting — but a player with another tab open must
+     keep their place. Only the last socket of a player leaves the queue. */
+  if (meta?.playerId && !otherSocketsFor(meta.playerId, ws).length) {
+    if (dequeue(queue, meta.playerId)) broadcastPresence();
+  }
   const ctx = memberOf(ws);
   if (!ctx) return;
   const { room, me } = ctx;
@@ -347,6 +573,7 @@ wss.on('connection', (ws, req) => {
           meta.name = String(msg.name ?? 'Trainer').slice(0, 24) || 'Trainer';
           meta.mascot = String(msg.mascot ?? 'classic').slice(0, 24);
           send(ws, { t: 'welcome', playerId: meta.playerId, serverTime: Date.now() });
+          send(ws, { t: 'presence', presence: presenceNow() });
 
           // auto-resume: reattach to a room we are still a member of
           const resume = msg.resumeCode?.toUpperCase();
@@ -373,22 +600,50 @@ wss.on('connection', (ws, req) => {
             return fail(ws, 'rate_limited', 'Too many rooms created. Wait a moment.', 'Try again in about a minute.');
           const rules = RULES[msg.gameId];
           if (!rules) return fail(ws, 'unknown_game', 'That game has no online referee yet.', 'Pick another game from the library.');
-          const code = newCode();
-          const room: Room = {
-            code, roomName: String(msg.roomName ?? '').slice(0, 40) || 'Private Arena',
-            gameId: msg.gameId, mode: msg.mode === 'coop' ? 'coop' : 'online',
-            settings: sanitiseSettings(msg.settings), status: 'WAITING',
-            hostId: meta.playerId, members: new Map(),
-            createdAt: Date.now(), expiresAt: Date.now() + ROOM_TTL_MS, startsAt: null,
-            match: null, series: { games: 0, wins: [0, 0], draws: 0 }, history: [], seedCounter: 0,
-          };
-          room.members.set(meta.playerId, {
-            id: meta.playerId, name: meta.name, mascot: meta.mascot, slot: 0,
-            ready: false, connected: true, lastSeen: Date.now(), rematchVote: false, sockets: new Set([ws]),
+          dequeue(queue, meta.playerId);            // opening a room leaves the queue
+          const room = openRoom(meta, ws, {
+            gameId: msg.gameId,
+            settings: msg.settings,
+            roomName: String(msg.roomName ?? '') || 'Private Arena',
+            mode: msg.mode === 'coop' ? 'coop' : 'online',
           });
-          rooms.set(code, room);
-          meta.code = code;
           broadcastRoom(room);
+          broadcastPresence();
+          return;
+        }
+
+        /* ----------------------------------------------------------- queue
+           "Find me an opponent." The server owns the pairing and creates the
+           room itself, so the two players never exchange a code: they are told
+           'matched', then handed the same room. */
+        case 'queue': {
+          if (!meta.playerId) return fail(ws, 'no_identity', 'Say hello first.');
+          const rules = RULES[msg.gameId];
+          if (!rules) return fail(ws, 'unknown_game', 'That game has no online referee yet.', 'Pick another game from the library.');
+          if (memberOf(ws)) return fail(ws, 'in_room', 'You are already in an arena.', 'Leave it first, then look for a random opponent.');
+          if (!allow(`queue:${meta.playerId}`, 20))
+            return fail(ws, 'rate_limited', 'Too many matchmaking attempts.', 'Wait a minute, then try again.');
+
+          enqueue(queue, {
+            playerId: meta.playerId, name: meta.name, mascot: meta.mascot,
+            gameId: msg.gameId,
+            since: Date.now(),
+            settings: msg.settings ?? {},
+            roomName: String(msg.roomName ?? '').slice(0, 40),
+          });
+          const mine = findInQueue(queue, meta.playerId)?.entry ?? null;
+          broadcastPresence();
+          const partner = takePair(queue, msg.gameId, meta.playerId);
+          if (partner) { matchPair(msg.gameId, partner.first, partner.second); return; }
+          send(ws, { t: 'queue', queue: queueView('waiting', mine, msg.gameId) });
+          return;
+        }
+
+        case 'unqueue': {
+          if (!meta.playerId) return;
+          const dropped = dequeue(queue, meta.playerId);
+          send(ws, { t: 'queue', queue: queueView('cancelled', null, dropped?.gameId ?? null) });
+          broadcastPresence();
           return;
         }
 
@@ -423,8 +678,10 @@ wss.on('connection', (ws, req) => {
             ready: false, connected: true, lastSeen: Date.now(), rematchVote: false, sockets: new Set([ws]),
           });
           meta.code = code;
+          dequeue(queue, meta.playerId);            // joined by code: out of the queue
           if (room.status === 'WAITING' && room.members.size === 2) room.status = 'READY_CHECK';
           broadcastRoom(room);
+          broadcastPresence();
           if (room.match) broadcastState(room);
           return;
         }
@@ -667,6 +924,7 @@ wss.on('connection', (ws, req) => {
           for (const m of room.members.values()) m.ready = false;
           room.status = 'WAITING';
           broadcastRoom(room);
+          broadcastPresence();
           return;
         }
         case 'ping': {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { onlineGames } from '../games/registry';
 import type { GameMeta } from '../games/types';
@@ -11,7 +11,7 @@ import { useStore, useAmbience } from '../lib/store';
 export default function PlayTogether() {
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const { room, create, join, conn, connect, error, clearError } = useRoom();
+  const { room, create, join, conn, connect, error, clearError, presence, queue, findMatch, cancelMatch } = useRoom();
   const { identity, setIdentity, sfx, award } = useStore();
   useAmbience('hub');
 
@@ -29,6 +29,26 @@ export default function PlayTogether() {
   const [code, setCode] = useState((params.get('code') ?? '').toUpperCase());
   const [name, setName] = useState(identity.name);
   const [pending, setPending] = useState<'create' | 'join' | null>(null);
+  /* A clock that only runs while we are actually waiting for somebody. */
+  const [now, setNow] = useState(() => Date.now());
+  const searching = queue !== null;
+  useEffect(() => {
+    if (!searching) return;
+    const t = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(t);
+  }, [searching]);
+  const waited = searching && queue ? Math.max(0, Math.floor((now - queue.at) / 1000)) : 0;
+  /* The relay only mentions games with activity, so "absent" means "nobody",
+     not "unknown" — once presence has arrived, zero is the honest number. */
+  const counts = useMemo(
+    () => (presence ? (presence.games[picked.id] ?? { playing: 0, waiting: 0 }) : null),
+    [presence, picked.id],
+  );
+  const crowd = useMemo(() => {
+    if (!counts) return 'Connecting to the relay…';
+    if (counts.playing + counts.waiting === 0) return `Nobody in ${picked.title} right now — you would be next in line`;
+    return `${counts.playing} playing · ${counts.waiting} looking for a game`;
+  }, [counts, picked.title]);
 
   useEffect(() => { connect(); }, [connect]);
   useEffect(() => { if (room) nav(`/room/${room.code}`, { replace: true }); }, [room, nav]);
@@ -62,7 +82,8 @@ export default function PlayTogether() {
           <p className="eyebrow text-blush-600 mb-1.5">Two of us, one little room</p>
           <h1 className="display text-[30px] sm:text-[38px] text-cream-100">Play Together</h1>
           <p className="text-[13.5px] text-cream-500 mt-1.5 max-w-[58ch]">
-            Open a private room, send the five-letter code, and the server quietly referees every move from there.
+            Find a random opponent with one button, or open a private room and send the five-letter code. Either way the
+            server referees every move from there.
           </p>
         </div>
         <PikaScene clip="crowd" className="hidden sm:block w-[280px] shrink-0" rounded={26} tilt={-1.5} />
@@ -99,6 +120,72 @@ export default function PlayTogether() {
       )}
 
       {tab === 'create' ? (
+        <div>
+          {/* ------------------------------------------------ quick match */}
+          <Panel
+            className={`p-4 mb-5 ${searching ? 'border-volt-400' : ''}`}
+            aria-live="polite"
+          >
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+            {/* On a phone the mascot would take a third of the width and squeeze
+                the sentence into a tall column; the words carry the panel. */}
+            <PikachuMascot state={searching ? 'waiting' : 'idle'} size={88} className="hidden sm:block shrink-0 self-start" />
+            <div className="flex-1 min-w-[220px]">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="eyebrow text-blush-600">Quick match</p>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-cream-500">
+                  {picked.title}
+                </span>
+              </div>
+              <p className="display text-[19px] text-cream-100 leading-tight mt-0.5">
+                {searching ? 'Looking for someone…' : 'Play a stranger, right now'}
+              </p>
+              <p className="text-[12.5px] text-cream-500 mt-1 max-w-[62ch] leading-relaxed">
+                {searching
+                  ? 'The relay will pair you with the next trainer who asks for the same game and start the countdown itself. Keep this tab open.'
+                  : 'One button, no code: the relay pairs you with the next person who asks for this game, opens the room, and referees it exactly like a private one.'}
+              </p>
+              <p className="text-[11.5px] text-cream-500 mt-1.5">
+                {crowd}
+                {presence ? ` · ${presence.players} trainer${presence.players === 1 ? '' : 's'} in the arcade` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+              {searching ? (
+                <>
+                  <span className="font-mono text-[13px] text-volt-700 tabular-nums" aria-label="Time spent searching">
+                    {String(Math.floor(waited / 60))}:{String(waited % 60).padStart(2, '0')}
+                  </span>
+                  <Button variant="ghost" className="flex-1 sm:flex-none justify-center" onClick={() => { sfx('toggle'); cancelMatch(); }}>
+                    Stop looking
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="primary"
+                  className="w-full sm:w-auto justify-center"
+                  onClick={() => {
+                    commitName();
+                    clearError();
+                    sfx('select');
+                    findMatch(picked.id, settings, `${identity.name || 'Trainer'}’s quick match`);
+                  }}
+                  disabled={conn === 'offline'}
+                  icon={<Icon name="spark" size={15} />}
+                >
+                  Find an opponent
+                </Button>
+              )}
+            </div>
+            </div>
+            {searching && waited >= 30 && (
+              <p className="w-full text-[12px] text-cream-400 mt-3">
+                Nobody has turned up yet. You can keep waiting — the queue is served in order, so you will be first
+                when someone arrives — or stop and open a private room.
+              </p>
+            )}
+          </Panel>
+
         <div className="grid lg:grid-cols-[1fr_340px] gap-5 items-start">
           <div>
             <SectionTitle eyebrow="Step 1" title="Pick the game" />
@@ -174,6 +261,7 @@ export default function PlayTogether() {
             </Panel>
           </div>
         </div>
+        </div>
       ) : (
         <div className="grid lg:grid-cols-[1fr_1fr] gap-5 items-start">
           <Panel className="p-6">
@@ -201,7 +289,12 @@ export default function PlayTogether() {
               Switch to <strong className="text-cream-100">Create a room</strong>, choose a game, and share the code
               that appears. Whoever opens the room is the host and starts the match.
             </p>
-            <Button variant="ghost" onClick={() => setTab('create')} icon={<Icon name="plus" size={15} />}>Create one instead</Button>
+            <div className="flex gap-2 flex-wrap justify-center">
+              <Button variant="ghost" onClick={() => setTab('create')} icon={<Icon name="plus" size={15} />}>Create one instead</Button>
+              <Button variant="ghost" onClick={() => { setTab('create'); sfx('click'); }} icon={<Icon name="spark" size={15} />}>
+                Play a stranger
+              </Button>
+            </div>
           </Panel>
         </div>
       )}

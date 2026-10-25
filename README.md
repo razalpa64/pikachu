@@ -515,6 +515,7 @@ Target: smooth on an integrated-GPU 16 GB Windows laptop.
 ```
 server/
   protocol.ts         wire types shared by client and server
+  queue.ts            the matchmaking queue as a data structure (no sockets, unit-tested)
   index.ts            authoritative relay: rooms, state machine, ticking, persistence
 src/
   games/
@@ -542,7 +543,7 @@ public/
 supabase/migrations/  SQL with RLS for the optional cloud layer
 scripts/gifs.py       GIF → clean animated WebP   scripts/art.py  cover crop/composite/encode
 scripts/smoke.ts      end-to-end relay test (two WebSocket clients, no browser)
-scripts/e2e/          browser tests: routes.mjs, play.mjs, reconnect.mjs
+scripts/e2e/          browser tests: routes.mjs, play.mjs, reconnect.mjs, matchmaking.mjs
 ```
 
 Two rules that keep the whole thing honest:
@@ -551,6 +552,53 @@ Two rules that keep the whole thing honest:
    game; only the state source differs. That is why online and solo cannot drift apart.
 2. **The server imports the rules, it does not reimplement them.** If a move is illegal in the
    browser it is illegal on the server, by construction.
+
+### Playing a stranger
+
+`/together` has a **Find an opponent** button. It is one message (`queue`), the relay does the
+introductions, and the two players are taken straight into `/room/<code>` without either of them
+typing a code:
+
+```
+client A ──queue { gameId }──▶ relay ──queue { status: 'waiting' }──▶ A
+client B ──queue { gameId }──▶ relay ── matched: opens the room itself ──▶ A + B
+                                        ↳ both seated, both ready, countdown running
+```
+
+The pairing rules live in `server/queue.ts` — a pure data structure with no sockets in it, so the
+part that decides "who plays whom" is unit-tested (`matchmaking.test.ts`) rather than reasoned
+about:
+
+* **The wait is served, not shuffled.** `partnerFor()` returns the longest-waiting *other* player
+  in the same game, so nobody is starved by a busy lobby.
+* **One entry per player, ever.** Pressing the button twice does not jump the queue; queueing for a
+  second game moves you instead of cloning you.
+* **A player who is already in a room is refused** (`in_room`) rather than quietly seated in two.
+* **A closed tab cannot keep waiting.** The last socket of a player leaves the queue on close; a
+  player with two tabs keeps their place.
+* **Nobody waits forever.** At 30 seconds the UI is told once (`timeout`) and invited to keep
+  waiting; at five minutes the entry is dropped (`expired`). Cancelling is `unqueue`.
+* **The longer the wait, the more of the setup you get**: the first-in player hosts and their room
+  settings are used, because they are the one who has been looking at that board.
+
+Both are marked ready and the countdown starts on its own — a stranger should not have to press
+"ready" at somebody they have never met — and from that moment it is an ordinary room: the same
+refereed actions, the same chat, the same 45-second reconnect window, the same rematch.
+
+Two consequences of a room with no host are handled explicitly. A queue entry belongs to the
+*socket*, not to a page, so a player who presses **Find an opponent** and goes back to browsing is
+still waiting; when an opponent turns up they are taken to the board from wherever they were. And
+because there is no host to press start, a pair whose countdown is broken by a refresh starts the
+countdown again by itself instead of sitting in a lobby neither stranger knows how to leave.
+
+The lobby also shows **how many people are playing each game and how many are looking**
+(`presence`, pushed over the socket and mirrored at `GET /api/presence`). It is a count and nothing
+else: no names, no ids, nothing that outlives a restart. The privacy page says so in as many words.
+
+What is deliberately **not** here yet: a friend list and random-player safety tools. Both need a
+durable identity (accounts) rather than the browser-local `playerId` the relay trusts today, and
+shipping "play a stranger" with a chat box and no way to block or report them would be worse than
+shipping the queue alone. That is the next piece of work, not a hidden limitation.
 
 ### Difficulty is real
 
@@ -894,12 +942,13 @@ EmulatorJS is MIT — `public/retro/data/LICENSE-EmulatorJS.txt`.
 npm test
 ```
 
-684 tests across 46 files covering: legality and junk-payload rejection for all seventeen
+696 tests across 47 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake
 collision/growth/wrap, puzzle solvability (including 15-puzzle parity), and the XP /
-achievement / daily-challenge system. The four Supabase migrations are executed against a real
+achievement / daily-challenge system, and the matchmaking queue's own rules (who is paired with
+whom, how a second click cannot jump the line, when a wait expires). The four Supabase migrations are executed against a real
 PostgreSQL (PGlite) with the Supabase roles stubbed in, then driven as `anon`, as an ordinary member
 and as the allowlisted admin — the admin tests assert that the first two cannot write a cartridge,
 read the roster, publish a draft or touch the site copy, which is the claim the hidden `/admin` desk
@@ -988,6 +1037,22 @@ rather than a happy path:
 `npm run smoke` (with the relay running) additionally proves: handshake, room creation, join,
 ready-up, start, rejection of out-of-turn moves, a full match to a verdict, idempotent replay,
 rematch with slot swap, persisted history and a clean leave.
+
+`scripts/smoke-matchmaking.ts` (23 checks) is the one for strangers: two independent sockets queue
+for the same game, are told they were matched, are handed the *same* room in opposite slots with
+the countdown already running, and a move by whoever holds slot 0 lands on the other board. It then
+checks the ways a queue must not misbehave — cancelling leaves nothing behind, a player already in
+a room is refused rather than duplicated, closing the tab drops the entry, and a matchmade pair
+whose countdown is interrupted by a refresh starts itself again instead of waiting for a host who
+does not exist.
+
+`scripts/e2e/matchmaking.mjs` (22 checks, two browsers on a real relay) is the same story through
+the UI: one visitor presses **Find an opponent** and sees the searching state with a live count,
+a second visitor pressing the same button is taken into the same room with no code typed, both
+players' names are seated, the match starts on its own, and **Stop looking** empties the queue.
+It also lets the first player walk back to the home screen while still queued, because the entry
+belongs to their socket rather than to a page — when an opponent turns up they are pulled into the
+arena from wherever they were standing.
 
 It then runs three more relay suites. `scripts/smoke-cards.ts` and `scripts/smoke-quiz.ts` The first plays a whole hand of online Wild Eights against the
 real relay and checks the things only a live server can prove: that each client is sent its own

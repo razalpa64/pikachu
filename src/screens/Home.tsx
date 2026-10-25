@@ -7,14 +7,14 @@ import { GameCard } from '../components/GameCard';
 import { GameArtwork } from '../components/GameArtwork';
 import { GameRail, Spotlight } from '../components/GameRail';
 import { JoinCode } from '../components/JoinCode';
+import { HomeHero } from '../components/HomeHero';
 import { AdSlot } from '../components/AdSlot';
-import { Button, Icon, Panel, SectionTitle, Stat } from '../components/ui';
+import { Button, Icon, Panel, SectionTitle } from '../components/ui';
 import { SupportCard } from '../components/Support';
 import { PikachuMascot, BoltRule } from '../mascot';
-import { dailyChallenges, levelFor } from '../lib/progress';
+import { dailyChallenges } from '../lib/progress';
 import { readRecord, solvedToday } from '../games/daily/streak';
 import { DAILY_VERSION, dateKey } from '../games/daily/puzzle';
-import { MASCOT_ART } from '../lib/identity';
 import { dayHash, railPicks } from '../lib/rails';
 
 /**
@@ -22,8 +22,9 @@ import { dayHash, railPicks } from '../lib/rails';
  *
  * Structure, top to bottom, and why:
  *
- *   hero        what this is, in one look, with the picnic scene as a framed
- *               postcard rather than a full-bleed wash behind the type
+ *   hero        <HomeHero/> — the wordmark, the two ways in, the private-arena
+ *               ticket, and the picnic painting as an unframed, full-bleed
+ *               horizon with Pikachu standing on it
  *   your table  only when there is a room or a match history — a returning
  *               visitor's fastest route back in
  *   spotlight   one real game, chosen by the daily seed: the visual anchor
@@ -35,15 +36,14 @@ import { dayHash, railPicks } from '../lib/rails';
  *   library     six covers for browsing, then the tip jar and the sign-off
  *
  * What is deliberately absent: invented player counts, fake reviews, and a hero
- * that promises more than the 20 real games behind it.
+ * that promises more than the real games behind it.
  */
 export default function Home() {
   const nav = useNavigate();
-  const { identity, progress, sfx } = useStore();
+  const { progress, sfx } = useStore();
   const { room, conn } = useRoom();
   useAmbience('hub');
 
-  const lvl = levelFor(progress.xp);
   const challenges = useMemo(() => dailyChallenges(progress.dailySeed), [progress.dailySeed]);
   const recents = progress.recents.map((r) => ({ ...r, game: gameById(r.gameId) })).filter((r) => r.game).slice(0, 4);
 
@@ -60,138 +60,9 @@ export default function Home() {
   const { quick, together, solo, party, featured } = useMemo(() => railPicks(live, day), [live, day]);
   const pick = live[day % live.length] ?? live[0];
 
-  const totals = useMemo(() => {
-    const v = Object.values(progress.stats);
-    return {
-      played: v.reduce((a, b) => a + b.played, 0),
-      wins: v.reduce((a, b) => a + b.wins, 0),
-      ach: Object.keys(progress.achievements).length,
-    };
-  }, [progress]);
-
-  const hasHistory = totals.played > 0;
-  const name = identity.name.trim();
-  const greet = identity.greeting || (name ? `Welcome back, ${name}` : 'A little arcade, built for two');
-
   return (
     <div>
-      {/* ================================ HERO ================================ */}
-      <section className="relative overflow-hidden border-b border-ink-600" aria-labelledby="hero-title">
-        {/* warm paper ground with two soft washes; no full-screen photo behind the type */}
-        <div aria-hidden className="absolute inset-0 pointer-events-none">
-          <div className="absolute -top-24 -left-20 w-[46rem] h-[46rem] rounded-full opacity-70"
-            style={{ background: 'radial-gradient(circle, rgba(255,233,170,.75), transparent 62%)' }} />
-          <div className="absolute top-24 right-0 w-[38rem] h-[38rem] rounded-full opacity-60"
-            style={{ background: 'radial-gradient(circle, rgba(255,214,226,.7), transparent 64%)' }} />
-          <div className="absolute inset-0 opacity-[.05]"
-            style={{ backgroundImage: 'radial-gradient(rgba(90,63,52,.9) .5px, transparent .6px)', backgroundSize: '5px 5px' }} />
-        </div>
-
-        <div className="relative mx-auto max-w-[1340px] px-[var(--shell-pad)] pt-9 pb-8 lg:pt-12 lg:pb-10">
-          {/* --------------------------- words first ---------------------------
-              Copy on top, the painted scene beneath it — the arrangement this page
-              had before the postcard experiment, restored: no frame, no tilt, no
-              border around the picture. The headline, the promise and both primary
-              buttons are readable without scrolling on a phone, and the painting
-              arrives underneath as a clean full-width band rather than competing
-              with the type for the same row. */}
-          <div className="max-w-[820px]">
-            <p className="eyebrow text-volt-700 mb-3 flex items-center gap-2">
-              <span aria-hidden className="w-7 h-[3px] rounded-full bg-blush-300" />{greet}
-            </p>
-
-            <h1 id="hero-title" className="mb-3.5" aria-label="Pikachu Arcade">
-              <span className="wordmark block text-[clamp(46px,10vw,96px)] leading-[.85]">PIKACHU</span>
-              <span className="mt-1.5 flex items-center gap-3">
-                <span aria-hidden className="display text-[clamp(19px,4vw,30px)] text-cream-300 tracking-[.34em]">ARCADE</span>
-                <svg aria-hidden width="72" height="14" viewBox="0 0 72 14" className="opacity-80">
-                  <path d="M2 9c11-6 22-6 33-2s22 5 34-3" fill="none" stroke="#f2779a" strokeWidth="2.6" strokeLinecap="round" />
-                </svg>
-              </span>
-            </h1>
-
-            <p className="text-[15.5px] sm:text-[17px] text-cream-300 leading-relaxed max-w-[52ch] mb-6">
-              {GAMES.length} hand-built games for one or two people — a real chess engine, five AI
-              temperaments, and private rooms you open with a five-letter code. No account, no install,
-              nothing to download.
-            </p>
-
-            <div className="flex flex-wrap items-center gap-2.5 mb-6">
-              <Button variant="primary" size="lg" onClick={() => nav('/library')} icon={<Icon name="play" size={16} />}>Play now</Button>
-              <Button variant="blue" size="lg" onClick={() => nav('/together')} icon={<Icon name="users" size={16} />}>Play together</Button>
-              <button onClick={() => { sfx('select'); nav('/solo'); }}
-                className="group inline-flex items-center gap-1.5 px-2 h-11 text-[12.5px] font-extrabold uppercase tracking-wider text-cream-500 hover:text-volt-700 no-tap">
-                Solo &amp; AI
-                <span aria-hidden className="transition-transform group-hover:translate-x-0.5"><Icon name="chevron-right" size={14} /></span>
-              </button>
-            </div>
-
-            {/* What is actually true about the place, instead of a row of zeroes on
-                a first visit. Personal stats replace this once there is history. */}
-            {hasHistory ? (
-              <div className="flex flex-wrap gap-2">
-                <Stat label="Level" value={lvl.level} accent="var(--color-volt-700)" />
-                <Stat label="Matches" value={totals.played} />
-                <Stat label="Wins" value={totals.wins} accent="var(--color-leaf-700)" />
-                <Stat label="Trophies" value={totals.ach} accent="#1f6699" />
-                <Stat label="vs Rival" value={`${progress.versus.wins}–${progress.versus.losses}`} accent="var(--color-blush-600)" />
-              </div>
-            ) : (
-              <ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11.5px] font-extrabold uppercase tracking-wider text-cream-500">
-                <li className="flex items-center gap-1.5"><Icon name="grid" size={13} className="text-volt-700" />{GAMES.length} complete games</li>
-                <li className="flex items-center gap-1.5"><Icon name="users" size={13} className="text-blush-600" />1–2 players</li>
-                <li className="flex items-center gap-1.5"><Icon name="shield" size={13} className="text-leaf-700" />No account</li>
-                <li className="flex items-center gap-1.5"><Icon name="bolt" size={13} className="text-volt-700" />Works offline</li>
-              </ul>
-            )}
-          </div>
-
-          {/* ------------------------------ the scene ------------------------------
-              The painting, unframed. It used to sit inside a tilted cream mount with
-              a heavy border and an inner ring; at a glance that reads as a postcard
-              stuck onto the page rather than the arcade's own horizon. It is now
-              simply the picture, edge to edge under the copy. */}
-          <div className="relative mt-8 lg:mt-10">
-            <img
-              src="/art/scene/hero.webp"
-              alt="A picnic laid out on a sunny hillside: a strawberry milkshake, a basket of berries, two cushions and a lantern"
-              width={1568} height={652}
-              fetchPriority="high" decoding="async"
-              className="block w-full h-[214px] sm:h-[300px] lg:h-[396px] object-cover object-[center_58%] select-none rounded-[16px]"
-            />
-
-            {/* trainer strip, on the picture so the hero costs one block of height
-                instead of three; the chip carries its own ground purely so the text
-                stays readable over grass */}
-            <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:right-auto flex items-center gap-2.5 px-2.5 py-1.5 rounded-2xl bg-[#fffaf1]/95 border-2 border-[#d8b18d] max-w-[340px]">
-              <img src={MASCOT_ART[identity.mascot] ?? MASCOT_ART.classic} alt="" width={26} height={26} className="w-[26px] h-[26px] object-contain shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-[11.5px] font-extrabold text-cream-100 truncate leading-tight">
-                  {name || 'Set your trainer name'}
-                  <span className="ml-1.5 font-bold text-cream-400 text-[10px] uppercase tracking-wider">LV {lvl.level}</span>
-                </p>
-                <div className="h-[5px] rounded-full bg-blush-100 border border-ink-400 mt-1 overflow-hidden" role="progressbar"
-                  aria-valuenow={Math.round(lvl.pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Level progress">
-                  <div className="h-full rounded-full bg-gradient-to-r from-volt-400 to-blush-300" style={{ width: `${lvl.pct * 100}%` }} />
-                </div>
-              </div>
-              <button onClick={() => { sfx('click'); nav('/profile'); }}
-                className="text-[10px] font-extrabold uppercase tracking-wider text-blush-600 hover:text-[#8f1740] hover:underline shrink-0">
-                Edit
-              </button>
-            </div>
-
-            <span className="absolute bottom-2.5 right-2.5 hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fffaf1]/94 border-2 border-[#d8b18d] text-[9.5px] font-extrabold uppercase tracking-[.14em] text-cream-300">
-              <span aria-hidden className="text-blush-600">♥</span> Made for two
-            </span>
-
-            {/* The mascot stands at the top right of the picture. */}
-            <div className="absolute -top-9 right-4 sm:-top-[70px] sm:right-10 pointer-events-none origin-bottom-right scale-[.66] sm:scale-100">
-              <PikachuMascot state={room ? 'excited' : 'idle'} size={140} priority />
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero />
 
       <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-8 flex flex-col gap-10">
         {/* ============================ YOUR TABLE ============================ */}

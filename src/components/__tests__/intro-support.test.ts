@@ -88,9 +88,10 @@ describe('the intro cannot be skipped, and always ends', () => {
 describe('the tip jar', () => {
   it('is one real anchor to the right place, opening in a new tab', async () => {
     await mount(createElement(SupportCard));
-    const links = host.querySelectorAll('a[href]');
-    expect(links, 'exactly one support link on the card').toHaveLength(1);
-    const a = links[0];
+    const links = [...host.querySelectorAll('a[href]')];
+    const support = links.filter((el) => el.getAttribute('href') === SUPPORT_URL);
+    expect(support, 'exactly one support link on the card').toHaveLength(1);
+    const a = support[0];
     expect(a.getAttribute('href')).toBe('https://buymeacoffee.com/razalpa');
     expect(SUPPORT_URL).toBe('https://buymeacoffee.com/razalpa');
     expect(a.getAttribute('target')).toBe('_blank');
@@ -99,6 +100,14 @@ describe('the tip jar', () => {
     // the visible label, plus the non-visual note that it leaves the site
     expect(a.textContent).toMatch(/Buy me a coffee/);
     expect(a.textContent).toMatch(/new tab/);
+  });
+
+  it('also points at the suggestion box, as an in-app link rather than a new tab', async () => {
+    await mount(createElement(SupportCard));
+    const feedback = [...host.querySelectorAll('a[href]')].find((el) => el.getAttribute('href') === '/feedback');
+    expect(feedback, 'the tip-jar card links to /feedback').toBeTruthy();
+    expect(feedback!.getAttribute('target'), 'an internal link must stay in the tab').toBeNull();
+    expect(feedback!.textContent).toMatch(/Reviews & ideas/);
   });
 
   it('says plainly that nothing depends on it', async () => {

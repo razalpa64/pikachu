@@ -5,11 +5,12 @@ import { loadIdentity, saveIdentity, type Identity } from './identity';
 import { loadSettings, saveSettings, applySettingsToDocument, suggestQuality, type Settings } from './settings';
 import {
   loadProgress, saveProgress, recordMatch, toggleFavourite, noteVisit, unlockAchievement,
-  type ProgressState, type MatchRecord, type Achievement,
+  mergeRemoteStats, type ProgressState, type MatchRecord, type Achievement, type GameStat,
 } from './progress';
 import { play, setVolumes, unlockAudio, startMusic } from './audio';
 import * as jukebox from './jukebox';
-import { pushRemoteMatch, upsertRemoteProfile, supabaseEnabled } from './supabase';
+import { fetchRemoteUserData, pushRemoteMatch, upsertRemoteProfile, supabaseEnabled } from './supabase';
+import { flushFeedbackQueue } from './feedback';
 
 export interface Toast { id: string; kind: 'info' | 'success' | 'error' | 'achievement'; title: string; body?: string; achievement?: Achievement }
 
@@ -31,6 +32,8 @@ interface Store {
   introSeen: boolean;
   setIntroSeen: (v: boolean) => void;
   cloud: boolean;
+  /** pull cloud career stats in and keep the better of each field */
+  syncStats: (remote: Record<string, Partial<GameStat>> | null | undefined) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -56,6 +59,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const timers = useRef<Map<string, number>>(new Map());
 
   useEffect(() => { applySettingsToDocument(settings); setVolumes({ music: settings.music, sfx: settings.sfx, muted: settings.muted }); }, [settings]);
+
+  /* A note written while cloud sync was off stays in localStorage and says so. This is
+     the other half of that promise: the first time the app runs with a working Supabase
+     project, anything queued is delivered and the queue line on /feedback clears. */
+  useEffect(() => {
+    flushFeedbackQueue({ playerId: identity.playerId }).catch(() => { /* offline is normal */ });
+  }, [identity.playerId]);
+
+  /* A persisted session means the app can already be signed in on a fresh device. Pull
+     the cloud career once on boot so the profile is not empty until you sign in again. */
+  useEffect(() => {
+    if (!supabaseEnabled()) return;
+    fetchRemoteUserData()
+      .then((remote) => {
+        if (!remote) return;
+        setProgress((p) => {
+          const next = mergeRemoteStats(p, remote.stats);
+          if (next !== p) { progressRef.current = next; saveProgress(next); }
+          return next;
+        });
+      })
+      .catch(() => { /* no session, or offline — both normal */ });
+  }, []);
 
   // audio may only start after a genuine user gesture
   useEffect(() => {
@@ -154,6 +180,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     for (const a of unlocked) toast({ kind: 'achievement', title: a.name, body: a.description, achievement: a });
   }, [toast]);
 
+  const syncStats = useCallback((remote: Record<string, Partial<GameStat>> | null | undefined) => {
+    setProgress((p) => {
+      const next = mergeRemoteStats(p, remote);
+      if (next !== p) { progressRef.current = next; saveProgress(next); }
+      return next;
+    });
+  }, []);
+
   const setIntroSeen = useCallback((v: boolean) => {
     setIntroSeenState(v);
     try { sessionStorage.setItem(INTRO_KEY, v ? '1' : '0'); } catch { /* ignore */ }
@@ -161,8 +195,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Store>(() => ({
     identity, setIdentity, settings, setSettings, progress, finishMatch, favourite, visit, award,
-    toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen, cloud: supabaseEnabled(),
-  }), [identity, setIdentity, settings, setSettings, progress, finishMatch, favourite, visit, award, toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen]);
+    toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen, cloud: supabaseEnabled(), syncStats,
+  }), [identity, setIdentity, settings, setSettings, progress, finishMatch, favourite, visit, award, toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen, syncStats]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

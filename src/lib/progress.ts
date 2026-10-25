@@ -77,6 +77,40 @@ export function loadProgress(): ProgressState {
   } catch { /* ignore */ }
   return emptyProgress();
 }
+/**
+ * Merge cloud stats into the device's stats, field by field, taking the larger value.
+ *
+ * Signing in on a second device used to restore your name and mascot but leave the
+ * career page reading zero, because `fetchRemoteUserData` returned stats that nothing
+ * consumed. Merging with `max` rather than overwriting means an older cloud row can
+ * never erase a session you just played offline.
+ */
+export function mergeRemoteStats(
+  local: ProgressState,
+  remote: Record<string, Partial<GameStat>> | undefined | null,
+): ProgressState {
+  if (!remote) return local;
+  const stats = { ...local.stats };
+  let changed = false;
+  for (const [id, r] of Object.entries(remote)) {
+    if (!r) continue;
+    const l = stats[id] ?? { played: 0, wins: 0, losses: 0, draws: 0, best: 0 };
+    const merged: GameStat = {
+      played: Math.max(l.played, Number(r.played) || 0),
+      wins: Math.max(l.wins, Number(r.wins) || 0),
+      losses: Math.max(l.losses, Number(r.losses) || 0),
+      draws: Math.max(l.draws, Number(r.draws) || 0),
+      best: Math.max(l.best, Number(r.best) || 0),
+    };
+    if (merged.played !== l.played || merged.wins !== l.wins || merged.losses !== l.losses
+        || merged.draws !== l.draws || merged.best !== l.best) {
+      stats[id] = merged;
+      changed = true;
+    }
+  }
+  return changed ? { ...local, stats, updatedAt: Date.now() } : local;
+}
+
 export function saveProgress(p: ProgressState) {
   p.updatedAt = Date.now();
   try { localStorage.setItem(KEY, JSON.stringify(p)); } catch { /* ignore */ }

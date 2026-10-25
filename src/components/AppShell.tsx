@@ -183,7 +183,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 Pikachu is a trademark of Nintendo / Creatures Inc. / GAME FREAK. This is a personal, non-commercial project.
               </p>
             </div>
-            <SupportLink />
+            <div className="flex items-center gap-4 shrink-0">
+              <NavLink to="/feedback" className="text-[11.5px] font-bold text-cream-300 hover:text-volt-700 hover:underline">
+                Reviews &amp; ideas
+              </NavLink>
+              <SupportLink />
+            </div>
           </div>
         </footer>
       )}

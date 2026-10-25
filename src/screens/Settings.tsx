@@ -16,7 +16,7 @@ const QUALITY_COPY: Record<Quality, string> = {
 };
 
 export default function Settings() {
-  const { settings, setSettings, sfx, toast, cloud, identity, setIdentity } = useStore();
+  const { settings, setSettings, sfx, toast, cloud, identity, setIdentity, syncStats } = useStore();
   const [authMode, setAuthMode] = useState<'signup' | 'signin' | 'magic'>('signup');
   const [username, setUsername] = useState(identity.name || '');
   const [password, setPassword] = useState('');
@@ -97,6 +97,9 @@ export default function Settings() {
       } else {
         setIdentity({ name: cleanUser });
       }
+      /* The cloud row is the whole point of signing in: pull the career in, keeping the
+         better of each field so a device that played offline is not rolled back. */
+      if (remote?.stats) syncStats(remote.stats);
       setSession(displayName);
       setPassword('');
       sfx('win');

@@ -19,6 +19,7 @@ const Music = lazy(() => import('./screens/Music'));
 const Achievements = lazy(() => import('./screens/Achievements'));
 const Profile = lazy(() => import('./screens/Profile'));
 const SettingsScreen = lazy(() => import('./screens/Settings'));
+const Feedback = lazy(() => import('./screens/Feedback'));
 
 function RouteFallback() {
   return <div className="min-h-[58vh] grid place-items-center"><ElectricLoader status="Just a moment" detail="Loading this part of the arcade for the first time." /></div>;
@@ -57,6 +58,7 @@ function Shell() {
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/feedback" element={<Feedback />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>

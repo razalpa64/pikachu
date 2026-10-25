@@ -574,21 +574,27 @@ binaries executed by a WebAssembly emulator.
 
 ### What is on the shelf
 
-| Cartridge | Author | Licence | ROM | Save states |
+| Cartridge | Author | Licence | ROM | Genre |
 |---|---|---|---|---|
-| **Alien Invasion** | amberephraim | MIT | 63 KB | ✅ |
-| **Cyber Citadel** | amberephraim | MIT | 9.5 MB | ✅ |
-| **Simple Frogger** | amberephraim | MIT | 47 KB | ✅ |
+| **Alien Invasion** | amberephraim | MIT | 63 KB | shooter |
+| **Cyber Citadel** | amberephraim | MIT | 9.5 MB | side-scroller |
+| **Simple Frogger** | amberephraim | MIT | 47 KB | arcade |
+| **Lander Advance** | edefelice | MIT (code) · CC BY 4.0 (art, audio) | 255 KB | physics sim |
+| **Pong** | ZeroDayArcade | MIT | 8.7 KB | arcade |
+| **Wigly Hunt** | rawbits2010 | GPL-3.0 | 56 KB | arcade |
+| **Xorlix** | egillespie | MIT | 37 KB | puzzle |
 
 Every one is a freely redistributable homebrew build from a public repository —
 `public/retro/roms.json` links each entry to its source and its licence, and the
-licence text is committed alongside the ROMs in `public/retro/licenses/`. **No
-commercial ROMs are hosted, downloaded or bundled anywhere in this repository.**
+licence text is committed alongside the ROMs in `public/retro/licenses/`
+(`NOTICE.txt` is the per-cartridge provenance list). **No commercial ROMs are
+hosted, downloaded or bundled anywhere in this repository** — not from a ROM
+site, not as a "sample", not behind a flag.
 
 The cover images are not artwork anyone drew: each one is a 240×160 frame the
-emulator itself produced while that cartridge was running, captured with
-`gameManager.screenshot()` and committed as a PNG. Cards cross-fade to a second
-frame (the cartridge's title screen) on hover.
+emulator itself produced while that cartridge was running, screenshotted from the
+canvas at 2× and committed at the GBA's native size. Cards with a `marquee` entry
+cross-fade to a second frame on hover.
 
 ### How it is wired
 
@@ -612,7 +618,7 @@ scripts/e2e/retro.mjs  the proof (see below)
   classic script bundle that measures the whole document as its viewport, so it
   gets its own document (`/retro/player.html`). React never imports it.
 * **Nothing emulator-shaped is fetched until a cartridge launches.** `/retro`
-  loads the manifest and three small PNGs. `data/loader.js`, the 1 MB core and
+  loads the manifest and one small PNG per card. `data/loader.js`, the 1 MB core and
   the ROM are requested only when a player page mounts — `retro.mjs` asserts
   this by watching the network log.
 * **Ids are validated twice.** `loadRetroLibrary()` checks each manifest row
@@ -620,12 +626,17 @@ scripts/e2e/retro.mjs  the proof (see below)
   `https` source, a sane byte count and accent colour) and drops anything that
   fails; `player.html` re-resolves the `?game=` id against the same manifest, so
   a hand-edited URL cannot point the emulator at a remote file.
-* **Your own ROM never leaves the device.** The file input reads the first 0xC0
-  bytes, checks the Nintendo logo the GBA boot ROM itself checks for, then hands
-  the `File` to the player through route state. The player turns it into a
-  `blob:` URL in memory. No request is made, nothing is written to storage, and
-  a reload forgets it — `retro.mjs` asserts both the boot and the absence of an
-  upload.
+* **Your own ROM never leaves the device.** Both entry points — the file picker
+  and a drop on the "your own cartridge" card — read the first 0xC0 bytes, check
+  the Nintendo logo the GBA boot ROM itself checks for, then hand the `File` to
+  the player through route state. The player turns it into a `blob:` URL in
+  memory. No request is made, nothing is written to storage, and a reload forgets
+  it — `retro.mjs` asserts both the boot and the absence of an upload.
+* **There is no "paste a link to a ROM" box, on purpose.** A URL importer would
+  be blocked by CORS on almost every host, and where it did work it would make
+  this site a download proxy for exactly the commercial ROM sites it refuses to
+  touch. The honest version of that affordance is the drop zone: you supply the
+  file you are allowed to play, and it stays in your tab.
 
 ### Controls
 
@@ -692,14 +703,16 @@ the start gesture, audio-context state, keyboard, synthetic-controller *and*
 on-shell button input asserted against captured `simulateInput` calls, the canvas
 filling the LCD, pause/resume, save/load, PNG capture, mute, restart, fullscreen
 entry and exit (including that the shell grows and that a way out stays on
-screen), the local-ROM path, plus a layout overflow check on a phone profile. It needs a real
+screen), every cartridge booted and asserted to paint a live frame, the drop-a-file
+and pick-a-file local-ROM paths (including refusing a file that is not a GBA), plus
+a layout overflow check on a phone profile. It needs a real
 browser with WebGL2; on a machine whose Chromium lacks `libnss`/`libnspr`, pass
 `PIKACHU_CHROME=/path/to/chromium PIKACHU_LD=/path/to/libs`.
 
 ### Limitations, stated plainly
 
 * **Save states, not battery saves.** Save/load lives in the browser's own
-  IndexedDB, per cartridge. None of the three cartridges writes battery-backed
+  IndexedDB, per cartridge. None of the seven cartridges writes battery-backed
   save data, so progress beyond a save state does not persist — the player says
   so on the page.
 * **No BIOS file.** The mGBA core boots these builds directly; some commercial

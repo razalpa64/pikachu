@@ -819,6 +819,13 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   pointer-events: none;
 }
 
+/* The plastic lives in one wrapper so the windowed layout and the fullscreen
+   layout can share a DOM: here it is a transparent overlay sitting exactly on
+   the device, so every child keeps the position it has in the photograph. */
+.gb-deck { position: absolute; inset: 0; pointer-events: none; }
+.gb-deck .gb-hit,
+.gb-deck .gb-face-btn { pointer-events: auto; }
+
 /* ---------------- D-pad ----------------
    Drawn as two moulded bars rather than four boxes, so the silhouette is a
    single piece — but read as four whole arms, because that is where a thumb
@@ -1188,38 +1195,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
 }
 .gb-plate-link:hover { text-decoration: underline; }
 
-/* ---------------- fullscreen ----------------
-   The point of asking for the whole screen is the screen: the header and the
-   rail step aside, and the shell grows into the ~120px they were holding. The
-   one thing that must not disappear is the way out. */
+/* ---------------- fullscreen facade ----------------
+   Real fullscreen paints the stage's own backdrop; the layout itself lives in
+   the "fullscreen" section at the end of this file. */
 .gb-stage:fullscreen { background: #f6ecd9; }
-.gb-stage[data-full="on"] .gb-head,
-.gb-stage[data-full="on"] .gb-rail { display: none; }
-.gb-stage[data-full="on"] .gb-mid { padding: 0; }
-
-.gb-fs-exit {
-  position: absolute;
-  top: max(10px, env(safe-area-inset-top));
-  right: max(10px, env(safe-area-inset-right));
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 999px;
-  border: 2px solid var(--color-ink-500);
-  background: rgba(255, 253, 247, .9);
-  color: var(--color-cream-400);
-  font-size: 10.5px;
-  font-weight: 800;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  opacity: .72;
-  transition: opacity .2s ease;
-}
-.gb-fs-exit:hover, .gb-fs-exit:focus-visible { opacity: 1; }
 
 /* ---------------- room to breathe on a laptop ---------------- */
 @media (min-width: 900px) {
@@ -1247,22 +1226,42 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
    LCD takes the whole glass and the working controls sit either side of it, at
    thumb size — the arrangement every handheld emulator lands on, and the only
    one where a landscape phone is actually playable. */
+/* ---------------- landscape phone, windowed only ----------------
+   The shell would be ~290px tall here, which makes a 130px screen. Instead the
+   LCD takes the whole glass and the working controls sit either side of it, at
+   thumb size. Scoped with :not([data-full="on"]) because fullscreen has its own
+   landscape layout, and one must not bleed into the other. */
 @media (orientation: landscape) and (max-height: 560px) {
-  .gb-stage { background: #12100e; color: #f5e9d6; }
-  .gb-head { padding-top: 6px; padding-bottom: 2px; }
-  .gb-head-meta { display: none; }
-  .gb-head-name { color: #f5e9d6; font-size: 12px; }
-  .gb-chip { height: 28px; border-color: #4a4238; background: #241f1a; color: #e2cbb0; }
-  .gb-chip-word { display: none; }
-  .gb-status { height: 28px; border-color: #4a4238; background: #241f1a; }
-  .gb-status-text { display: none; }
-  .gb-mid { padding: 0; display: block; position: relative; }
-  .gb-rail { padding: 2px 8px 4px; background: #12100e; }
-  .gb-rail-inner { border-color: #4a4238; background: #241f1a; }
-  .gb-rail-btn { height: 30px; width: 34px; justify-content: center; padding: 0; color: #d9c3aa; }
-  .gb-rail-btn span { display: none; }
+  .gb-stage:not([data-full="on"]) { background: #12100e; color: #f5e9d6; }
+  .gb-stage:not([data-full="on"]) .gb-head { padding-top: 6px; padding-bottom: 2px; }
+  .gb-stage:not([data-full="on"]) .gb-head-meta { display: none; }
+  .gb-stage:not([data-full="on"]) .gb-head-name { color: #f5e9d6; font-size: 12px; }
+  .gb-stage:not([data-full="on"]) .gb-chip {
+    height: 28px;
+    border-color: #4a4238;
+    background: #241f1a;
+    color: #e2cbb0;
+  }
+  .gb-stage:not([data-full="on"]) .gb-chip-word { display: none; }
+  .gb-stage:not([data-full="on"]) .gb-status {
+    height: 28px;
+    border-color: #4a4238;
+    background: #241f1a;
+  }
+  .gb-stage:not([data-full="on"]) .gb-status-text { display: none; }
+  .gb-stage:not([data-full="on"]) .gb-mid { padding: 0; display: block; position: relative; }
+  .gb-stage:not([data-full="on"]) .gb-rail { padding: 2px 8px 4px; background: #12100e; }
+  .gb-stage:not([data-full="on"]) .gb-rail-inner { border-color: #4a4238; background: #241f1a; }
+  .gb-stage:not([data-full="on"]) .gb-rail-btn {
+    height: 30px;
+    width: 34px;
+    justify-content: center;
+    padding: 0;
+    color: #d9c3aa;
+  }
+  .gb-stage:not([data-full="on"]) .gb-rail-btn span { display: none; }
 
-  .gb-device {
+  .gb-stage:not([data-full="on"]) .gb-device {
     position: absolute;
     inset: 0;
     width: auto;
@@ -1273,9 +1272,24 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     box-shadow: none;
     container-type: size;
   }
-  .gb-grain, .gb-power, .gb-seam, .gb-brand, .gb-lamp, .gb-ridge, .gb-grille, .gb-toast { display: none; }
-  .gb-bezel { position: absolute; inset: 0; width: auto; height: auto; border-radius: 0; background: #000; box-shadow: none; }
-  .gb-screen {
+  .gb-stage:not([data-full="on"]) .gb-grain,
+  .gb-stage:not([data-full="on"]) .gb-power,
+  .gb-stage:not([data-full="on"]) .gb-seam,
+  .gb-stage:not([data-full="on"]) .gb-brand,
+  .gb-stage:not([data-full="on"]) .gb-lamp,
+  .gb-stage:not([data-full="on"]) .gb-ridge,
+  .gb-stage:not([data-full="on"]) .gb-grille,
+  .gb-stage:not([data-full="on"]) .gb-toast { display: none; }
+  .gb-stage:not([data-full="on"]) .gb-bezel {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    border-radius: 0;
+    background: #000;
+    box-shadow: none;
+  }
+  .gb-stage:not([data-full="on"]) .gb-screen {
     left: 50%;
     top: 50%;
     width: auto;
@@ -1286,9 +1300,16 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     border-radius: 0;
     box-shadow: none;
   }
-  .gb-screen-note { font-size: 11px; padding: 4px 12px; top: 6px; white-space: normal; max-width: 80%; text-align: center; }
+  .gb-stage:not([data-full="on"]) .gb-screen-note {
+    font-size: 11px;
+    padding: 4px 12px;
+    top: 6px;
+    white-space: normal;
+    max-width: 80%;
+    text-align: center;
+  }
 
-  .gb-dpad {
+  .gb-stage:not([data-full="on"]) .gb-dpad {
     left: max(8px, 2.4vw);
     top: 50%;
     transform: translateY(-50%);
@@ -1298,15 +1319,15 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     z-index: 2;
     opacity: .9;
   }
-  .gb-tri { width: 9px; height: 7px; }
-  .gb-dpad-shape::before,
-  .gb-dpad-shape::after {
+  .gb-stage:not([data-full="on"]) .gb-tri { width: 9px; height: 7px; }
+  .gb-stage:not([data-full="on"]) .gb-dpad-shape::before,
+  .gb-stage:not([data-full="on"]) .gb-dpad-shape::after {
     background: #31323a;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08), inset 0 -6px 10px rgba(0, 0, 0, .45);
   }
-  .gb-hit:active { background: rgba(255, 255, 255, .16); }
+  .gb-stage:not([data-full="on"]) .gb-hit:active { background: rgba(255, 255, 255, .16); }
 
-  .gb-face {
+  .gb-stage:not([data-full="on"]) .gb-face {
     right: max(8px, 2.4vw);
     left: auto;
     top: 50%;
@@ -1316,12 +1337,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     z-index: 2;
     opacity: .92;
   }
-  .gb-face-btn { width: 47%; }
-  .gb-face-letter { display: none; }
+  .gb-stage:not([data-full="on"]) .gb-face-btn { width: 47%; }
+  .gb-stage:not([data-full="on"]) .gb-face-letter { display: none; }
 
-  /* Select/Start sit under the D-pad, in the black margin beside the screen —
-     reachable by the same thumb and out of the picture. */
-  .gb-system {
+  .gb-stage:not([data-full="on"]) .gb-system {
     inset: auto auto 20px max(10px, 2.4vw);
     display: flex;
     gap: 24px;
@@ -1329,7 +1348,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     width: auto;
     justify-content: flex-start;
   }
-  .gb-system-btn {
+  .gb-stage:not([data-full="on"]) .gb-system-btn {
     position: relative;
     left: auto;
     top: auto;
@@ -1338,7 +1357,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     transform: rotate(-22deg);
     opacity: .9;
   }
-  .gb-system-label {
+  .gb-stage:not([data-full="on"]) .gb-system-label {
     left: 50%;
     top: calc(100% + 3px);
     transform: translateX(-50%);
@@ -1347,9 +1366,376 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     color: #cbb9a4;
     opacity: .9;
   }
-  .gb-plate { max-height: 88dvh; }
+  .gb-stage:not([data-full="on"]) .gb-plate { max-height: 88dvh; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .gb-device[data-lamp="waiting"] .gb-lamp-led { animation: none; }
+}
+
+/* ============================================================
+   Retro Arcade — fullscreen
+   ============================================================
+   Windowed, the console is an object on a desk, so it keeps the reference
+   photograph's 945:1280 silhouette. Fullscreen is a different job: the shell
+   covers the glass and the picture is as large as the glass allows. The same
+   DOM is re-laid out — screen on top with the controls in a deck beneath it, or
+   either side of it when the window is wide enough to afford the room — and
+   every cqw length from the object layout is restated in viewport units, because
+   there is no longer an "outside" for the object to sit in. */
+
+.gb-stage[data-full="on"] { background: #a9a49b; }
+.gb-stage[data-full="on"] .gb-head,
+.gb-stage[data-full="on"] .gb-rail { display: none; }
+.gb-stage[data-full="on"] .gb-mid { padding: 0; }
+
+.gb-stage[data-full="on"] .gb-device {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  border-radius: 0;
+  container-type: normal;
+  display: grid;
+  grid-template-areas: "bezel" "deck";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  align-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 44% at 28% 0%, rgba(255, 255, 255, .3), rgba(255, 255, 255, 0) 60%),
+    linear-gradient(176deg, #c0bcb3 0%, #b6b1a8 42%, #a6a198 100%);
+  box-shadow: none;
+  /* One place for the geometry. Every term is a length the layout actually
+     spends — the deck's floor, the shell's padding, the bezel's padding, the
+     room the silkscreen needs, and the ring the screen's outset shadow paints —
+     so the screen is sized by arithmetic that adds up instead of by a guess that
+     happens to look right at one window size. */
+  --fs-pad: clamp(6px, 1.2vh, 18px);
+  --fs-side: clamp(6px, 2.4vw, 34px);
+  --bz-pad: clamp(8px, 1.5vh, 22px);
+  --ring: clamp(8px, 1.6vh, 16px);
+  --bz-top: calc(var(--bz-pad) + var(--ring) + clamp(12px, 2.4vh, 22px));
+  --bz-bottom: calc(var(--bz-pad) + var(--ring));
+  --deck-h: clamp(196px, 26dvh, 290px);
+  --ctrl-w: clamp(104px, 15vw, 240px);
+  --screen-h: calc(100dvh - var(--deck-h) - 2 * var(--fs-pad) - var(--bz-top) - var(--bz-bottom));
+}
+
+/* details that belong to a handheld you can hold, not one that *is* the screen */
+.gb-stage[data-full="on"] .gb-power,
+.gb-stage[data-full="on"] .gb-seam,
+.gb-stage[data-full="on"] .gb-ridge,
+.gb-stage[data-full="on"] .gb-grille,
+.gb-stage[data-full="on"] .gb-lamp-label,
+.gb-stage[data-full="on"] .gb-grain { display: none; }
+.gb-stage[data-full="on"] .gb-device::after { display: none; }
+
+/* ---- the bezel and the screen inside it ---- */
+.gb-stage[data-full="on"] .gb-bezel {
+  grid-area: bezel;
+  position: relative;
+  left: auto;
+  top: auto;
+  /* full width: the panel is narrower than the shell in the photograph, but here
+     the screen inside it is the thing that must be as large as the glass allows,
+     and this is what that looks like while keeping the panel */
+  width: 100%;
+  height: auto;
+  box-sizing: border-box;
+  justify-self: stretch;
+  margin-top: var(--fs-pad);
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  padding: var(--bz-top) calc(var(--bz-pad) + var(--ring)) var(--bz-bottom);
+  border-radius: clamp(10px, 2.2vh, 28px);
+}
+.gb-stage[data-full="on"] .gb-screen {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: min(100%, calc(var(--screen-h) * 1.5));
+  aspect-ratio: 3 / 2;
+  border-radius: clamp(3px, .7vh, 10px);
+  box-shadow:
+    0 0 0 clamp(2px, .4vh, 5px) #4b4c53,
+    0 0 0 clamp(4px, .85vh, 11px) #232429,
+    0 0 0 clamp(6px, 1.2vh, 15px) #141519,
+    0 12px 26px rgba(0, 0, 0, .45),
+    inset 0 0 10px rgba(0, 0, 0, .5);
+}
+.gb-stage[data-full="on"] .gb-brand {
+  top: clamp(4px, .8vh, 10px);
+  left: calc(var(--bz-pad) + var(--ring));
+  right: calc(var(--bz-pad) + var(--ring));
+  gap: 10px;
+  font-size: clamp(7px, 1.05vh, 12px);
+}
+.gb-stage[data-full="on"] .gb-brand-rule {
+  height: clamp(5px, .9vh, 9px);
+  border-top-width: 2px;
+  border-bottom-width: 1.5px;
+}
+.gb-stage[data-full="on"] .gb-lamp {
+  left: calc(var(--bz-pad) + 4px);
+  top: auto;
+  bottom: calc(var(--bz-pad) + 2px);
+  width: auto;
+}
+.gb-stage[data-full="on"] .gb-lamp-led {
+  width: clamp(6px, 1.1vh, 10px);
+  height: clamp(6px, 1.1vh, 10px);
+  box-shadow: inset 0 0 6px rgba(0, 0, 0, .8), 0 0 0 2px rgba(0, 0, 0, .35);
+}
+
+/* ---- the deck: the same D-pad, A/B and Select/Start, at thumb size ---- */
+.gb-stage[data-full="on"] .gb-deck {
+  grid-area: deck;
+  position: relative;
+  inset: auto;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--deck-h);
+  display: grid;
+  grid-template-areas:
+    "dpad system face"
+    "dpad . face";
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  justify-items: center;
+  column-gap: clamp(6px, 2vw, 28px);
+  padding: clamp(12px, 2.4vh, 26px) clamp(16px, 6vw, 72px) clamp(14px, 3vh, 34px);
+}
+.gb-stage[data-full="on"] .gb-dpad {
+  grid-area: dpad;
+  position: relative;
+  left: auto;
+  top: auto;
+  width: clamp(88px, min(30vw, 24dvh), 210px);
+  height: auto;
+  aspect-ratio: 25.8 / 23.7;
+  --gb-dpad-r: clamp(4px, 1.4vw, 13px);
+}
+.gb-stage[data-full="on"] .gb-system {
+  grid-area: system;
+  position: relative;
+  inset: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 4vw, 34px);
+  width: auto;
+}
+.gb-stage[data-full="on"] .gb-face {
+  grid-area: face;
+  position: relative;
+  left: auto;
+  top: auto;
+  width: clamp(100px, min(34vw, 26dvh), 230px);
+  height: auto;
+  aspect-ratio: 27.1 / 20;
+  /* the A/B captions are printed below their buttons, as on the device */
+  margin-bottom: 3.4cqw;
+}
+
+/* the object layout's cqw shadows and type, restated in pixels */
+.gb-stage[data-full="on"] .gb-dpad-shape { filter: drop-shadow(0 3px 4px rgba(60, 52, 44, .45)); }
+.gb-stage[data-full="on"] .gb-dpad-shape::before,
+.gb-stage[data-full="on"] .gb-dpad-shape::after {
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, .13),
+    inset 0 -7px 9px rgba(0, 0, 0, .6),
+    inset 3px 0 5px rgba(255, 255, 255, .05);
+}
+.gb-stage[data-full="on"] .gb-tri {
+  width: clamp(7px, 2.4vw, 16px);
+  height: clamp(6px, 2vw, 13px);
+}
+.gb-stage[data-full="on"] .gb-dpad-hub {
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, .55),
+    0 0 0 1px rgba(0, 0, 0, .3),
+    -1px -1px 3px rgba(255, 255, 255, .07);
+}
+.gb-stage[data-full="on"] .gb-face-btn {
+  box-shadow:
+    inset 0 4px 6px rgba(255, 255, 255, .18),
+    inset 0 -7px 9px rgba(38, 0, 16, .6),
+    0 0 0 2px rgba(34, 12, 22, .5),
+    0 3px 6px rgba(48, 20, 30, .45);
+}
+.gb-stage[data-full="on"] .gb-face-gloss { filter: blur(2px); }
+.gb-stage[data-full="on"] .gb-face-letter { font-size: clamp(11px, 3.2vw, 24px); line-height: 1; }
+.gb-stage[data-full="on"] .gb-face-letter-a { left: auto; right: 4%; top: 92%; }
+.gb-stage[data-full="on"] .gb-face-letter-b { left: 6%; top: 92%; }
+.gb-stage[data-full="on"] .gb-system-btn {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: clamp(46px, 13vw, 88px);
+  height: clamp(13px, 3.2vw, 22px);
+  transform: rotate(-28deg);
+  box-shadow:
+    inset 0 2px 2px rgba(255, 255, 255, .2),
+    inset 0 -4px 5px rgba(0, 0, 0, .7),
+    0 1px 0 rgba(255, 255, 255, .55);
+}
+.gb-stage[data-full="on"] .gb-system-btn::before {
+  inset: -5px -9px;
+  box-shadow: inset 0 2px 3px rgba(52, 46, 40, .5), 0 1px 0 rgba(255, 255, 255, .45);
+}
+.gb-stage[data-full="on"] .gb-system-btn::after { inset: -14px -12px; }
+.gb-stage[data-full="on"] .gb-system-label {
+  left: 50%;
+  top: calc(100% + 7px);
+  transform: translateX(-50%);
+  font-size: clamp(8px, 2.2vw, 13px);
+}
+.gb-stage[data-full="on"] .gb-screen-note { font-size: clamp(10px, 1.6vh, 14px); }
+.gb-stage[data-full="on"] .gb-toast {
+  position: fixed;
+  top: calc(env(safe-area-inset-top) + 10px);
+  bottom: auto;
+  font-size: clamp(10px, 1.5vh, 13px);
+}
+.gb-stage[data-full="on"] .gb-hit:focus-visible,
+.gb-stage[data-full="on"] .gb-face-btn:focus-visible,
+.gb-stage[data-full="on"] .gb-system-btn:focus-visible {
+  outline: 3px solid #ffd24d;
+  outline-offset: 4px;
+}
+.gb-stage[data-full="on"] .gb-plate-wrap { z-index: 60; }
+
+/* ---- the way out ----
+   In fullscreen the rail is gone — the plastic is the only control surface — so
+   leaving cannot be a guess about the Esc key. */
+.gb-fs-exit {
+  position: absolute;
+  top: calc(max(10px, env(safe-area-inset-top)) + 6px);
+  left: max(10px, env(safe-area-inset-left));
+  z-index: 70;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 2px solid var(--color-ink-500);
+  background: rgba(255, 253, 247, .92);
+  color: var(--color-cream-400);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  opacity: .78;
+  transition: opacity .2s ease;
+}
+.gb-fs-exit:hover, .gb-fs-exit:focus-visible { opacity: 1; }
+.gb-fs-exit span { display: none; }
+@media (min-width: 900px) {
+  .gb-fs-exit { left: auto; right: max(14px, env(safe-area-inset-right)); padding: 0 13px; }
+  .gb-fs-exit span { display: inline; }
+}
+
+/* ---- wide screens: the controls flank the screen ----
+   A laptop has width to spare and height to lose. Putting the deck beside the
+   screen instead of under it is what makes the picture as tall as the glass —
+   which is the whole point of asking for the screen. */
+@media (min-aspect-ratio: 7/4) {
+  .gb-stage[data-full="on"] .gb-device {
+    --deck-h: 0px;
+    /* the padding is on the shell out here, so the screen may spend the rest */
+    --screen-h: calc(100dvh - 2 * var(--fs-pad) - var(--bz-top) - var(--bz-bottom));
+    /* `deck`, not `dpad bezel face` at the top level: the deck's own rules would
+       otherwise win the specificity contest and re-declare these children */
+    grid-template-areas:
+      "dpad bezel face"
+      "dpad bezel system";
+    grid-template-columns: var(--ctrl-w) minmax(0, 1fr) var(--ctrl-w);
+    grid-template-rows: minmax(0, 1fr) auto;
+    column-gap: clamp(12px, 1.8vw, 40px);
+    row-gap: clamp(10px, 2.4vh, 26px);
+    /* room under the pills for their reflection and the row's own shadow, so
+       nothing is flush against the edge of the glass */
+    padding: var(--fs-pad) var(--fs-side) clamp(16px, 2.6vh, 30px);
+    align-items: center;
+  }
+  .gb-stage[data-full="on"] .gb-deck { display: contents; }
+  .gb-stage[data-full="on"] .gb-bezel { margin-top: 0; }
+  .gb-stage[data-full="on"] .gb-dpad {
+    grid-area: dpad;
+    justify-self: center;
+    align-self: center;
+    width: clamp(96px, min(15vw, 31dvh), 230px);
+  }
+  /* Select/Start live under the thumb that also reaches A/B, the way every
+     landscape emulator puts them — the other corner is the D-pad's. */
+  .gb-stage[data-full="on"] .gb-system {
+    grid-area: system;
+    justify-self: center;
+    align-self: start;
+    gap: clamp(8px, 1.6vw, 22px);
+  }
+  .gb-stage[data-full="on"] .gb-system-btn { width: clamp(38px, 6.4vw, 88px); }
+  .gb-stage[data-full="on"] .gb-system-label {
+    top: auto;
+    bottom: calc(100% + 5px);
+    font-size: clamp(8px, 1.7vw, 12px);
+  }
+  .gb-stage[data-full="on"] .gb-face {
+    grid-area: face;
+    justify-self: center;
+    align-self: end;
+    width: clamp(110px, min(17vw, 32dvh), 260px);
+  }
+  .gb-stage[data-full="on"] .gb-screen { width: min(100%, calc(var(--screen-h) * 1.5)); }
+}
+
+/* ---- narrow portrait: two rows instead of three columns ----
+   Three columns of plastic do not fit across a 390px phone: measured, the D-pad,
+   the system pair and A/B need more than the shell has, and A/B ended up half
+   off the glass. Portrait puts D-pad and A/B on one row with Select/Start
+   centred beneath both, which a thumb reaches just as easily. */
+@media (max-width: 560px) and (orientation: portrait) {
+  .gb-stage[data-full="on"] .gb-deck {
+    grid-template-areas:
+      "dpad face"
+      "system system";
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    row-gap: clamp(10px, 3vw, 20px);
+    align-content: center;
+  }
+  .gb-stage[data-full="on"] .gb-system { gap: clamp(12px, 4vw, 26px); }
+  .gb-stage[data-full="on"] .gb-system-btn { width: clamp(50px, 15vw, 84px); height: clamp(15px, 3.8vw, 24px); }
+  .gb-stage[data-full="on"] .gb-system-label { font-size: clamp(9px, 2.4vw, 11px); }
+  /* the free height a phone has goes into the thumbs, not into empty plastic */
+  .gb-stage[data-full="on"] .gb-face { width: clamp(104px, min(37vw, 25dvh), 210px); }
+  .gb-stage[data-full="on"] .gb-dpad { width: clamp(96px, min(34vw, 24dvh), 200px); }
+  .gb-stage[data-full="on"] .gb-deck { padding-top: clamp(18px, 4vh, 40px); }
+  /* the whole handheld is one object, so it centres in the glass as one: rows
+     pinned to the top and bottom left a dead band on a tall phone */
+  .gb-stage[data-full="on"] .gb-device {
+    grid-template-rows: auto auto;
+    align-content: center;
+  }
+}
+
+/* ---- short landscape phones: no room for silkscreen captions ----
+   Two columns of plastic either side of the picture. A caption that collides
+   with a button is worse than no caption; the buttons keep their accessible
+   names either way. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .gb-stage[data-full="on"] .gb-system-label,
+  .gb-stage[data-full="on"] .gb-face-letter { display: none; }
+  .gb-stage[data-full="on"] .gb-face { margin-bottom: 0; }
+  .gb-stage[data-full="on"] .gb-system-btn { width: clamp(34px, 6vw, 64px); }
+  .gb-stage[data-full="on"] .gb-device { row-gap: clamp(8px, 2vh, 18px); }
+  .gb-stage[data-full="on"] .gb-dpad { width: clamp(78px, min(13.5vw, 28dvh), 150px); }
+  .gb-stage[data-full="on"] .gb-face { width: clamp(84px, min(15vw, 27dvh), 170px); }
 }

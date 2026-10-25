@@ -1,0 +1,77 @@
+RETRO ARCADE — CARTRIDGE NOTICES
+================================
+
+Every cartridge on the /retro shelf is a freely redistributable homebrew build
+taken from a public repository. Nothing here is a commercial ROM, and none of
+these files was downloaded from a ROM site. The manifest that ships to the
+browser (public/retro/roms.json) carries the same source and licence links that
+are listed below, and each player page links out to them.
+
+The cover images in public/retro/covers/ are frames the emulator itself rendered
+while the cartridge was running — screenshotted from the canvas at 2x and saved
+at the Game Boy Advance's native 240x160. No artwork was drawn for this site.
+
+
+CARTRIDGES
+----------
+
+  Alien Invasion    amberephraim    MIT (c) 2023 cs2261-gt
+                    https://github.com/amberephraim/Alien_Invasion
+
+  Cyber Citadel     amberephraim    MIT (c) 2023 cs2261-gt
+                    https://github.com/amberephraim/Cyber_Citadel
+
+  Simple Frogger    amberephraim    MIT (c) 2023 cs2261-gt
+                    https://github.com/amberephraim/Simple_Frogger
+
+  Lander Advance    edefelice       MIT for the code (c) 2026 Ernesto De Felice,
+                                    Pierluca De Felice, Raffaele Colamarino,
+                                    Raffaele Aucelli. Cockpit art and audio are
+                                    CC BY 4.0 by the same team.
+                    https://github.com/gbadev-org/games/tree/master/entries/edefelice_lander-advance
+
+  Pong              ZeroDayArcade   MIT (c) 2023 zerodayarcade.com
+                    https://github.com/ZeroDayArcade/Pong-Homebrew-GBA
+
+  Wigly Hunt        rawbits2010     GPL-3.0
+                    https://github.com/rawbits2010/Wigly-Hunt
+
+  Xorlix            egillespie      MIT (c) 2014 Erik Gillespie
+                    https://github.com/egillespie/xorlix-gba
+
+
+LICENCE TEXTS
+-------------
+
+  cs2261-MIT.txt   MIT text for the three amberephraim cartridges.
+
+  GPL-3.0.txt      The GPL-3.0 text committed by Wigly Hunt. Its corresponding
+                   source is the repository above; the ROM shipped here is that
+                   project's own build, byte for byte, and is not modified by
+                   this site.
+
+  LICENSE-EmulatorJS.txt (in public/retro/data/)
+                   The emulator runtime, EmulatorJS 4.2.3, MIT.
+
+The MIT-licensed cartridges keep their copyright notice in the list above and in
+the manifest; that is the notice the MIT licence asks us to preserve.
+
+
+THIRD-PARTY ASSETS INSIDE A CARTRIDGE
+-------------------------------------
+
+Lander Advance opens on the GBA Jam 2026 splash, which uses the jam logo by
+PyroPyro and kva64 under CC BY-NC 4.0. It is part of the author's published
+build and is left untouched. This site sells nothing and runs no advertising, so
+the non-commercial term is met; the splash is the only third-party mark on the
+shelf and it is the author's own credit screen.
+
+
+YOUR OWN CARTRIDGE
+------------------
+
+/retro accepts a .gba file from your device, by file picker or by dropping it on
+the "your own cartridge" card. That file is read by your browser for the 156-byte
+cartridge header, handed to the emulator as an in-memory blob, and discarded when
+the tab closes — it is never uploaded, never stored and never shared. Please only
+load ROMs you are legally allowed to play; this site hosts none of them for you.

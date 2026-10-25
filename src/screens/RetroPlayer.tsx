@@ -143,7 +143,13 @@ export default function RetroPlayer() {
   const [muted, setMuted] = useState(false);
   const [panel, setPanel] = useState<'none' | 'keys' | 'about'>('none');
   const [stalled, setStalled] = useState(false);
-  const [full, setFull] = useState(false);
+  /* `full` is true for either kind of fullscreen: the browser's, or ours. Safari
+     on iOS does not implement element fullscreen at all, and a phone is exactly
+     the device where "the game covers the screen" matters most — so when the
+     browser says no, the stage covers the viewport itself instead. */
+  const [nativeFull, setNativeFull] = useState(false);
+  const [inPageFull, setInPageFull] = useState(false);
+  const full = nativeFull || inPageFull;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
 
@@ -255,25 +261,41 @@ export default function RetroPlayer() {
     );
   }, [boot?.file, boot?.name, isLocal]);
 
-  /* Fullscreen is requested on the *stage*, not the shell, so the rail stays
-     reachable — the same reason a handheld keeps its power switch next to its
-     screen. */
+  /* Fullscreen is requested on the *stage*, which is also where our own
+     full-bleed mode lives. */
   const toggleFullscreen = useCallback(() => {
     const el = stageRef.current;
     if (!el) return;
-    if (document.fullscreenElement) void document.exitFullscreen?.();
-    else void el.requestFullscreen?.().catch(() => say('This browser refused fullscreen'));
-  }, [say]);
+    if (document.fullscreenElement) { void document.exitFullscreen?.(); return; }
+    if (inPageFull) { setInPageFull(false); return; }
+    let asked: Promise<void> | undefined;
+    try { asked = el.requestFullscreen?.(); } catch { asked = undefined; }
+    if (!asked) { setInPageFull(true); return; }
+    void asked.then(() => {
+      /* A browser that resolves without actually going fullscreen is still a no. */
+      if (!document.fullscreenElement) setInPageFull(true);
+    }, () => setInPageFull(true));
+  }, [inPageFull]);
 
-  /* Fullscreen drops the page chrome and hands the extra height to the shell,
-     which is the whole point of asking for the screen: the device grows from
-     ~535px to ~640px wide because the header and rail stop taking 120px of it. */
   useEffect(() => {
-    const onChange = () => setFull(!!document.fullscreenElement);
+    const onChange = () => {
+      const native = !!document.fullscreenElement;
+      setNativeFull(native);
+      if (native) setInPageFull(false);
+    };
     document.addEventListener('fullscreenchange', onChange);
     onChange();
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
+
+  /* Esc is the browser's own way out of real fullscreen; our in-page mode owes
+     the visitor the same key. */
+  useEffect(() => {
+    if (!inPageFull) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setInPageFull(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [inPageFull]);
 
   /* Plain array, rebuilt each render: its handlers post to the frame, and
      memoising it would only make React's lint wonder when those handlers were
@@ -404,51 +426,59 @@ export default function RetroPlayer() {
             </div>
           </div>
 
-          {/* ---------------- the plastic ---------------- */}
-          <div className="gb-dpad">
-            <span className="gb-dpad-shape" aria-hidden>
-              <i className="gb-tri gb-tri-up" />
-              <i className="gb-tri gb-tri-right" />
-              <i className="gb-tri gb-tri-down" />
-              <i className="gb-tri gb-tri-left" />
-              <i className="gb-dpad-hub" />
-            </span>
-            {/* The hit areas are whole arms, not the engraved triangles: a thumb
-                presses the edge of a D-pad, and a 30px square is not a thumb. */}
-            <DeviceButton index={RETRO_BUTTON.UP} send={send} label="Up" className="gb-hit gb-hit-up" />
-            <DeviceButton index={RETRO_BUTTON.RIGHT} send={send} label="Right" className="gb-hit gb-hit-right" />
-            <DeviceButton index={RETRO_BUTTON.DOWN} send={send} label="Down" className="gb-hit gb-hit-down" />
-            <DeviceButton index={RETRO_BUTTON.LEFT} send={send} label="Left" className="gb-hit gb-hit-left" />
-          </div>
+          {/* ---------------- the plastic ----------------
+              One wrapper, two layouts. Windowed it is a transparent overlay and
+              the pieces sit exactly where the photograph puts them; fullscreen
+              the same pieces are laid out as a deck under the screen (or beside
+              it, on a screen wide enough to afford the room). Wrapping is what
+              makes that possible without touching the iframe — remounting the
+              emulator would end the game. */}
+          <div className="gb-deck">
+            <div className="gb-dpad">
+              <span className="gb-dpad-shape" aria-hidden>
+                <i className="gb-tri gb-tri-up" />
+                <i className="gb-tri gb-tri-right" />
+                <i className="gb-tri gb-tri-down" />
+                <i className="gb-tri gb-tri-left" />
+                <i className="gb-dpad-hub" />
+              </span>
+              {/* The hit areas are whole arms, not the engraved triangles: a thumb
+                  presses the edge of a D-pad, and a 30px square is not a thumb. */}
+              <DeviceButton index={RETRO_BUTTON.UP} send={send} label="Up" className="gb-hit gb-hit-up" />
+              <DeviceButton index={RETRO_BUTTON.RIGHT} send={send} label="Right" className="gb-hit gb-hit-right" />
+              <DeviceButton index={RETRO_BUTTON.DOWN} send={send} label="Down" className="gb-hit gb-hit-down" />
+              <DeviceButton index={RETRO_BUTTON.LEFT} send={send} label="Left" className="gb-hit gb-hit-left" />
+            </div>
 
-          <span className="gb-ridge" aria-hidden />
+            <span className="gb-ridge" aria-hidden />
 
-          <div className="gb-face" role="group" aria-label="Action buttons">
-            <DeviceButton index={RETRO_BUTTON.A} send={send} label="A" className="gb-face-btn gb-face-a">
-              <span className="gb-face-gloss" aria-hidden />
-            </DeviceButton>
-            <DeviceButton index={RETRO_BUTTON.B} send={send} label="B" className="gb-face-btn gb-face-b">
-              <span className="gb-face-gloss" aria-hidden />
-            </DeviceButton>
-            <span className="gb-face-letter gb-face-letter-a" aria-hidden>A</span>
-            <span className="gb-face-letter gb-face-letter-b" aria-hidden>B</span>
-          </div>
+            <div className="gb-face" role="group" aria-label="Action buttons">
+              <DeviceButton index={RETRO_BUTTON.A} send={send} label="A" className="gb-face-btn gb-face-a">
+                <span className="gb-face-gloss" aria-hidden />
+              </DeviceButton>
+              <DeviceButton index={RETRO_BUTTON.B} send={send} label="B" className="gb-face-btn gb-face-b">
+                <span className="gb-face-gloss" aria-hidden />
+              </DeviceButton>
+              <span className="gb-face-letter gb-face-letter-a" aria-hidden>A</span>
+              <span className="gb-face-letter gb-face-letter-b" aria-hidden>B</span>
+            </div>
 
-          <div className="gb-system" role="group" aria-label="System buttons">
-            <DeviceButton index={RETRO_BUTTON.SELECT} send={send} label="Select" className="gb-system-btn gb-system-select">
-              <span className="gb-system-cap" aria-hidden />
-              <span className="gb-system-label" aria-hidden>Select</span>
-            </DeviceButton>
-            <DeviceButton index={RETRO_BUTTON.START} send={send} label="Start" className="gb-system-btn gb-system-start">
-              <span className="gb-system-cap" aria-hidden />
-              <span className="gb-system-label" aria-hidden>Start</span>
-            </DeviceButton>
-          </div>
+            <div className="gb-system" role="group" aria-label="System buttons">
+              <DeviceButton index={RETRO_BUTTON.SELECT} send={send} label="Select" className="gb-system-btn gb-system-select">
+                <span className="gb-system-cap" aria-hidden />
+                <span className="gb-system-label" aria-hidden>Select</span>
+              </DeviceButton>
+              <DeviceButton index={RETRO_BUTTON.START} send={send} label="Start" className="gb-system-btn gb-system-start">
+                <span className="gb-system-cap" aria-hidden />
+                <span className="gb-system-label" aria-hidden>Start</span>
+              </DeviceButton>
+            </div>
 
-          <div className="gb-grille" aria-hidden>
-            {GRILLE.map((i) => (
-              <i key={i} style={{ left: `${75.5 + 4.2 * i}cqw`, top: `${125.4 - 2.45 * i}cqw` }} />
-            ))}
+            <div className="gb-grille" aria-hidden>
+              {GRILLE.map((i) => (
+                <i key={i} style={{ left: `${75.5 + 4.2 * i}cqw`, top: `${125.4 - 2.45 * i}cqw` }} />
+              ))}
+            </div>
           </div>
 
           {notice && <p className="gb-toast" role="status">{notice}</p>}
@@ -476,11 +506,13 @@ export default function RetroPlayer() {
 
       {/* In fullscreen the rail is gone — the plastic is the only control
           surface — so leaving has to have its own way out that is not a guess
-          about Esc. It floats over the top-right corner of the shell. */}
+          about Esc. */}
+      {/* The words are decoration on a wide screen and hidden on a narrow one,
+          so the name lives on the button itself. */}
       {full && (
-        <button onClick={toggleFullscreen} className="gb-fs-exit">
+        <button onClick={toggleFullscreen} className="gb-fs-exit" aria-label="Exit fullscreen">
           <Icon name="expand" size={15} />
-          <span>Exit fullscreen</span>
+          <span aria-hidden>Exit fullscreen</span>
         </button>
       )}
 

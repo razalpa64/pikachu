@@ -55,7 +55,15 @@ export interface RetroLibrary {
  * into *something* while silently losing cartridges (a typo in `rom`, a bad
  * accent colour) — the page would render an empty shelf and no test would care.
  */
-export const RETRO_TITLES_EXPECTED = ['alien-invasion', 'cyber-citadel', 'simple-frogger'] as const;
+export const RETRO_TITLES_EXPECTED = [
+  'alien-invasion',
+  'cyber-citadel',
+  'simple-frogger',
+  'lander-advance',
+  'pong',
+  'wigly-hunt',
+  'xorlix',
+] as const;
 
 export const RETRO_CHANNEL = 'pikachu-retro';
 export const RETRO_MANIFEST_URL = '/retro/roms.json';

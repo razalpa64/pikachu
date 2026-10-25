@@ -6,6 +6,9 @@
 import WebSocket from 'ws';
 
 const URL = process.env.SMOKE_URL ?? 'ws://127.0.0.1:5173/rt';
+/* the REST endpoints live on the same origin as the socket, whether that is the
+   Vite dev server proxying /api or the relay answering directly */
+const HTTP = process.env.SMOKE_HTTP ?? URL.replace(/^ws/, 'http').replace(/\/rt$/, '');
 const log = (...a: unknown[]) => console.log('  ', ...a);
 
 type Msg = Record<string, any>;
@@ -104,10 +107,10 @@ async function main() {
   assert(st2.matchId !== matchId, `rematch produced a new match ${st2.matchId}`);
   assert(st2.yourSlot === 0, 'slots were swapped for the rematch');
 
-  const hist = await fetch('http://127.0.0.1:5173/api/history').then((r) => r.json()).catch(() => null);
+  const hist = await fetch(`${HTTP}/api/history`).then((r) => r.json()).catch(() => null);
   assert(Array.isArray(hist) && hist.length > 0, `history endpoint returned ${Array.isArray(hist) ? hist.length : 0} persisted matches`);
 
-  const peek = await fetch(`http://127.0.0.1:5173/api/room/${code}`).then((r) => r.json()).catch(() => null);
+  const peek = await fetch(`${HTTP}/api/room/${code}`).then((r) => r.json()).catch(() => null);
   assert(peek && peek.code === code, 'room lookup endpoint resolves the invite code');
 
   a.send({ t: 'leave' }); await a.wait('left');

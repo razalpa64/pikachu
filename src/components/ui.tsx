@@ -67,6 +67,8 @@ export const Icon = ({ name, size = 18, className = '' }: { name: string; size?:
     'chevron-down': <path d="m5 9 7 7 7-7" />,
     'chevron-left': <path d="m15 5-7 7 7 7" />,
     'chevron-right': <path d="m9 5 7 7-7 7" />,
+    spark: <><path d="M12 3.2 13.7 9l5.8 1.7-5.8 1.7L12 18.2l-1.7-5.8L4.5 10.7 10.3 9z" /><path d="M18.6 3.4 19.4 6l2.6.8-2.6.8-.8 2.6-.8-2.6L15.2 6.8 17.8 6z" /></>,
+    book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M19 18v3H6.5A2.5 2.5 0 0 1 4 18.5" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"

@@ -1,33 +1,11 @@
-import { Suspense, lazy, useEffect, useMemo, type ComponentType, type LazyExoticComponent } from 'react';
+import { Suspense, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { gameBySlug } from '../games/registry';
+import { SOLO_VIEWS } from '../games/views';
 import type { GameMeta } from '../games/types';
 import { ElectricLoader } from '../mascot';
 import { Button, EmptyState, Icon } from '../components/ui';
 import { useStore } from '../lib/store';
-
-/**
- * Route splitting happens here: a game engine is only downloaded when its slug is visited.
- * Every entry below is a module that genuinely exists — nothing is advertised that cannot load.
- */
-type SoloViewProps = { game: GameMeta };
-const VIEWS: Record<string, LazyExoticComponent<ComponentType<SoloViewProps>>> = {
-  chess: lazy(() => import('../games/chess/SoloView')),
-  tictactoe: lazy(() => import('../games/tictactoe/SoloView')),
-  connect4: lazy(() => import('../games/connect4/SoloView')),
-  memory: lazy(() => import('../games/memory/SoloView')),
-  reaction: lazy(() => import('../games/reaction/SoloView')),
-  snake: lazy(() => import('../games/snake/SoloView')),
-  battleship: lazy(() => import('../games/battleship/SoloView')),
-  checkers: lazy(() => import('../games/checkers/SoloView')),
-  puzzle: lazy(() => import('../games/puzzle/SoloView')),
-  arcade: lazy(() => import('../games/arcade/SoloView')),
-  trivia: lazy(() => import('../games/trivia/SoloView')),
-  dare: lazy(() => import('../games/dare/SoloView')),
-  imposter: lazy(() => import('../games/imposter/SoloView')),
-  detective: lazy(() => import('../games/detective/SoloView')),
-  cards: lazy(() => import('../games/cards/SoloView')),
-};
 
 export default function Solo() {
   const { slug = '' } = useParams();
@@ -48,7 +26,7 @@ export default function Solo() {
     );
   }
 
-  const View = VIEWS[game.id];
+  const View = SOLO_VIEWS[game.id];
   if (!View) {
     return (
       <div className="mx-auto max-w-[760px] px-[var(--shell-pad)] py-14">

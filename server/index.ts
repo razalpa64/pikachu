@@ -16,17 +16,10 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { Slot, TurnGameRules } from '../src/games/types';
-import { tictactoeRules } from '../src/games/tictactoe/rules';
-import { connect4Rules } from '../src/games/connect4/rules';
-import { memoryRules } from '../src/games/memory/rules';
+import type { Slot } from '../src/games/types';
+import { REFEREES } from '../src/games/referees';
 import { chessRules, resign as chessResign, agreeDraw, startClock } from '../src/games/chess/rules';
 import { checkersRules, resignCheckers } from '../src/games/checkers/rules';
-import { battleshipRules } from '../src/games/battleship/rules';
-import { reactionRules } from '../src/games/reaction/rules';
-import { eightsRules } from '../src/games/cards/rules';
-import { quizOnlineRules } from '../src/games/trivia/online';
-import { sketchRules } from '../src/games/sketch/rules';
 import {
   ROOM_TTL_MS, RECONNECT_GRACE_MS, START_COUNTDOWN_MS,
   type ClientMsg, type ServerMsg, type RoomStatus, type RoomView, type MemberView,
@@ -37,18 +30,9 @@ const DATA_DIR = path.resolve(process.cwd(), '.pikachu-data');
 const HISTORY_FILE = path.join(DATA_DIR, 'matches.json');
 
 /* ------------------------------------------------------------------ registry */
-const RULES: Record<string, TurnGameRules<any, any>> = {
-  tictactoe: tictactoeRules,
-  connect4: connect4Rules,
-  memory: memoryRules,
-  chess: chessRules,
-  checkers: checkersRules,
-  battleship: battleshipRules,
-  reaction: reactionRules,
-  cards: eightsRules,
-  trivia: quizOnlineRules,
-  sketch: sketchRules,
-};
+/* The referee list lives in src/games/referees.ts so the browser, the server and
+   the catalogue test all read the same map. */
+const RULES = REFEREES;
 /** games whose state advances on a server timer */
 const TICKING = new Set(['reaction', 'chess', 'trivia', 'sketch']);
 

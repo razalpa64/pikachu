@@ -80,6 +80,22 @@ function snapshot(gameId: string, s: Any | null | undefined): Snap | null {
         tertiary: num(arr(s.scores)[0]) + num(arr(s.scores)[1]),
         tag: `${str(s.phase)}:${num(s.round)}`,
       };
+    case 'reversi':
+      return { moves: arr(s.history).length, secondary: num(arr(s.counts)[0]) + num(arr(s.counts)[1]), tertiary: 0, tag: '' };
+    case 'gomoku':
+      return { moves: arr(s.history).length, secondary: 0, tertiary: 0, tag: '' };
+    case 'dots':
+      return { moves: arr(s.history).length, secondary: num(arr(s.scores)[0]) + num(arr(s.scores)[1]), tertiary: num(s.lastGain), tag: '' };
+    case 'mancala': {
+      const board = arr(s.board) as number[];
+      const pits = num(s.pits);
+      return {
+        moves: arr(s.history).length,
+        secondary: num(board[pits]) + num(board[pits * 2 + 1]),
+        tertiary: num(s.lastCapture),
+        tag: '',
+      };
+    }
     case 'trivia':
       return {
         moves: num(s.index) || arr(s.asked).length,
@@ -196,6 +212,19 @@ export function useMatchCues(
         }
         break;
       }
+      case 'reversi':
+        if (now.moves > before.moves) fire.push('flip');
+        break;
+      case 'gomoku':
+        if (now.moves > before.moves) fire.push('place');
+        break;
+      case 'dots':
+        if (now.moves > before.moves) fire.push(now.secondary > before.secondary ? 'coin' : 'move');
+        break;
+      case 'mancala':
+        if (now.tertiary > before.tertiary) fire.push('capture');
+        else if (now.moves > before.moves) fire.push(now.secondary > before.secondary ? 'coin' : 'place');
+        break;
       case 'trivia':
         if (now.moves > before.moves) fire.push('flip');               // next question
         else if (now.secondary > before.secondary) fire.push('coin');  // someone scored

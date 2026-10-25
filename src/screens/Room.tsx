@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useRoom } from '../lib/useRoom';
 import { useStore, useAmbience } from '../lib/store';
@@ -10,21 +10,9 @@ import { PikachuMascot, ElectricLoader, BoltRule } from '../mascot';
 import { ResultOverlay, MatchCountdown, type Verdict } from '../components/Overlays';
 import { MASCOT_ART } from '../lib/identity';
 import { ChatRail, MobileChat } from '../components/RoomChat';
+import { HowToPlay } from '../components/HowToPlay';
 import { useRoomSystemLines, type SystemLine } from '../lib/useRoomLines';
-import type { BoardProps } from '../components/boards/types';
-
-const BOARDS: Record<string, React.LazyExoticComponent<React.ComponentType<BoardProps<any>>>> = {
-  tictactoe: lazy(() => import('../components/boards/TicTacToeBoard')),
-  connect4: lazy(() => import('../components/boards/ConnectFourBoard')),
-  memory: lazy(() => import('../components/boards/MemoryBoard')),
-  chess: lazy(() => import('../components/boards/ChessBoard')),
-  checkers: lazy(() => import('../components/boards/CheckersBoard')),
-  battleship: lazy(() => import('../components/boards/BattleshipBoard')),
-  cards: lazy(() => import('../components/boards/WildEightsBoard')),
-  trivia: lazy(() => import('../components/boards/SparkQuizBoard')),
-  reaction: lazy(() => import('../components/boards/ReactionBoard')),
-  sketch: lazy(() => import('../components/boards/SketchBoard')),
-};
+import { BOARDS } from '../components/boards/registry';
 
 export default function Room() {
   const { code = '' } = useParams();
@@ -202,6 +190,10 @@ export default function Room() {
                 <Suspense fallback={<ElectricLoader status="Loading the arena" compact />}>
                   <Board state={match.state} youSlot={slot} onMove={act} interactive={!!live && myTurn} names={names} hint />
                 </Suspense>
+              </div>
+
+              <div className="max-w-[560px] mx-auto">
+                <HowToPlay gameId={room.gameId} gameTitle={game?.title} compact />
               </div>
 
               {/* draw offer */}
@@ -442,6 +434,10 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpen
           </div>
         </Panel>
 
+        <div className="mt-4">
+          <HowToPlay gameId={room.gameId} gameTitle={game?.title} defaultOpen={false} />
+        </div>
+
         {room.history?.length > 0 && (
           <Panel className="p-4 mt-4">
             <p className="eyebrow mb-2.5">Match history in this room</p>
@@ -511,8 +507,12 @@ function PlayerSeat({ member, you, colour }: { member: any; you: boolean; colour
       <p className="text-[14px] font-extrabold text-cream-100 text-center max-w-[16ch] truncate">{member.name}{you ? ' (you)' : ''}</p>
       <div className="flex items-center gap-1.5">
         {member.isHost && <span className="px-1.5 py-0.5 bg-blush-100 border border-ink-500 text-[9px] font-extrabold uppercase tracking-wider text-cream-300">Host</span>}
-        <span className="px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wider"
-          style={{ background: member.ready ? colour : '#27231a', color: member.ready ? '#15130f' : '#a89f88' }}>
+        <span className="px-2 py-0.5 rounded-full border-[1.5px] text-[9.5px] font-extrabold uppercase tracking-wider"
+          style={
+            member.ready
+              ? { background: colour, borderColor: colour, color: '#4a2e18' }
+              : { background: 'var(--color-ink-800)', borderColor: 'var(--color-ink-500)', color: 'var(--color-cream-500)' }
+          }>
           {member.ready ? 'Ready' : 'Not ready'}
         </span>
       </div>
@@ -575,6 +575,33 @@ function MatchHud({ game, state, slot, names, myTurn, lastAction, onResign, onDr
         {game === 'tictactoe' && <Stat label="Moves" value={state.moves?.length ?? 0} />}
         {game === 'connect4' && <Stat label="Discs" value={state.history?.length ?? 0} />}
         {game === 'checkers' && <Stat label="Pieces" value={`${state.board?.filter((b: any) => b?.p === slot).length ?? 0}`} accent="#f0b429" />}
+        {game === 'reversi' && (
+          <>
+            <Stat label={names[0]} value={state.counts?.[0] ?? 0} accent="#f0b429" />
+            <Stat label={names[1]} value={state.counts?.[1] ?? 0} accent="#4a9fd8" />
+            {state.passed !== null && state.passed !== undefined && <Stat label="Passed" value={names[state.passed]} accent="#e0a03c" />}
+          </>
+        )}
+        {game === 'gomoku' && (
+          <>
+            <Stat label="Your stones" value={state.board?.filter((c: any) => c === slot).length ?? 0} accent="#f0b429" />
+            <Stat label="Turns" value={state.history?.length ?? 0} />
+          </>
+        )}
+        {game === 'dots' && (
+          <>
+            <Stat label={names[0]} value={state.scores?.[0] ?? 0} accent="#f0b429" />
+            <Stat label={names[1]} value={state.scores?.[1] ?? 0} accent="#4a9fd8" />
+            <Stat label="Boxes left" value={(state.boxes ?? []).filter((b: any) => b === null).length} />
+          </>
+        )}
+        {game === 'mancala' && (
+          <>
+            <Stat label={names[0]} value={state.board?.[state.pits] ?? 0} accent="#f0b429" />
+            <Stat label={names[1]} value={state.board?.[state.pits * 2 + 1] ?? 0} accent="#4a9fd8" />
+            {state.lastCapture > 0 && <Stat label="Last capture" value={`+${state.lastCapture}`} accent="#3fae82" />}
+          </>
+        )}
       </div>
       <div className="flex-1" />
       {lastAction && <span className="text-[11px] text-cream-500 font-mono truncate max-w-[26ch]">{lastAction}</span>}
@@ -585,10 +612,14 @@ function MatchHud({ game, state, slot, names, myTurn, lastAction, onResign, onDr
 }
 
 function TurnPill({ active, label }: { active: boolean; label: string }) {
+  /* A polite live region, because in a turn-based game across two devices the single
+     most useful thing a screen reader can say is "your move" — and it used to be a
+     silent colour change. */
   return (
-    <span className={`inline-flex items-center gap-2 px-3 py-1.5 border text-[11.5px] font-extrabold uppercase tracking-wider notch-sm
+    <span role="status" aria-live="polite"
+      className={`inline-flex items-center gap-2 px-3 py-1.5 border text-[11.5px] font-extrabold uppercase tracking-wider notch-sm
       ${active ? 'bg-volt-400 text-[#5a3a12] border-volt-200' : 'bg-ink-800 text-cream-500 border-ink-600'}`}>
-      <span className={`w-2 h-2 rounded-full ${active ? 'bg-ink-900 animate-pulse' : 'bg-cream-500'}`} />{label}
+      <span className={`w-2 h-2 rounded-full ${active ? 'bg-ink-900 animate-pulse' : 'bg-cream-500'}`} aria-hidden />{label}
     </span>
   );
 }
@@ -629,6 +660,11 @@ function scoreFor(gameId: string, state: any, s: 0 | 1) {
     case 'checkers': return state.board?.filter((b: any) => b?.p === s).length ?? 0;
     // hand size survives redaction (the cards are -1, the length is real)
     case 'cards': return state.hands?.[s]?.length ?? 0;
+    case 'reversi': return state.counts?.[s] ?? 0;
+    case 'gomoku': return (state.board ?? []).filter((c: any) => c === s).length;
+    case 'dots': return state.scores?.[s] ?? 0;
+    // a player's store is the one past their own row of pits
+    case 'mancala': return state.board?.[s === 0 ? state.pits : state.pits * 2 + 1] ?? 0;
     default: return state.cells ? state.cells.filter((c: any) => c === s).length : 0;
   }
 }

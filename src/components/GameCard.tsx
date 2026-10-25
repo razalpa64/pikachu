@@ -13,8 +13,15 @@ export const GameCard = memo(function GameCard({ game, size = 'md' }: { game: Ga
   const fav = progress.favourites.includes(game.id);
   const stat = progress.stats[game.id];
   const canOnline = game.modes.includes('online');
+  /* Some games have no single-player mode at all (Guess & Draw). The card used to
+     send those to /solo/<slug>, which could only ever say "this one is for two" —
+     one wasted click on the most prominent button in the library. */
+  const soloable = (['solo', 'ai', 'local'] as const).some((m) => game.modes.includes(m));
 
-  const go = () => { sfx('select'); nav(`/solo/${game.slug}`); };
+  const go = () => {
+    sfx('select');
+    nav(soloable ? `/solo/${game.slug}` : `/together?game=${game.id}`);
+  };
   /* Start fetching this game's chunk the moment there is intent to play it. */
   const warm = { onMouseEnter: () => prefetchGame(game.id), onFocus: () => prefetchGame(game.id), onTouchStart: () => prefetchGame(game.id) };
 

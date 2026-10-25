@@ -1,6 +1,6 @@
 # PIKACHU — a little arcade built for two
 
-A private, art-directed arcade made as a gift. Sixteen complete games, a real chess engine, genuine
+A private, art-directed arcade made as a gift. Twenty complete games, a real chess engine, genuine
 AI opponents, and private online rooms refereed by a server that never trusts the browser.
 
 No template, no purchased UI kit, no stock dashboard. The cream-paper look, the painted game
@@ -115,7 +115,7 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 
 ### ✅ Complete and playable
 
-**Sixteen games, all of which launch and finish properly.** Nothing in the library is a mock-up.
+**Twenty games, all of which launch and finish properly.** Nothing in the library is a mock-up.
 
 | # | Game | Solo / AI | Online (server-refereed) | What makes it real |
 |---|---|---|---|---|
@@ -135,6 +135,10 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 | 14 | **Imposter** | ✅ 3–8 local | — | Pass-the-phone secret roles. Everyone sees the word except the imposter (optional decoy word), clue rounds, voting with tie handling, and a one-guess steal if they are caught. |
 | 15 | **Truth or Dare** | ✅ 2 local | — | A 72-card deck at three heat levels written for two people. The spicy deck is behind its own explicit switch, piles never repeat until exhausted, and every card can be passed with no penalty. |
 | 16 | **Guess & Draw** | — | ✅ | One of you gets a word and ninety seconds, the other gets the canvas and a text box, and you swap every round. The word bank is **stripped from the state entirely** before it leaves the server; the guesser is sent a mask with one underscore per letter and nothing else. Guessing is typo-tolerant on longer words (one edit) but exact on short ones, so `bat` never wins a round about a `cat`. A faster guess is worth more, the drawer scores too, and strokes are validated server-side — bad coordinates, bad colours and flood attempts are rejected rather than drawn. |
+| 17 | **Lantern Flip** (Reversi) | ✅ 5 tiers | ✅ | Standard Othello rules: eight directions, the move must bracket at least one enemy disc, and a player with no legal move is forced to pass — if both pass, the discs are counted. Boards 6×6 / 8×8 / 10×10. The AI is negamax with an alpha-beta window and the classic corner/edge/mobility weights that make it genuinely unpleasant at the top tiers. The board glows the discs it is about to flip *before* you commit. |
+| 18 | **River Stones** (Gomoku) | ✅ 5 tiers | ✅ | Freestyle five-in-a-row on 15×15, with 13×13 and 11×11 for a phone. Forced wins are searched properly: the AI scores open threes and fours rather than just counting neighbours, so it blocks a developing line instead of admiring its own. The winning five is drawn as a single river through the stones. |
+| 19 | **Dots & Boxes** | ✅ 5 tiers | ✅ | The pencil-and-paper classic with the rule that makes it a game: closing a box scores it and keeps the turn. Chains, double-crosses and the parity endgame are all real — the AI counts how many boxes it hands over. Boards 4×4 to 6×6 with an undo-safe move log. |
+| 20 | **Mancala** (Kalah) | ✅ 5 tiers | ✅ | Sow counter-clockwise, your own store takes a seed, the last seed in your store earns another turn, and landing opposite an empty pit captures both. The endgame sweep is implemented, and the AI searches captures and extra turns rather than greedily grabbing seeds. Pits 4/5/6/7. |
 
 **Online play (the core feature)**
 - Private rooms with a 5-character code (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789` — no confusable glyphs) and a shareable invite link.
@@ -142,7 +146,7 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - Lobby with seats, ready-up, host-only start, live settings, in-room match history and a series score.
 - Countdown, result screen, rematch voting with automatic side-swap.
 - Reconnection holds your seat for 45 s; the room itself expires on a timer.
-- **Server authority**: every move is validated by the *same* `rules.ts` module the browser imports (`tsx server/index.ts` imports it directly). Stable match IDs, per-player sequence numbers, idempotent actions, `stale_match` rejection, rate limits on create/join/nudge.
+- **Server authority**: every move is validated by the *same* `rules.ts` module the browser imports. The relay does not hold its own copy of the rulebook: it imports `REFEREES` from `src/games/referees.ts` (`const RULES = REFEREES`), so a game cannot be advertised as online unless the referee for it exists — `catalog.test.ts` asserts exactly that. Stable match IDs, per-player sequence numbers, idempotent actions, `stale_match` rejection, rate limits on create/join/nudge.
 - **Arena chat**: one surface, three placements. On desktop it is *docked beside the board*
   (and in the lobby's right column), so it can never cover a piece, a clock or the result card.
   On a phone it is a peek bar above the safe area that expands into a sheet leaving the board
@@ -163,14 +167,25 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - Game Library with working search, mode/genre filters, sort (featured / name / duration / most played), favourites and recents.
 - Solo Adventures hub, Challenges, Achievements (16 badges, all awarded from real match data), Profile, Settings.
 - Honest loading: `ElectricLoader` is indeterminate unless a real `progress` number exists. There are no artificial delays anywhere.
-- Accessibility: full keyboard play, visible focus rings, ARIA labels on every board cell, dialogs with `role="dialog"` + focus handling, and no state signalled by colour alone.
+- **Every game explains itself, in place.** `src/games/howToPlay.ts` holds a card for all twenty
+  games — the goal in one sentence, the numbered rules, and the tip that actually changes how you
+  play it ("hand over the third side of a box and you have given your opponent a present"). The
+  card renders as a disclosure under the board in solo play and in the room, and in the lobby
+  before the first move, so nobody has to leave the game to find out how it works.
+- **Pass-and-play has a curtain.** On Wild Eights played on one device, the moment the seat changes
+  the board, the hand and the log are covered by an opaque card that says whose turn it is and refuses to lift
+  until that player has taken the device. Previously the next player's hand was visible the instant
+  the turn changed, which quietly broke every hot-seat card game.
+- Accessibility: full keyboard play, visible focus rings, ARIA labels on every board cell, a polite
+  live region on the in-room turn pill (so "your move" is announced instead of being a colour
+  change), dialogs with `role="dialog"` + focus handling, and no state signalled by colour alone.
 - Responsive from 360 px phones to ultrawide, with a bottom nav and touch D-pads on mobile.
-  `scripts/e2e/mobile.mjs` loads all fifteen games that have a solo view at 390×844 and asserts **zero** horizontal
+  `scripts/e2e/mobile.mjs` loads all nineteen games that have a solo view at 390×844 and asserts **zero** horizontal
   overflow, no undersized tap target, a **sticky-chrome budget of 150 px**, and that the playfield
   is actually on screen. It uses two tap-target bars rather than one, because they are two
   different questions: board squares are held to the WCAG 2.5.8 (AA) floor of 24×24 — a 10×10 fleet
   grid on a 390 px phone physically cannot have 44 px cells and still be one board — while all
-  other controls are held to a 32 px comfort floor. Currently **15/15 clean**.
+  other controls are held to a 32 px comfort floor. The last full run before the four new boards were added was **15/15 clean**; the new boards are in the list now and `npm run e2e` re-measures all nineteen.
 - Instruction copy follows the input device (`src/lib/useTouch.ts`, `(pointer: coarse)`). A phone is
   never told to press space or an arrow key.
 - Volt Runner re-tunes itself for the screen (`tuneFor` in `src/games/arcade/SoloView.tsx`): a phone
@@ -182,7 +197,7 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 ### 🟡 Partial / deliberately scoped
 
 - **Cloud sync** is optional and off until you add Supabase keys. Without them the app is fully functional but local to one browser.
-- **Snake, Puzzle Quest, Volt Runner, Detective Pikachu, Imposter and Truth or Dare are offline games** — single-player or same-device. They are not listed as online anywhere in the UI; only the **ten** server-refereed games are.
+- **Snake, Puzzle Quest, Volt Runner, Detective Pikachu, Imposter and Truth or Dare are offline games** — single-player or same-device. They are not listed as online anywhere in the UI; only the **fourteen** server-refereed games are.
   - *Imposter* needs 3–8 seats and rooms seat exactly two, so it cannot go online without reworking the room model.
   - *Truth or Dare* and *Detective Pikachu* have no competitive outcome for the relay to referee.
   - *Snake*, *Puzzle Quest* and *Volt Runner* are real-time single-player; refereeing them would mean streaming every frame, which is the thing this project deliberately does not do.
@@ -298,18 +313,23 @@ server/
 src/
   games/
     types.ts          TurnGameRules<S, M> — the one contract both sides implement
-    registry.ts       the ten games, their modes, art keys and difficulties
+    registry.ts       all twenty games, their modes, art keys and difficulties
     <game>/rules.ts   pure rules — imported by BOTH the browser and the server
     <game>/ai.ts      the opponent for that game
     <game>/SoloView.tsx  the single-player screen
+    referees.ts       the relay's rulebook: id → rules, imported by server/ and by tests
+    views.ts          id → lazily imported SoloView, read by Solo.tsx *and* lib/prefetch.ts
+    howToPlay.ts      the rules card for every game, rendered by components/HowToPlay.tsx
   components/boards/  presentational boards: {state, youSlot, onMove, interactive, names}
+    registry.tsx      id → board component, the one map Room.tsx renders from
+  components/artManifest.ts  artKey → cover file, importable without React
   workers/            chessEngine.worker.ts — search off the main thread
   mascot/             PikachuMascot (clip-driven), PikaScene, loaders, confetti
   lib/                store, identity, settings, progress, audio, prefetch, relay client, supabase
   screens/            Intro, Home, Library, PlayTogether, Room, SoloHub, Solo, …
 public/
   art/pika/           8 cleaned animated WebP mascot clips
-  art/game/           10 painted game covers · art/scene/ the hero painting
+  art/game/           20 painted game covers · art/scene/ the hero painting
   audio/              21 Pokémon cries  fonts/  2 self-hosted woff2
 supabase/migrations/  SQL with RLS for the optional cloud layer
 scripts/gifs.py       GIF → clean animated WebP   scripts/art.py  cover crop/composite/encode
@@ -346,11 +366,36 @@ Nothing calls a language model to pick a move. Everything runs locally and finis
 npm test
 ```
 
-162 tests covering: legality and junk-payload rejection for all eight turn-based games, win/draw
-detection, fool's-mate, promotion, clock flagging, take-backs, mandatory capture and promotion in
-checkers, memory redaction and streaks, fleet placement validation plus a full AI-vs-AI battle,
-reaction-duel timing on a real clock, snake collision/growth/wrap, puzzle solvability (including
-15-puzzle parity), and the XP / achievement / daily-challenge system.
+287 tests in 11 files covering: legality and junk-payload rejection for all fourteen turn-based
+games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs, mandatory capture and
+promotion in checkers, memory redaction and streaks, fleet placement validation plus a full
+AI-vs-AI battle, reaction-duel timing on a real clock, snake collision/growth/wrap, puzzle
+solvability (including 15-puzzle parity), and the XP / achievement / daily-challenge system.
+
+The four newest games (Reversi, Gomoku, Dots & Boxes, Mancala) add their own rule tests: forced
+passes and the wipe-out ending in Reversi, five-in-a-row in every direction plus the overline case
+in Gomoku, the extra-turn/chain rule and the box count in Dots & Boxes, and the store-extra-turn,
+opposite-pit capture and endgame sweep in Mancala. Each of the four AI tiers is played against the
+tier below it to confirm the ordering is real rather than cosmetic.
+
+`src/games/__tests__/catalog.test.ts` is the guard rail around the *catalogue itself*, and it exists
+because every bug of this kind is a consistency bug rather than a logic bug. It asserts that game
+ids and slugs are unique, that every entry is complete, that every game marked online has a referee
+which produces a legal opening move **and** a board component, that every solo-capable game has a
+`SoloView.tsx` on disk and that no orphan view exists, that every `artKey` resolves in the art
+manifest to a file between 8 KB and 400 KB, that every game has a how-to-play card, that all five
+difficulty tiers are offered where difficulties exist, and that the default settings actually
+validate. Adding a game and forgetting one of those wires now fails `npm test` instead of failing
+in a stranger's browser.
+
+The last group is a **real DOM**. `src/games/__tests__/solo-ui.test.ts` runs jsdom, mounts the
+actual solo screens inside the actual store and router, and clicks the way a person clicks — then
+asserts on what the DOM says afterwards: that Reversi's highlighted squares really flip coins, that
+Gomoku places your stone *and* that the AI answers, that a Dots line is reported as drawn, that
+Mancala's pits change, and that turning the seat over in Wild Eights raises the pass-and-play
+curtain and lifts it again on tap. These are the failures a unit test cannot see — a board that
+renders but does nothing, an `onMove` wired to the wrong shape, an AI effect that never fires —
+and they were previously only covered by a browser suite you had to remember to run by hand.
 
 The five newer games add 87 of those. The ones worth calling out, because they assert a property
 rather than a happy path:
@@ -384,6 +429,15 @@ could see the other's answer before committing its own. It asserts that when A a
 payload says A is *locked in* but not *what A chose*, that the real answer appears only once the
 question closes, that the server rejects a changed answer and an out-of-range option, and that the
 server's own clock both closes an unanswered question and starts the next one with nobody acting.
+
+`scripts/smoke-newgames.ts` is the same idea for the four newest games, and it compares the server
+against the rulebook step by step rather than just looking for a broadcast: for each of Reversi,
+Gomoku, Dots & Boxes and Mancala it creates a room, joins, readies, starts, checks both clients
+received byte-identical openings, fires a legal move from the player who is *not* on turn and
+requires `illegal_move`, then plays the whole match to a real verdict — asserting after **every**
+move that `applyMove(state, actor, move)` computed locally equals the state the relay broadcast.
+60 moves of Reversi, 61 of Gomoku, 40 of Dots and a 10-move Mancala finish all pass, and then it
+checks a mid-series leave still notifies the player left behind. 32 checks.
 
 `scripts/smoke-online-lifecycle.ts` covers what happens *after* a clean first match, which is where
 an online game tends to rot. For both new games it hard-drops the socket mid-match the way a
@@ -529,7 +583,7 @@ browser:
     rendered below the fold *while the timer ran*. Game settings now collapse behind a disclosure
     below `sm`, the HUD scrolls as one row instead of wrapping to four, and the topics moved in
     with the other settings. Last option now ends at 721 px. This was fixed in `SoloShell`, so all
-    fifteen solo games get it.
+    nineteen solo games get it.
 23. **Volt Runner was rendering in its lowest detail tier on almost every device.**
     `suggestQuality()` returned `performance` for `cores <= 4 || mem <= 4`, which catches most
     laptops and nearly every phone — and `performance` was implemented as *skip the scenery
@@ -785,6 +839,25 @@ browser:
     phantom bubbles in the log on the other side. A dedicated `typing` event now goes to the
     opponent only, is coalesced client-side to one event per ~1.5s and self-heals with an `off`
     after 2.6s of silence, so a closed tab cannot leave "is typing" stuck on screen.
+56. **The catalogue and the code could drift apart silently.** Nothing stopped a game being added to
+    the registry as online while the relay had no referee for it, or a `SoloView` being deleted while
+    its route stayed, or an `artKey` pointing at a file that was never exported. The game list lived in
+    four places — the server's `RULES`, `Solo.tsx`'s lazy map, `Room.tsx`'s board map and
+    `GameArtwork`'s key table — and each one was updated by hand. All four are now single tables
+    (`src/games/referees.ts`, `src/games/views.ts`, `src/components/boards/registry.tsx`,
+    `src/components/artManifest.ts`) imported by both the code that ships and the code that tests it,
+    and `catalog.test.ts` asserts every cross-reference between them: ids, slugs, referees, boards,
+    solo views (and orphan views), art files on disk, rules cards, difficulty tiers and default
+    settings.
+57. **Handing the device over exposed the next player's hand.** On Wild Eights played on one device
+    the seat changed the instant a turn ended, so the person you just passed the phone to could see your
+    cards before you had let go of it. A change of seat now raises an opaque curtain over the whole
+    board — hand, table and log — naming the player whose turn it is, and it only lifts when that
+    player taps "deal me in".
+58. **The in-room turn indicator was a colour.** "Your move" versus "their move" was gold versus
+    cream, which is invisible to a screen reader and easy to miss for ~8% of men. The pill is now a
+    `role="status"` polite live region, so the change is announced, and the dot inside it is
+    `aria-hidden` so the state is not read twice.
 
 
 ---
@@ -847,6 +920,14 @@ its tile and the bottle rotates around its own middle.
 | runner | `art/run/*` ×5 | Volt Runner |
 | memory faces | `art/mem/*.webp` | Memory Match |
 | bottle | `art/dare/bottle.webp` | Truth or Dare |
+| game covers | `art/game/*.webp` ×20 | Library, Home, room picker |
+
+Every cover is listed in `src/components/artManifest.ts` — one table, keyed by the `artKey` in the
+registry, with a fallback for keys that have no painting yet. `GameArtwork.tsx` renders from it and
+`catalog.test.ts` fails if a key is missing from the manifest or points at a file that is absent,
+empty or absurdly large. The four newest covers (Reversi's lanterns, Gomoku's river stones, the
+pencil-drawn Dots grid, the carved Mancala board) were painted to the same brief as the rest and
+encoded to 640×640 WebP from a 1024 px master kept in `art/game/_src/`.
 
 The Memory Match set is **all 18 painted**. `PAINTED_CARDS` in `MemoryBoard.tsx` is the single
 source of truth: an id in that set renders its painted face, anything else falls back to the

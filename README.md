@@ -1,6 +1,6 @@
 # PIKACHU — a little arcade built for two
 
-A private, art-directed arcade made as a gift. Twenty complete games, a real chess engine, genuine
+A private, art-directed arcade made as a gift. Twenty-six complete games, a real chess engine, genuine
 AI opponents, and private online rooms refereed by a server that never trusts the browser.
 
 No template, no purchased UI kit, no stock dashboard. The cream-paper look, the painted game
@@ -80,7 +80,7 @@ phone sees: the real title and description, canonical, `robots`, Open Graph and
 Twitter tags with a hand-built 1200×630 card (`public/og/pikachu-og.png`), the web
 manifest and icons, and a site-level JSON-LD graph (`WebSite`, `Organization`,
 `WebApplication`). Below the app root sits a generated `<noscript>` index of all
-twenty games with followable links.
+twenty-six games with followable links.
 
 **Per route (`src/lib/seo.ts`)** — `SeoHead` runs on every navigation and rewrites
 the *same* tags in place (never appending a second canonical). It owns the title,
@@ -195,7 +195,7 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 
 ### ✅ Complete and playable
 
-**Twenty games, all of which launch and finish properly.** Nothing in the library is a mock-up.
+**Twenty-six games, all of which launch and finish properly.** Nothing in the library is a mock-up.
 
 | # | Game | Solo / AI | Online (server-refereed) | What makes it real |
 |---|---|---|---|---|
@@ -219,6 +219,12 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 | 18 | **River Stones** (Gomoku) | ✅ 5 tiers | ✅ | Freestyle five-in-a-row on 15×15, with 13×13 and 11×11 for a phone. Forced wins are searched properly: the AI scores open threes and fours rather than just counting neighbours, so it blocks a developing line instead of admiring its own. The winning five is drawn as a single river through the stones. |
 | 19 | **Dots & Boxes** | ✅ 5 tiers | ✅ | The pencil-and-paper classic with the rule that makes it a game: closing a box scores it and keeps the turn. Chains, double-crosses and the parity endgame are all real — the AI counts how many boxes it hands over. Boards 4×4 to 6×6 with an undo-safe move log. |
 | 20 | **Mancala** (Kalah) | ✅ 5 tiers | ✅ | Sow counter-clockwise, your own store takes a seed, the last seed in your store earns another turn, and landing opposite an empty pit captures both. The endgame sweep is implemented, and the AI searches captures and extra turns rather than greedily grabbing seeds. Pits 4/5/6/7. |
+| 21 | **Would You Rather** | ✅ 5 tiers | ✅ | One of you answers honestly, the other bets on the answer, then you swap. The dilemma never repeats inside a match, and the opponent's choice stays on the server until both have locked in — a client is only ever told *that* a pick exists. |
+| 22 | **Word Bomb** | ✅ 5 tiers | ✅ | A letter is lit and the fuse burns down on the server clock. Your word has to start with that letter, and its last letter lights the next one. A repeat or a wrong letter is a strike; two strikes and it goes off. The relay ticks the fuse, so a silent opponent cannot stall it. |
+| 23 | **Daily Puzzle** | ✅ solo | — | A 5×5 nonogram generated from the date, so everybody who opens the page that day gets the same grid with no server and no cache to peek at. The share line reports the time and the streak without spoiling a single cell. |
+| 24 | **Berry Catch** | ✅ solo | — | A canvas field, a basket you move, and ripe berries falling past rotten ones. Streaks multiply the score up to five, a rotten berry costs a life, and the field is seeded so a run can be replayed. Thirty, sixty or ninety seconds. |
+| 25 | **Bluff Trivia** | ✅ 5 tiers | ✅ | Everybody writes a plausible lie to a real question, then the ballot mixes both lies with the truth. Two points for finding the truth, one for every player you fooled — and your own lie is never votable. Writing and voting both close on the server's clock. |
+| 26 | **Spyfall** | ✅ 3–8 local | — | One phone, passed round behind a curtain: every agent sees a role and the location, the spy sees neither. Question each other, then vote in secret. A tie accuses nobody, and a spy who survives it gets one guess at the place for a bonus. |
 
 **Online play (the core feature)**
 - Private rooms with a 5-character code (`ABCDEFGHJKLMNPQRSTUVWXYZ23456789` — no confusable glyphs) and a shareable invite link.
@@ -259,7 +265,7 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
   page tells you it is queued and the queue drains by itself the next time cloud sync works.
   Published reviews appear on the page (the wall), which is readable without an account.
   Details and the moderation rules are under *Reviews & ideas* below.
-- **Every game explains itself, in place.** `src/games/howToPlay.ts` holds a card for all twenty
+- **Every game explains itself, in place.** `src/games/howToPlay.ts` holds a card for all twenty-six
   games — the goal in one sentence, the numbered rules, and the tip that actually changes how you
   play it ("hand over the third side of a box and you have given your opponent a present"). The
   card renders as a disclosure under the board in solo play and in the room, and in the lobby
@@ -289,8 +295,8 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 ### 🟡 Partial / deliberately scoped
 
 - **Cloud sync** is optional and off until you add Supabase keys. Without them the app is fully functional but local to one browser.
-- **Snake, Puzzle Quest, Volt Runner, Detective Pikachu, Imposter and Truth or Dare are offline games** — single-player or same-device. They are not listed as online anywhere in the UI; only the **fourteen** server-refereed games are.
-  - *Imposter* needs 3–8 seats and rooms seat exactly two, so it cannot go online without reworking the room model.
+- **Snake, Puzzle Quest, Volt Runner, Detective Pikachu, Imposter, Spyfall, Berry Catch, Daily Puzzle and Truth or Dare are offline games** — single-player or same-device. They are not listed as online anywhere in the UI; only the **seventeen** server-refereed games are.
+  - *Imposter* and *Spyfall* need 3–8 seats and rooms seat exactly two, so they cannot go online without reworking the room model. Both are pass-the-phone games for that reason, and say so where you pick them.
   - *Truth or Dare* and *Detective Pikachu* have no competitive outcome for the relay to referee.
   - *Snake*, *Puzzle Quest* and *Volt Runner* are real-time single-player; refereeing them would mean streaming every frame, which is the thing this project deliberately does not do.
 - **Match history across sessions** is kept by the relay in `.pikachu-data/matches.json` (dev convenience) and per-device in `localStorage`. There is no global leaderboard.
@@ -462,7 +468,7 @@ server/
 src/
   games/
     types.ts          TurnGameRules<S, M> — the one contract both sides implement
-    registry.ts       all twenty games, their modes, art keys and difficulties
+    registry.ts       all twenty-six games, their modes, art keys and difficulties
     <game>/rules.ts   pure rules — imported by BOTH the browser and the server
     <game>/ai.ts      the opponent for that game
     <game>/SoloView.tsx  the single-player screen
@@ -515,11 +521,20 @@ Nothing calls a language model to pick a move. Everything runs locally and finis
 npm test
 ```
 
-366 tests in 20 files covering: legality and junk-payload rejection for all fourteen turn-based
-games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs, mandatory capture and
-promotion in checkers, memory redaction and streaks, fleet placement validation plus a full
-AI-vs-AI battle, reaction-duel timing on a real clock, snake collision/growth/wrap, puzzle
-solvability (including 15-puzzle parity), and the XP / achievement / daily-challenge system.
+560 tests across 37 files covering: legality and junk-payload rejection for all seventeen
+server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
+mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
+validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake
+collision/growth/wrap, puzzle solvability (including 15-puzzle parity), and the XP /
+achievement / daily-challenge system.
+
+The party shelf carries its own suites, because those are the games where a bug is invisible until
+somebody at the table is embarrassed. Would You Rather and Word Bomb have rule tests plus a relay
+test each. Bluff Trivia checks that the truth is never named while the ballot is open, that your own
+lie cannot be voted for, and that the deadline closes the vote without a nudge. Spyfall checks that
+every deal has exactly one spy, that the spy holds no role card, that a tie accuses nobody, and —
+driven through the real screen — that a closed card never carries the previous player's identity.
+Berry Catch and Daily Puzzle test their engines and their screens separately.
 
 The four newest games (Reversi, Gomoku, Dots & Boxes, Mancala) add their own rule tests: forced
 passes and the wipe-out ending in Reversi, five-in-a-row in every direction plus the overline case

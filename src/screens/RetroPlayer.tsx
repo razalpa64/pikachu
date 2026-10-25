@@ -8,6 +8,7 @@ import {
   formatBytes,
   loadRetroLibrary,
   retroGameById,
+  type CartridgeKind,
   type PlayerMessage,
   type PlayerStatus,
   type RetroGame,
@@ -39,7 +40,7 @@ import { useStore } from '../lib/store';
  * asserted in `scripts/e2e/retro.mjs` against a running cartridge.
  */
 
-type Boot = { name?: string; file?: File } | undefined;
+type Boot = { name?: string; file?: File; kind?: CartridgeKind } | undefined;
 
 /** One notice at a time, across mounts: a stale timer must not clear the next
  *  page's message. A module-scope handle is fine here — it is not React state. */
@@ -256,10 +257,14 @@ export default function RetroPlayer() {
     const win = iframeRef.current?.contentWindow;
     if (!file || !win) return;
     win.postMessage(
-      { channel: RETRO_CHANNEL, type: 'boot', game: { name: boot?.name ?? file.name, romFile: file } },
+      {
+        channel: RETRO_CHANNEL,
+        type: 'boot',
+        game: { name: boot?.name ?? file.name, romFile: file, kind: boot?.kind ?? 'gba' },
+      },
       window.location.origin,
     );
-  }, [boot?.file, boot?.name, isLocal]);
+  }, [boot?.file, boot?.kind, boot?.name, isLocal]);
 
   /* Fullscreen is requested on the *stage*, which is also where our own
      full-bleed mode lives. */
@@ -356,7 +361,11 @@ export default function RetroPlayer() {
         <div className="gb-head-title">
           <p className="gb-head-name">{title}</p>
           <p className="gb-head-meta">
-            Game Boy Advance{game ? ` · ${game.author}${game.year ? ` · ${game.year}` : ''}` : ' · from your device'}
+            {game
+              ? `Game Boy Advance · ${game.author}${game.year ? ` · ${game.year}` : ''}`
+              : boot?.kind === 'gb'
+                ? 'Game Boy · from your device'
+                : 'Game Boy Advance · from your device'}
           </p>
         </div>
 
@@ -409,7 +418,9 @@ export default function RetroPlayer() {
               <span className="gb-lamp-label">Battery</span>
             </div>
 
-            <div className="gb-screen">
+            {/* A Game Boy dump is 10:9, not the GBA's 3:2, so the iframe is
+                narrowed inside the LCD instead of being stretched to fill it. */}
+            <div className="gb-screen" data-system={boot?.kind === 'gb' && isLocal ? 'gb' : 'gba'}>
               <iframe
                 ref={iframeRef}
                 src={src}
@@ -552,7 +563,7 @@ export default function RetroPlayer() {
                 <p className="gb-plate-note">
                   {game
                     ? game.description
-                    : 'This ROM came from your own device. It was read into this tab, checked for a GBA cartridge header, handed to the emulator as an in-memory blob, and is gone the moment you close the page.'}
+                    : 'This ROM came from your own device. It was read into this tab, checked for a cartridge header, handed to the emulator as an in-memory blob, and is gone the moment you close the page.'}
                 </p>
                 {game && (
                   <dl className="gb-facts">

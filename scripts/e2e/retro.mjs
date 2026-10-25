@@ -444,7 +444,11 @@ if (!PHONE) {
   await dropZone.dispatchEvent('drop', { dataTransfer: junk });
   await page.waitForTimeout(500);
   const refusal = await page.locator('[role=alert]').textContent().catch(() => '');
-  check('dropping a file that is not a GBA is refused', /cartridge header/i.test(refusal ?? '') && page.url().endsWith('/retro'), refusal?.slice(0, 60));
+  check(
+    'dropping a file that is no cartridge at all is refused',
+    /header/i.test(refusal ?? '') && page.url().endsWith('/retro'),
+    refusal?.slice(0, 60),
+  );
 
   const dropped = await page.evaluateHandle(async () => {
     const buf = await (await fetch('/retro/roms/simple-frogger.gba')).arrayBuffer();
@@ -477,6 +481,85 @@ if (!PHONE) {
   check('local ROM was not sent anywhere', requests.filter((u) => /\/retro\/local|\/upload/i.test(u)).length === before);
   const romBytes = readFileSync(romPath).length;
   check('cartridge size is unchanged in memory', romBytes === 47_744);
+
+  /* ------------------------------------------- a Game Boy cartridge, too */
+  /* The mGBA core runs GB/GBC as well, so a dump of a Game Boy cartridge is
+     accepted and plays in the same handheld. The probe cartridge is *generated
+     here* — header, logo, checksum and a few bytes that fill the tile data and
+     the tilemap — so no third-party ROM is committed to the repository. */
+  await page.goto(`${BASE}/retro`, { waitUntil: 'networkidle' });
+  const gbDrop = await page.evaluateHandle(() => {
+    const rom = new Uint8Array(0x8000);
+    rom.set([0xf3, 0xaf, 0xe0, 0x40], 0x150);
+    let at = 0x154;
+    const emit = (bytes) => { rom.set(bytes, at); at += bytes.length; };
+    emit([0x21, 0x00, 0x80, 0x01, 0x00, 0x10]);
+    emit([0x7d, 0xe6, 0xe0, 0x22, 0x0b, 0x78, 0xb1, 0x20, 0xf7]);
+    emit([0x21, 0x00, 0x98, 0x01, 0x00, 0x04]);
+    emit([0x7d, 0xe6, 0x0f, 0x22, 0x0b, 0x78, 0xb1, 0x20, 0xf8]);
+    emit([0x3e, 0xe4, 0xe0, 0x47, 0x3e, 0x91, 0xe0, 0x40]);
+    emit([0x76, 0x18, 0xfd]);
+    rom[0x100] = 0x00;
+    rom[0x101] = 0xc3;
+    rom[0x102] = 0x50;
+    rom[0x103] = 0x01;
+    const logo = 'ceed6666cc0d000b03730083000c000d0008111f8889000edccc6ee6ddddddd999bbbb67636e0ecccdddc999fbbb9333e';
+    for (let i = 0; i < 48; i += 1) rom[0x104 + i] = parseInt(logo.slice(i * 2, i * 2 + 2), 16);
+    rom.set([0x54, 0x45, 0x53, 0x54], 0x134);
+    rom[0x147] = 0x00;
+    rom[0x148] = 0x00;
+    rom[0x149] = 0x00;
+    rom[0x14b] = 0x33;
+    let sum = 0;
+    for (let i = 0x134; i <= 0x14c; i += 1) sum = (sum - rom[i] - 1) & 0xff;
+    rom[0x14d] = sum;
+    const dt = new DataTransfer();
+    dt.items.add(new File([rom], 'game-boy-probe.gb'));
+    return dt;
+  });
+  await page.locator('section[aria-labelledby="own-cart-h"] .panel').first().dispatchEvent('drop', { dataTransfer: gbDrop });
+  const openedGb = await page.waitForURL(/\/retro\/local$/, { timeout: 20_000 }).then(() => true).catch(() => false);
+  check('a Game Boy dump is accepted by the same drop zone', openedGb, page.url());
+  const gbFrame = page.frameLocator('iframe');
+  await gbFrame.locator('.ejs_start_button').waitFor({ timeout: 90_000 });
+  await gbFrame.locator('.ejs_start_button').click();
+  await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .waitForFunction(() => window.EJS_emulator?.started === true, { timeout: 60_000 })
+    .catch(() => {});
+  const gbStarted = await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .evaluate(() => window.EJS_emulator?.started === true);
+  check('the Game Boy cartridge boots on the same core', gbStarted);
+  const lcdBox = await page.locator('.gb-screen').boundingBox();
+  const gbBox = await page.locator('.gb-iframe').boundingBox();
+  check(
+    'a 10:9 Game Boy picture is pillarboxed inside the 3:2 LCD',
+    Math.abs(gbBox.width / gbBox.height - 10 / 9) < 0.03 && gbBox.width < lcdBox.width && Math.abs(gbBox.height - lcdBox.height) < 2,
+    JSON.stringify({ lcd: lcdBox, gb: gbBox }),
+  );
+  /* The picture is a WebGL canvas with no preserveDrawingBuffer, so read it the
+     way the importer does: an element screenshot, decoded back in the page. */
+  const gbShot = (await gbFrame.locator('canvas').first().screenshot()).toString('base64');
+  const gbPaint = await page.evaluate(async (base64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${base64}`;
+    await img.decode();
+    const shot = document.createElement('canvas');
+    shot.width = 160;
+    shot.height = 144;
+    const ctx = shot.getContext('2d');
+    ctx.drawImage(img, 0, 0, 160, 144);
+    const data = ctx.getImageData(0, 0, 160, 144).data;
+    const colours = new Set();
+    for (let p = 0; p < data.length; p += 4) {
+      colours.add(((data[p] >> 3) << 10) | ((data[p + 1] >> 3) << 5) | (data[p + 2] >> 3));
+    }
+    return { colours: colours.size };
+  }, gbShot);
+  check('the Game Boy picture is drawn, not a blank LCD', gbPaint.colours >= 2, JSON.stringify(gbPaint));
 }
 
 /* Two known, harmless messages in a sandbox: the emulator's update check only

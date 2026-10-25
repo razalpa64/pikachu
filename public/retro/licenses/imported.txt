@@ -15,6 +15,11 @@ listed at the bottom of this file rather than quietly accepted.
 Each cartridge was then booted in Chromium against this site's own player, and
 only marked playable if the LCD repainted after a START/A/D-pad sequence.
 
+  BeatBeast                          MIT               
+                                         31.95 MB  sha256 2a4986bdf6bd65601f1ae08f471d0aafc3e23d57f594162f77f351a1150e43eb
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/afska_beat-beast
+                                         upstream  https://github.com/afska/beat-beast
+
   Apotris                            GPL-3.0-only      
                                          4.00 MB  sha256 e5e7b124407d97cb1268b3bde4239bd2f018e133b1cb7990a635fc01937e78f6
                                          entry     https://github.com/gbadev-org/games/tree/master/entries/apotris
@@ -55,6 +60,11 @@ only marked playable if the LCD repainted after a START/A/D-pad sequence.
                                          2.56 MB  sha256 fc998703b8abd960e718c76facab75ed89fa4e7eb3ff8fad6ebf9ea23475770a
                                          entry     https://github.com/gbadev-org/games/tree/master/entries/origamiscienceguy_galactic-quest
                                          upstream  https://github.com/origamiscienceguy/Galactic_Quest
+
+  Skyland                            MPL-2.0           
+                                         23.55 MB  sha256 1446735f17c00d4a2d369160e7716a0c66ea9ea292f89fdf998783682a044044
+                                         entry     https://github.com/gbadev-org/games/tree/master/entries/skyland
+                                         upstream  https://github.com/evanbowman/skyland
 
   Solar Guard                        GPL-3.0-only      
                                          4.07 MB  sha256 cfd07990e0fa05611fb36b3230d68cea4b65ae11482e822b5b6f97a32a8b88b0

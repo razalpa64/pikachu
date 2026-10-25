@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-25T15:32:07.680Z",
+  "generatedAt": "2026-10-25T16:00:21.340Z",
   "source": {
     "repo": "gbadev-org/games",
     "branch": "master",
@@ -8,18 +8,17 @@
   "counts": {
     "discovered": 251,
     "gbaGames": 240,
-    "authorised": 14,
-    "importable": 13,
-    "downloaded": 13,
-    "tested": 13,
-    "installed": 13,
-    "skipped": 237,
+    "authorised": 16,
+    "importable": 15,
+    "downloaded": 15,
+    "tested": 15,
+    "installed": 15,
+    "skipped": 235,
     "failed": 0,
-    "shelf": 20
+    "shelf": 22
   },
   "skippedByReason": {
     "license-missing": 215,
-    "rom-too-big": 2,
     "platform": 1,
     "no-rom": 4,
     "typetag": 10,
@@ -49,6 +48,13 @@
       "title": "Attack on Voxelburg",
       "license": "GPL-3.0-or-later",
       "bytes": 827676
+    },
+    {
+      "id": "afska-beat-beast",
+      "slug": "afska_beat-beast",
+      "title": "BeatBeast",
+      "license": "MIT",
+      "bytes": 33506864
     },
     {
       "id": "goldcube-cat-fish",
@@ -91,6 +97,13 @@
       "title": "MeteoRain (GBA Jam 2021)",
       "license": "MIT",
       "bytes": 1710503
+    },
+    {
+      "id": "skyland",
+      "slug": "skyland",
+      "title": "Skyland",
+      "license": "MPL-2.0",
+      "bytes": 24693968
     },
     {
       "id": "solar-guard",

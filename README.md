@@ -592,6 +592,7 @@ behind Homebrew Hub, by `npm run retro:import` — see
 | Cartridge | Author | Licence | ROM | Genre |
 |---|---|---|---|---|
 | **Apotris** | akouzoukos | GPL-3.0-only | 4.0 MB | puzzle |
+| **BeatBeast** | afska + contributors | MIT | 32.0 MB | rhythm shooter |
 | **Attack on Voxelburg** | nuclear | GPL-3.0-or-later | 808 KB | shooter |
 | **Cat Fish** | goldcube | MIT | 1.3 MB | arcade |
 | **Galactic Quest** | origamiscienceguy | GPL-3.0-only | 2.6 MB | strategy |
@@ -599,6 +600,7 @@ behind Homebrew Hub, by `npm run retro:import` — see
 | **GBAtris** | John Tsiombikas & Greig Stewart | GPL-3.0-or-later | 2.2 MB | puzzle |
 | **GRIMLIGHT: The Hollow Bell** | retroromrunner | MIT | 51 KB | puzzle |
 | **MeteoRain (GBA Jam 2021)** | Dr. Ludos | MIT | 1.6 MB | arcade |
+| **Skyland** | evanbowman | MPL-2.0 | 23.6 MB | RPG |
 | **Solar Guard** | Deft Spade | GPL-3.0-only | 4.1 MB | shooter |
 | **The Hat Chooses the Wizard** | Corwin & Gwilym Kuiper | MPL-2.0 | 2.0 MB | arcade |
 | **The purple night** | Corwin & Gwilym Kuiper | MPL-2.0 | 8.0 MB | platformer |
@@ -661,13 +663,15 @@ Three rules hold the whole thing up:
   `public/retro/catalog.json`.
 
 The archive's own census, at the commit in `data/retro/last-report.json`:
-251 entries, 240 GBA games, 14 of them authorised to be redistributed here, 13
-importable under this shelf's 8 MB-per-cartridge budget, 13 downloaded, 13
-tested playable, 0 failed. The other 237 are skipped: 215 declare no licence at
-all, 10 are tools or demos rather than games, 4 ship no `.gba`, 3 are fan games
-of third-party characters, 2 are over the size budget, 1 is not a GBA build, 1
-licenses its code but not the music in the ROM, and 1 declares a licence the
-importer does not recognise.
+251 entries, 240 GBA games, **16** of them authorised to be redistributed here,
+**15** imported and playtested, 0 failed, on a shelf of **22** cartridges
+(97.8 MB). The other 235 are skipped: 215 declare no licence at all, 10 are
+tools or demos rather than games, 4 ship no `.gba`, 3 are fan games of
+third-party characters, 1 is not a GBA build, 1 licenses its code but not the
+music in the ROM, and 1 declares a licence the importer does not recognise.
+The per-cartridge budget is the site's own 32 MB ceiling — the largest ROM a GBA
+address space can hold — which is why BeatBeast (32.0 MB) is the biggest title
+here.
 
 ### How it is wired
 
@@ -709,11 +713,18 @@ scripts/e2e/retro.mjs  the proof (see below)
   fails; `player.html` re-resolves the `?game=` id against the same manifest, so
   a hand-edited URL cannot point the emulator at a remote file.
 * **Your own ROM never leaves the device.** Both entry points — the file picker
-  and a drop on the "your own cartridge" card — read the first 0xC0 bytes, check
-  the Nintendo logo the GBA boot ROM itself checks for, then hand the `File` to
-  the player through route state. The player turns it into a `blob:` URL in
-  memory. No request is made, nothing is written to storage, and a reload forgets
-  it — `retro.mjs` asserts both the boot and the absence of an upload.
+  and a drop on the "your own cartridge" card — read the header, check the
+  Nintendo logo the boot ROM itself checks for, then hand the `File` to the
+  player through route state. The player turns it into a `blob:` URL in memory.
+  No request is made, nothing is written to storage, and a reload forgets it —
+  `retro.mjs` asserts both the boot and the absence of an upload.
+* **Dumps of Game Boy and Game Boy Color cartridges play too.** The mGBA core
+  runs all three consoles, so `.gb` and `.gbc` files are accepted as well; the
+  header check tells them apart (`detectCartridge`), and a 10:9 Game Boy picture
+  is pillarboxed inside the 3:2 LCD rather than stretched. That is the honest way
+  to play a commercial cartridge you own: supply the dump, the site hosts
+  nothing. `retro.mjs` proves it with a Game Boy test cartridge it generates on
+  the fly, so no third-party ROM enters the repository.
 * **There is no "paste a link to a ROM" box, on purpose.** A URL importer would
   be blocked by CORS on almost every host, and where it did work it would make
   this site a download proxy for exactly the commercial ROM sites it refuses to

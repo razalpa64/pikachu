@@ -803,6 +803,12 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     inset 0 0 .5cqw rgba(0, 0, 0, .55);
 }
 .gb-iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #0c24aa; }
+
+/* A Game Boy cartridge paints 160x144 into a hole shaped 3:2. Narrowing the
+   iframe to 20/27 of the LCD width gives the core an exactly 10:9 box, so the
+   picture is pillarboxed rather than stretched — and the bars stay dark. */
+.gb-screen[data-system="gb"] { background: #10160d; }
+.gb-screen[data-system="gb"] .gb-iframe { left: 12.96%; width: 74.07%; background: #10160d; }
 .gb-screen-note {
   position: absolute;
   left: 50%;

@@ -16,14 +16,16 @@
   html, body { margin: 0; height: 100%; background: #0b0d12; }
   body { overflow: hidden; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
   #shell { position: fixed; inset: 0; display: flex; flex-direction: column; }
-  #game { position: relative; flex: 1 1 auto; min-height: 0; background: #0b0d12; }
+  /* The screen hole in the shell is a DMG-blue LCD, so that is what the
+     player shows until a cartridge paints over it. */
+  #game { position: relative; flex: 1 1 auto; min-height: 0; background: #0c24aa; }
   #boot {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    color: #8b93a7; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+    color: #dbe4ff; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
     transition: opacity .25s ease;
   }
   #boot[hidden] { display: none; }
-  .ejs_parent { border-radius: 0 !important; --ejs-background-color: #0b0d12; }
+  .ejs_parent { border-radius: 0 !important; --ejs-background-color: #0c24aa; background: #0c24aa !important; }
 
   /* EmulatorJS ships a full toolbar. The parent app draws its own chrome with
      the same actions plus a real game title, so the toolbar is redundant here —
@@ -37,25 +39,40 @@
 
   /* Restyle the start button the emulator renders over the canvas. It is the
      click that unlocks audio, so it has to look like it belongs to this site. */
+  /* EJS places its start pill relative to the bottom of the *flow*, which lands
+     outside a screen that is exactly the size of the canvas. Pinning it is what
+     keeps the one button that unlocks audio actually reachable — and sized to
+     the LCD rather than to a desktop page. */
   .ejs_start_button {
+    position: absolute !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: 9% !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     font-family: "Baloo", ui-rounded, "Segoe UI", system-ui, sans-serif !important;
-    font-size: 15px !important;
+    font-size: clamp(10px, 4.6vw, 15px) !important;
     font-weight: 800 !important;
     letter-spacing: .1em !important;
-    line-height: 44px !important;
-    height: 44px !important;
-    padding: 0 28px !important;
+    line-height: 1 !important;
+    height: auto !important;
+    padding: clamp(7px, 3.4vw, 12px) clamp(14px, 7vw, 26px) !important;
     color: #5a3a12 !important;
     background: #ffd24d !important;
     border: 2px solid #5a3a12 !important;
     border-radius: 999px !important;
-    box-shadow: 0 4px 0 0 #c89b78 !important;
+    box-shadow: 0 3px 0 0 #c89b78 !important;
     text-shadow: none !important;
-    bottom: 30px !important;
+    white-space: nowrap !important;
   }
   .ejs_start_button:hover,
   .ejs_start_button:active { animation: none !important; background: #ffe27a !important; }
-  .ejs_loading_text { color: #8b93a7 !important; font-size: 11px !important; letter-spacing: .12em !important; text-transform: uppercase; }
+  .ejs_loading_text { color: #dbe4ff !important; font-size: 11px !important; letter-spacing: .12em !important; text-transform: uppercase; }
 
 </style>
 </head>
@@ -149,7 +166,7 @@
     window.EJS_startOnLoaded = false;
     window.EJS_volume = 0.7;
     window.EJS_color = "#e8a21c";
-    window.EJS_backgroundColor = "#0b0d12";
+    window.EJS_backgroundColor = "#0c24aa";
     window.EJS_language = "en-US";
     window.EJS_disableAutoLang = false;
     /* EmulatorJS only switches its on-screen pad on by default when the user

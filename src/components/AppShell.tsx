@@ -43,6 +43,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
      running emulator is chrome competing with the console. The shelf itself
      (`/retro`) stays a normal page. */
   const immersive = loc.pathname.startsWith('/solo/') || loc.pathname.startsWith('/room/') || /^\/retro\/.+/.test(loc.pathname);
+  /* The retro *player* is a device, not a page: it draws its own header and owns
+     the whole viewport. Leaving the site header above it would both eat 58px of
+     the console and leave a row of links behind it that keyboard users could
+     tab into without being able to see where they were. The shelf (`/retro`) is
+     untouched. */
+  const consolePage = /^\/retro\/.+/.test(loc.pathname);
 
   useEffect(() => { setMenuOpen(false); }, [loc.pathname]);
   useEffect(() => {
@@ -59,6 +65,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </a>
 
       {/* ---------------- top bar ---------------- */}
+      {!consolePage && (
       <header className="sticky top-0 z-50 safe-t bg-[#fffaf1]/92 border-b-2 border-ink-600 backdrop-blur-md blur-heavy">
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] h-[58px] flex items-center gap-3">
           <button onClick={() => { sfx('click'); nav('/'); }} className="flex items-center gap-2 shrink-0 no-tap group" aria-label="PIKACHU home">
@@ -130,6 +137,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
           <div className="h-full bg-gradient-to-r from-volt-300 via-volt-400 to-blush-300 transition-[width] duration-700" style={{ width: `${lvl.pct * 100}%` }} />
         </div>
       </header>
+      )}
 
       {/* ---------------- mobile drawer ---------------- */}
       {menuOpen && (

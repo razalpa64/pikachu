@@ -12,35 +12,34 @@ import {
   type PlayerStatus,
   type RetroGame,
 } from '../lib/retro';
-import { Button, EmptyState, Icon, Panel } from '../components/ui';
+import { Button, EmptyState, Icon } from '../components/ui';
 import { useStore } from '../lib/store';
 
 /**
  * `/retro/:id` — the console.
  *
- * The emulator is an iframe and nothing else: EmulatorJS is a classic script
- * bundle that measures the whole document on load, and the React tree should not
- * be inside the element it treats as its viewport. The iframe also means the
- * wasm VM, the audio context and the IndexedDB cache all disappear with it when
- * you leave.
+ * The page *is* the device: a grey handheld that fills the viewport, with the
+ * emulator living inside its screen and the plastic wired to the core. Three
+ * decisions follow from that, and each was made against something real:
  *
- * Everything the chrome can do is a message the player answers — no action here
- * is decorative. Each one below was verified against a running cartridge; the
- * keys in RETRO_KEYBOARD were pressed in a real browser, see `npm run e2e:retro`.
+ *   1. **The emulator stays an iframe.** EmulatorJS is a classic script bundle
+ *      that measures the document on load, so it needs its own document — and
+ *      the wasm VM, audio context and IndexedDB cache all leave with the frame
+ *      when you do.
+ *   2. **The screen is exactly 3:2**, which is the GBA's own ratio, so the
+ *      canvas fills the LCD edge to edge instead of being letterboxed inside a
+ *      hole the wrong shape.
+ *   3. **The plastic works.** Every button on the shell is a real button wired
+ *      to the core over the same `simulateInput` path a physical pad uses. The
+ *      proportions come from the reference photograph (which is why the numbers
+ *      below are odd); the touch targets do not: the D-pad reads a thumb
+ *      anywhere along an arm, and A/B sit on a raised pad the size of a thumb.
+ *
+ * Everything the chrome can do is a command the player answers, and each one is
+ * asserted in `scripts/e2e/retro.mjs` against a running cartridge.
  */
 
 type Boot = { name?: string; file?: File } | undefined;
-
-interface ChromeAction {
-  id: string;
-  label: string;
-  icon: string;
-  /** Tone: ghost actions sit on the dark console body. */
-  run: () => void;
-  disabled?: boolean;
-  active?: boolean;
-  title?: string;
-}
 
 /** One notice at a time, across mounts: a stale timer must not clear the next
  *  page's message. A module-scope handle is fine here — it is not React state. */
@@ -55,63 +54,79 @@ const STATUS_COPY: Record<PlayerStatus, { label: string; tone: string }> = {
   error: { label: 'Stopped', tone: '#ef6a7f' },
 };
 
-/* ------------------------------------------------------------- touch pad */
+/* ------------------------------------------------------------- the shell */
 
 /**
- * The handheld's own buttons.
+ * One button of the handheld.
  *
- * EmulatorJS can draw a pad, but it floats over the middle of the screen at a
- * fixed size and covers the game. Drawing our own means the controls live where
- * the plastic would be — under the screen — and can be laid out for the thumb.
- * Every press is a `simulateInput` message, so this pad and a real controller go
- * through exactly the same path into the core.
+ * Pointer events rather than clicks: a game pad has to respond the frame a
+ * thumb lands and release the frame it lifts. Pointer capture means a thumb
+ * that slides off the button still releases it, so a D-pad arm can never stick
+ * down and walk the player into a wall.
  */
-function TouchPad({ send }: { send: (cmd: string, value?: unknown) => void }) {
-  const press = (index: number) => (e: React.PointerEvent<HTMLButtonElement>) => {
+function DeviceButton({
+  index,
+  send,
+  label,
+  className,
+  style,
+  children,
+}: {
+  index: number;
+  send: (cmd: string, value?: unknown) => void;
+  label: string;
+  className: string;
+  style?: React.CSSProperties;
+  children?: React.ReactNode;
+}) {
+  const press = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    // The press is sent first: capture is a nicety for thumbs that slide off,
+    // and a synthetic pointer (a test, an assistive tool) has no id to capture.
+    send('input', { index, pressed: true });
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* no live pointer */ }
+  };
+  const release = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    send('input', { index, pressed: false });
+  };
+  /* A pointer is not the only way to press a button. Space/Enter hold the
+     button down for as long as the key repeats, which is what a keyboard player
+     expects from the pad they can tab to. */
+  const keyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
+    e.preventDefault();
+    if (e.repeat) return;
     send('input', { index, pressed: true });
   };
-  const release = (index: number) => (e: React.PointerEvent<HTMLButtonElement>) => {
+  const keyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key !== ' ' && e.key !== 'Enter') return;
     e.preventDefault();
     send('input', { index, pressed: false });
   };
 
-  const btn = (index: number, label: string, extra = '') => (
+  return (
     <button
       type="button"
       aria-label={label}
-      onPointerDown={press(index)}
-      onPointerUp={release(index)}
-      onPointerCancel={release(index)}
-      onPointerLeave={release(index)}
+      className={className}
+      style={style}
+      onPointerDown={press}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onPointerLeave={release}
+      onKeyDown={keyDown}
+      onKeyUp={keyUp}
       onContextMenu={(e) => e.preventDefault()}
-      className={`retro-pad-btn ${extra}`}
     >
-      <span aria-hidden>{label}</span>
+      {children}
     </button>
   );
-
-  return (
-    <div className="retro-pad" role="group" aria-label="Touch controls">
-      <div className="retro-dpad" aria-label="D-pad">
-        {btn(RETRO_BUTTON.UP, '▲', 'retro-dpad-up')}
-        {btn(RETRO_BUTTON.LEFT, '◀', 'retro-dpad-left')}
-        <span className="retro-dpad-hub" aria-hidden />
-        {btn(RETRO_BUTTON.RIGHT, '▶', 'retro-dpad-right')}
-        {btn(RETRO_BUTTON.DOWN, '▼', 'retro-dpad-down')}
-      </div>
-      <div className="retro-pad-mid">
-        {btn(RETRO_BUTTON.SELECT, 'SELECT', 'retro-pad-pill')}
-        {btn(RETRO_BUTTON.START, 'START', 'retro-pad-pill')}
-      </div>
-      <div className="retro-pad-face">
-        {btn(RETRO_BUTTON.B, 'B')}
-        {btn(RETRO_BUTTON.A, 'A')}
-      </div>
-    </div>
-  );
 }
+
+/** The six speaker slots, positioned the way the photograph staggers them: each
+ *  one a little further right and a little higher than the last. */
+const GRILLE = [0, 1, 2, 3, 4, 5];
 
 export default function RetroPlayer() {
   const { id = '' } = useParams();
@@ -126,13 +141,18 @@ export default function RetroPlayer() {
   const [status, setStatus] = useState<PlayerStatus>('booting');
   const [notice, setNotice] = useState<string | null>(null);
   const [muted, setMuted] = useState(false);
-  const [showControls, setShowControls] = useState(false);
-  const [touch, setTouch] = useState(false);
+  const [panel, setPanel] = useState<'none' | 'keys' | 'about'>('none');
   const [stalled, setStalled] = useState(false);
+  const [full, setFull] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const frameRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
 
-  const game = useMemo(() => (isLocal ? null : retroGameById(library, id)), [isLocal, library, id]);
+  const game = library ? retroGameById(library, id) : null;
+  /* Nothing was mounted to play: the page shows a note instead of a console. */
+  const blocked =
+    (isLocal && !boot?.file) ||
+    (!isLocal && libraryError) ||
+    (!isLocal && !!library && !game);
 
   /* ------------------------------------------------------------ manifest */
   useEffect(() => {
@@ -171,12 +191,8 @@ export default function RetroPlayer() {
         case 'state':
           if (data.status) setStatus(data.status);
           break;
-        case 'saved':
-          say('State saved to this browser');
-          break;
-        case 'loaded':
-          say('State loaded');
-          break;
+        case 'saved': say('State saved to this browser'); break;
+        case 'loaded': say('State loaded'); break;
         case 'shot': {
           if (!data.dataUrl) break;
           const a = document.createElement('a');
@@ -188,9 +204,7 @@ export default function RetroPlayer() {
           say('Screenshot saved');
           break;
         }
-        case 'volume':
-          setMuted((data.value ?? 1) === 0);
-          break;
+        case 'volume': setMuted((data.value ?? 1) === 0); break;
         case 'error':
           if (data.message === 'no-save') say('No saved state for this cartridge yet');
           else say('The emulator could not do that');
@@ -201,19 +215,28 @@ export default function RetroPlayer() {
     return () => window.removeEventListener('message', onMessage);
   }, [game?.title, boot?.name, say, sfx]);
 
-  /* Touch is a hardware question, not a user-agent one: a tablet reporting a
-     desktop UA still has fingers. */
-  useEffect(() => {
-    const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
-    setTouch(coarse || (navigator.maxTouchPoints ?? 0) > 0);
-  }, []);
-
-  /* Give the visitor an honest signal when a big cartridge is still streaming. */
+  /* An honest signal while a big cartridge is still streaming. */
   useEffect(() => {
     if (status === 'running' || status === 'paused' || status === 'error') return;
     const t = window.setTimeout(() => setStalled(true), 9000);
     return () => window.clearTimeout(t);
   }, [status]);
+
+  /* The console owns the viewport: nothing behind it should scroll while you
+     are three dungeons into a cartridge. The guard screens are ordinary pages,
+     so they keep their own scrolling. */
+  useEffect(() => {
+    if (blocked) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [blocked]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPanel('none'); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const send = useCallback((cmd: string, value?: unknown) => {
     const win = iframeRef.current?.contentWindow;
@@ -232,254 +255,297 @@ export default function RetroPlayer() {
     );
   }, [boot?.file, boot?.name, isLocal]);
 
-  /* ------------------------------------------------------------ fullscreen */
+  /* Fullscreen is requested on the *stage*, not the shell, so the rail stays
+     reachable — the same reason a handheld keeps its power switch next to its
+     screen. */
   const toggleFullscreen = useCallback(() => {
-    const el = frameRef.current;
+    const el = stageRef.current;
     if (!el) return;
     if (document.fullscreenElement) void document.exitFullscreen?.();
     else void el.requestFullscreen?.().catch(() => say('This browser refused fullscreen'));
   }, [say]);
 
-  /* Escaping fullscreen with the keyboard must not leave a stale layout. */
+  /* Fullscreen drops the page chrome and hands the extra height to the shell,
+     which is the whole point of asking for the screen: the device grows from
+     ~535px to ~640px wide because the header and rail stop taking 120px of it. */
   useEffect(() => {
-    const onChange = () => setShowControls(false);
+    const onChange = () => setFull(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onChange);
+    onChange();
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
+  /* Plain array, rebuilt each render: its handlers post to the frame, and
+     memoising it would only make React's lint wonder when those handlers were
+     allowed to read a ref. */
   const started = status === 'running' || status === 'paused';
-  const src = isLocal ? RETRO_PLAYER_URL : `${RETRO_PLAYER_URL}?game=${encodeURIComponent(id)}`;
+  const rail = [
+    { id: 'pause', label: status === 'paused' ? 'Resume' : 'Pause', icon: status === 'paused' ? 'play' : 'pause', disabled: !started, run: () => { send('toggle'); sfx('click'); } },
+    { id: 'save', label: 'Save', icon: 'save', disabled: !started, run: () => { send('saveState'); sfx('click'); } },
+    { id: 'load', label: 'Load', icon: 'load', disabled: !started, run: () => { send('loadState'); sfx('click'); } },
+    { id: 'restart', label: 'Restart', icon: 'rotate', disabled: !started, run: () => { send('restart'); say('Cartridge restarted'); sfx('toggle'); } },
+    { id: 'mute', label: muted ? 'Unmute' : 'Mute', icon: muted ? 'mute' : 'volume', disabled: false, run: () => { send('mute', !muted); setMuted((m) => !m); sfx('toggle'); } },
+    { id: 'shot', label: 'Capture', icon: 'camera', disabled: !started, run: () => { send('screenshot'); sfx('click'); } },
+    { id: 'full', label: 'Fullscreen', icon: 'expand', disabled: false, run: toggleFullscreen },
+  ];
 
   /* ---------------------------------------------------------------- guards */
+  const notFound = (title: string, body: string) => (
+    <div className="min-h-dvh grid place-items-center px-[var(--shell-pad)] py-10">
+      <EmptyState
+        mascot="waiting"
+        title={title}
+        body={body}
+        action={<Button onClick={() => nav('/retro')} icon={<Icon name="back" size={14} />}>Back to the shelf</Button>}
+      />
+    </div>
+  );
+
   if (isLocal && !boot?.file) {
-    return (
-      <div className="mx-auto max-w-[760px] px-[var(--shell-pad)] py-14">
-        <EmptyState
-          mascot="waiting"
-          title="That cartridge is no longer in memory"
-          body="A ROM you open from your device is never stored, so reloading the page forgets it. Pick the file again and it will start from the top."
-          action={<Button onClick={() => nav('/retro')} icon={<Icon name="back" size={14} />}>Back to the shelf</Button>}
-        />
-      </div>
+    return notFound(
+      'That cartridge is no longer in memory',
+      'A ROM you open from your device is never stored, so reloading the page forgets it. Pick the file again and it starts from the top.',
     );
   }
-
   if (!isLocal && libraryError) {
-    return (
-      <div className="mx-auto max-w-[760px] px-[var(--shell-pad)] py-14">
-        <EmptyState
-          mascot="error"
-          title="The shelf could not be read"
-          body="The cartridge manifest at /retro/roms.json did not load, so this page cannot verify which game to start."
-          action={<Button onClick={() => nav('/retro')} icon={<Icon name="back" size={14} />}>Back to the shelf</Button>}
-        />
-      </div>
+    return notFound(
+      'The shelf could not be read',
+      'The cartridge manifest at /retro/roms.json did not load, so this page cannot verify which game to start.',
     );
   }
-
   if (!isLocal && library && !game) {
-    return (
-      <div className="mx-auto max-w-[760px] px-[var(--shell-pad)] py-14">
-        <EmptyState
-          mascot="waiting"
-          title="No such cartridge"
-          body={`Nothing in the shelf matches “${id}”.`}
-          action={<Button onClick={() => nav('/retro')} icon={<Icon name="back" size={14} />}>Back to the shelf</Button>}
-        />
-      </div>
-    );
+    return notFound('No such cartridge', `Nothing in the shelf matches “${id}”.`);
   }
 
   const title = game?.title ?? boot?.name ?? 'Your cartridge';
   const statusCopy = STATUS_COPY[status];
-
-  const actions: ChromeAction[] = [
-    { id: 'pause', label: status === 'paused' ? 'Resume' : 'Pause', icon: status === 'paused' ? 'play' : 'pause', disabled: !started, run: () => { send('toggle'); sfx('click'); } },
-    { id: 'restart', label: 'Restart', icon: 'rotate', disabled: !started, run: () => { send('restart'); say('Cartridge restarted'); sfx('toggle'); }, title: 'Restart from the title screen' },
-    { id: 'save', label: 'Save', icon: 'save', disabled: !started, run: () => { send('saveState'); sfx('click'); }, title: 'Save a state in this browser' },
-    { id: 'load', label: 'Load', icon: 'load', disabled: !started, run: () => { send('loadState'); sfx('click'); }, title: 'Load the last saved state' },
-    { id: 'mute', label: muted ? 'Unmute' : 'Mute', icon: muted ? 'mute' : 'volume', run: () => { send('mute', !muted); setMuted((m) => !m); sfx('toggle'); } },
-    { id: 'shot', label: 'Capture', icon: 'camera', disabled: !started, run: () => { send('screenshot'); sfx('click'); }, title: 'Save a PNG of the screen' },
-    { id: 'full', label: 'Fullscreen', icon: 'expand', run: toggleFullscreen, title: 'Fill the screen (Esc exits)' },
-  ];
+  const src = isLocal ? RETRO_PLAYER_URL : `${RETRO_PLAYER_URL}?game=${encodeURIComponent(id)}`;
+  const lampState = status === 'running' ? 'on' : status === 'paused' ? 'paused' : status === 'error' ? 'off' : 'waiting';
 
   return (
-    <div className="mx-auto max-w-[1180px] px-[var(--shell-pad)] py-4 sm:py-6">
-      {/* ---------------- title row ---------------- */}
-      <div className="flex items-center gap-2 sm:gap-3 mb-2.5 sm:mb-3">
-        <button
-          onClick={() => { sfx('click'); nav('/retro'); }}
-          aria-label="Back to the shelf"
-          className="shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-full border-2 border-ink-500 bg-ink-800 text-[11.5px] font-extrabold uppercase tracking-wider text-cream-500 hover:text-cream-100 hover:border-ink-400 no-tap"
-        >
-          <Icon name="back" size={13} /> <span className="hidden xs:inline sm:inline">Shelf</span>
+    <div className="gb-stage" ref={stageRef} data-status={status} data-full={full ? 'on' : 'off'}>
+      {/* ---------------- slim header: where you are, how to leave ---------------- */}
+      <header className="gb-head">
+        <button onClick={() => { sfx('click'); nav('/retro'); }} className="gb-chip" aria-label="Back to the shelf">
+          <Icon name="back" size={14} />
+          <span className="gb-chip-word">Shelf</span>
         </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="display text-[18px] sm:text-[26px] leading-tight text-cream-100 truncate">{title}</h1>
-          <p className="hidden sm:block text-[11px] font-bold uppercase tracking-wider text-cream-500 mt-1">
+
+        <div className="gb-head-title">
+          <p className="gb-head-name">{title}</p>
+          <p className="gb-head-meta">
             Game Boy Advance{game ? ` · ${game.author} · ${game.year}` : ' · from your device'}
           </p>
         </div>
-        <span
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border-2 bg-[#2b1f19] text-[10.5px] font-extrabold uppercase tracking-wider"
-          style={{ borderColor: '#4b352a', color: statusCopy.tone }}
-          role="status"
-          aria-live="polite"
-        >
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: statusCopy.tone }} aria-hidden />
-          {statusCopy.label}
+
+        <span className="gb-status" role="status" aria-live="polite">
+          <span className="gb-status-dot" style={{ background: statusCopy.tone }} aria-hidden />
+          <span className="gb-status-text">{statusCopy.label}</span>
         </span>
+
         <button
-          onClick={() => setShowControls((v) => !v)}
-          aria-expanded={showControls}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-full border-2 border-ink-500 bg-ink-800 text-[11.5px] font-extrabold uppercase tracking-wider text-cream-500 hover:text-cream-100 hover:border-ink-400 no-tap"
+          onClick={() => { sfx('click'); setPanel((p) => (p === 'keys' ? 'none' : 'keys')); }}
+          aria-expanded={panel === 'keys'}
+          className="gb-chip"
+          aria-label="Controls"
         >
-          <Icon name="gamepad" size={15} /> Keys
+          <Icon name="gamepad" size={15} /><span className="gb-chip-word">Keys</span>
         </button>
+        <button
+          onClick={() => { sfx('click'); setPanel((p) => (p === 'about' ? 'none' : 'about')); }}
+          aria-expanded={panel === 'about'}
+          className="gb-chip"
+          aria-label="About this cartridge"
+        >
+          <Icon name="book" size={15} /><span className="gb-chip-word">Info</span>
+        </button>
+      </header>
+
+      {/* ---------------- the device ---------------- */}
+      <div className="gb-mid">
+        <div className="gb-device" data-lamp={lampState} role="group" aria-label="Touch controls">
+          <span className="gb-grain" aria-hidden />
+
+          {/* power switch and the seam that runs under it: device detail, so it
+              is decorative and silent */}
+          <div className="gb-power" aria-hidden>
+            <span className="gb-power-arrow">◄</span>
+            <span className="gb-power-words"><b>OFF</b><i /><b>ON</b></span>
+            <span className="gb-power-arrow">►</span>
+          </div>
+          <span className="gb-seam" aria-hidden />
+
+          <div className="gb-bezel">
+            <div className="gb-brand" aria-hidden>
+              <span className="gb-brand-rule" />
+              <span className="gb-brand-text">Dot Matrix With Stereo Sound</span>
+              <span className="gb-brand-rule" />
+            </div>
+
+            <div className="gb-lamp" aria-hidden>
+              <span className="gb-lamp-led" />
+              <span className="gb-lamp-label">Battery</span>
+            </div>
+
+            <div className="gb-screen">
+              <iframe
+                ref={iframeRef}
+                src={src}
+                title={`${title} — Game Boy Advance emulator`}
+                onLoad={onFrameLoad}
+                allow="fullscreen; autoplay; gamepad"
+                className="gb-iframe"
+              />
+              {(status === 'booting' || status === 'loading') && (
+                <div className="gb-screen-note">
+                  {stalled ? 'Fetching the GBA core — first launch only' : 'Starting the emulator'}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ---------------- the plastic ---------------- */}
+          <div className="gb-dpad">
+            <span className="gb-dpad-shape" aria-hidden>
+              <i className="gb-tri gb-tri-up" />
+              <i className="gb-tri gb-tri-right" />
+              <i className="gb-tri gb-tri-down" />
+              <i className="gb-tri gb-tri-left" />
+              <i className="gb-dpad-hub" />
+            </span>
+            {/* The hit areas are whole arms, not the engraved triangles: a thumb
+                presses the edge of a D-pad, and a 30px square is not a thumb. */}
+            <DeviceButton index={RETRO_BUTTON.UP} send={send} label="Up" className="gb-hit gb-hit-up" />
+            <DeviceButton index={RETRO_BUTTON.RIGHT} send={send} label="Right" className="gb-hit gb-hit-right" />
+            <DeviceButton index={RETRO_BUTTON.DOWN} send={send} label="Down" className="gb-hit gb-hit-down" />
+            <DeviceButton index={RETRO_BUTTON.LEFT} send={send} label="Left" className="gb-hit gb-hit-left" />
+          </div>
+
+          <span className="gb-ridge" aria-hidden />
+
+          <div className="gb-face" role="group" aria-label="Action buttons">
+            <DeviceButton index={RETRO_BUTTON.A} send={send} label="A" className="gb-face-btn gb-face-a">
+              <span className="gb-face-gloss" aria-hidden />
+            </DeviceButton>
+            <DeviceButton index={RETRO_BUTTON.B} send={send} label="B" className="gb-face-btn gb-face-b">
+              <span className="gb-face-gloss" aria-hidden />
+            </DeviceButton>
+            <span className="gb-face-letter gb-face-letter-a" aria-hidden>A</span>
+            <span className="gb-face-letter gb-face-letter-b" aria-hidden>B</span>
+          </div>
+
+          <div className="gb-system" role="group" aria-label="System buttons">
+            <DeviceButton index={RETRO_BUTTON.SELECT} send={send} label="Select" className="gb-system-btn gb-system-select">
+              <span className="gb-system-cap" aria-hidden />
+              <span className="gb-system-label" aria-hidden>Select</span>
+            </DeviceButton>
+            <DeviceButton index={RETRO_BUTTON.START} send={send} label="Start" className="gb-system-btn gb-system-start">
+              <span className="gb-system-cap" aria-hidden />
+              <span className="gb-system-label" aria-hidden>Start</span>
+            </DeviceButton>
+          </div>
+
+          <div className="gb-grille" aria-hidden>
+            {GRILLE.map((i) => (
+              <i key={i} style={{ left: `${75.5 + 4.2 * i}cqw`, top: `${125.4 - 2.45 * i}cqw` }} />
+            ))}
+          </div>
+
+          {notice && <p className="gb-toast" role="status">{notice}</p>}
+        </div>
       </div>
 
-      <p className="sm:hidden text-[10px] font-bold uppercase tracking-wider text-cream-500 mb-2.5">
-        Game Boy Advance{game ? ` · ${game.author} · ${game.year}` : ' · from your device'}
-      </p>
-
-      {/* ---------------- the console ---------------- */}
-      <div
-        ref={frameRef}
-        className="retro-console relative rounded-[24px] border-2 border-[#4b352a] bg-[#2b1f19] p-2.5 sm:p-4 shadow-[0_2px_0_0_#4b352a,0_30px_60px_-34px_rgba(90,58,18,.9)]"
-      >
-        <div className="flex items-center justify-between px-1 pb-2">
-          <span className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#a98d78]">Dot Matrix Advance</span>
-          <span className="flex items-center gap-2 text-[9px] font-extrabold uppercase tracking-[0.2em] text-[#a98d78]">
-            {stalled && status !== 'running' && status !== 'paused' ? 'Streaming cartridge…' : 'GBA · 240 × 160'}
-            <span className="w-1.5 h-1.5 rounded-full" style={{ background: status === 'running' ? '#6fcfa6' : statusCopy.tone }} aria-hidden />
-          </span>
-        </div>
-
-        <div className="relative rounded-[14px] border-4 border-[#14100d] bg-[#0b0d12] overflow-hidden">
-          <div className="relative w-full" style={{ aspectRatio: '3 / 2' }}>
-            <iframe
-              ref={iframeRef}
-              src={src}
-              title={`${title} — Game Boy Advance emulator`}
-              onLoad={onFrameLoad}
-              allow="fullscreen; autoplay; gamepad"
-              className="absolute inset-0 w-full h-full border-0"
-            />
-            {(status === 'booting' || status === 'loading') && (
-              <div className="absolute inset-x-0 top-0 flex justify-center pt-4 pointer-events-none">
-                <span className="px-3 py-1.5 rounded-full bg-[#161a24]/90 border border-[#2a3140] text-[10.5px] font-extrabold uppercase tracking-wider text-[#8b93a7]">
-                  {stalled ? 'Fetching the GBA core — first launch only' : 'Starting the emulator'}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* On a touch device the plastic comes alive: real buttons under the
-            screen, in the console body, not floating over the game. */}
-        {touch && <TouchPad send={send} />}
-
-        {/* physical control strip — every button here is wired to the player */}
-        <div className="retro-controls flex items-center gap-1.5 sm:gap-2 mt-2.5 sm:mt-3 overflow-x-auto no-scrollbar pb-0.5">
-          {actions.map((a) => (
+      {/* ---------------- rail: everything the shell can do ---------------- */}
+      <footer className="gb-rail">
+        <div className="gb-rail-inner">
+          {rail.map((a) => (
             <button
               key={a.id}
               onClick={a.run}
               disabled={a.disabled}
-              title={a.title ?? a.label}
+              title={a.label}
               aria-label={a.label}
-              className={`shrink-0 flex items-center gap-1.5 px-2.5 sm:px-3 h-9 rounded-full border-2 text-[10.5px] font-extrabold uppercase tracking-wider transition-colors no-tap
-                ${a.disabled
-                  ? 'border-[#3d2c23] text-[#6d584c] cursor-not-allowed'
-                  : 'border-[#5d4636] text-[#ffe27a] hover:border-[#ffd24d] hover:bg-[#3a2a21] active:translate-y-[1px]'}`}
+              className="gb-rail-btn"
             >
-              <Icon name={a.icon} size={14} />
-              <span className="hidden sm:inline">{a.label}</span>
+              <Icon name={a.icon} size={17} />
+              <span>{a.label}</span>
             </button>
           ))}
-          <span className="flex-1" />
-          {notice && (
-            <span className="shrink-0 pr-1 text-[10.5px] font-extrabold uppercase tracking-wider text-[#c9a888]" role="status">
-              {notice}
-            </span>
-          )}
         </div>
+      </footer>
 
-        {showControls && (
-          <div className="mt-2.5 rounded-2xl border-2 border-[#5d4636] bg-[#221a15] p-3 a-slide-up">
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {RETRO_KEYBOARD.map((row) => (
-                <span key={row.action} className="flex items-center gap-1.5">
-                  {row.keys.map((k) => (
-                    <kbd key={k} className="min-w-[22px] text-center px-1.5 py-0.5 rounded border border-[#5d4636] bg-[#2b1f19] text-[11px] font-bold text-[#ffe27a]">{k}</kbd>
-                  ))}
-                  <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#a98d78]">{row.action}</span>
-                </span>
-              ))}
+      {/* In fullscreen the rail is gone — the plastic is the only control
+          surface — so leaving has to have its own way out that is not a guess
+          about Esc. It floats over the top-right corner of the shell. */}
+      {full && (
+        <button onClick={toggleFullscreen} className="gb-fs-exit">
+          <Icon name="expand" size={15} />
+          <span>Exit fullscreen</span>
+        </button>
+      )}
+
+      {/* ---------------- plates ---------------- */}
+      {panel !== 'none' && (
+        <div className="gb-plate-wrap" onClick={() => setPanel('none')}>
+          <div
+            className="gb-plate"
+            role="dialog"
+            aria-label={panel === 'keys' ? 'Controls' : 'About this cartridge'}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="gb-plate-head">
+              <h2>{panel === 'keys' ? 'Controls' : title}</h2>
+              <button onClick={() => setPanel('none')} aria-label="Close" className="gb-plate-x">
+                <Icon name="x" size={16} />
+              </button>
             </div>
-            <p className="text-[11px] text-[#8b7565] mt-2">
-              Click the screen once if the keys stop responding — the emulator only listens while it has focus.
-              On a phone, use the on-screen pad the emulator draws. Esc leaves fullscreen.
-            </p>
-          </div>
-        )}
-      </div>
 
-      {/* ---------------- about the cartridge ---------------- */}
-      <div className="grid gap-4 sm:grid-cols-[1.4fr_1fr] mt-5">
-        <Panel className="p-5">
-          <p className="eyebrow text-volt-700 mb-1.5">{game ? 'About this cartridge' : 'Your cartridge'}</p>
-          <h2 className="display text-[19px] text-cream-100 leading-tight">{title}</h2>
-          <p className="text-[13px] text-cream-400 mt-2 leading-relaxed">
-            {game
-              ? game.description
-              : 'This ROM came from your own device. It was read into this tab, checked for a GBA cartridge header, handed to the emulator as an in-memory blob, and will be gone the moment you close the page.'}
-          </p>
-          {game && (
-            <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-3.5 text-[12px]">
-              <div className="flex justify-between gap-2 border-b border-ink-600/60 pb-1"><dt className="text-cream-500 font-bold">Licence</dt><dd className="text-cream-300 font-extrabold">{game.license}</dd></div>
-              <div className="flex justify-between gap-2 border-b border-ink-600/60 pb-1"><dt className="text-cream-500 font-bold">ROM</dt><dd className="text-cream-300 font-extrabold">{formatBytes(game.bytes)}</dd></div>
-              <div className="flex justify-between gap-2 border-b border-ink-600/60 pb-1"><dt className="text-cream-500 font-bold">Year</dt><dd className="text-cream-300 font-extrabold">{game.year}</dd></div>
-              <div className="flex justify-between gap-2 border-b border-ink-600/60 pb-1"><dt className="text-cream-500 font-bold">Players</dt><dd className="text-cream-300 font-extrabold">{game.players === 2 ? '2' : '1'}</dd></div>
-            </dl>
-          )}
-          <div className="flex flex-wrap items-center gap-3 mt-3.5">
-            {game && (
-              <a href={game.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[11.5px] font-extrabold text-volt-700 hover:underline inline-flex items-center gap-1">
-                <Icon name="external" size={12} /> Source &amp; licence
-              </a>
+            {panel === 'keys' ? (
+              <>
+                <dl className="gb-keys">
+                  {RETRO_KEYBOARD.map((row) => (
+                    <div key={row.action} className="gb-key-row">
+                      <dt>{row.keys.map((k) => <kbd key={k}>{k}</kbd>)}</dt>
+                      <dd>{row.action}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="gb-plate-note">
+                  On a phone, press the buttons on the console itself — they are wired to the core, not
+                  drawn on top of it. A controller is picked up automatically. Escape closes this panel.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="gb-plate-note">
+                  {game
+                    ? game.description
+                    : 'This ROM came from your own device. It was read into this tab, checked for a GBA cartridge header, handed to the emulator as an in-memory blob, and is gone the moment you close the page.'}
+                </p>
+                {game && (
+                  <dl className="gb-facts">
+                    <div><dt>Licence</dt><dd>{game.license}</dd></div>
+                    <div><dt>ROM</dt><dd>{formatBytes(game.bytes)}</dd></div>
+                    <div><dt>Year</dt><dd>{game.year}</dd></div>
+                    <div><dt>Players</dt><dd>{game.players === 2 ? '2' : '1'}</dd></div>
+                  </dl>
+                )}
+                {game && (
+                  <a href={game.sourceUrl} target="_blank" rel="noopener noreferrer" className="gb-plate-link">
+                    <Icon name="external" size={13} /> Source &amp; licence
+                  </a>
+                )}
+                {game && !game.save && (
+                  <p className="gb-plate-note">
+                    {game.title} does not write battery saves, so progress lives in the save states on the
+                    rail rather than in the cartridge.
+                  </p>
+                )}
+              </>
             )}
-            <button onClick={() => { sfx('click'); nav('/retro'); }} className="text-[11.5px] font-extrabold text-cream-500 hover:text-cream-100">
-              Back to the shelf
-            </button>
           </div>
-        </Panel>
-
-        <Panel className="p-5 bg-ink-850">
-          <p className="eyebrow text-blush-600 mb-1.5">Verified in this player</p>
-          <ul className="space-y-1.5 mt-2">
-            {[
-              'Keyboard input reaches the game',
-              'Audio runs after the start press',
-              'Fullscreen fills the screen',
-              'Save / load states in this browser',
-              'Screenshots download as PNG',
-              'Touch pad appears on phones',
-            ].map((line) => (
-              <li key={line} className="flex items-start gap-2 text-[12px] text-cream-400">
-                <span className="mt-0.5 text-leaf-700" aria-hidden><Icon name="check" size={13} /></span>
-                {line}
-              </li>
-            ))}
-          </ul>
-          {game && !game.save && (
-            <p className="text-[11px] text-cream-500 mt-3 leading-snug">
-              {game.title} does not write battery saves, so progress lives in the save states above rather than in the
-              cartridge.
-            </p>
-          )}
-        </Panel>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

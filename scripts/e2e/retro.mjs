@@ -122,9 +122,30 @@ const emu = async (fn) => {
 check('emulator waits for a start press', (await emu(() => window.EJS_emulator.paused)) === true);
 
 await startBtn.click();
-await page.waitForTimeout(1200);
+/* Booting is not instant — a phone profile on a software rasteriser takes a
+   couple of seconds longer than a desktop one, so wait for the state instead of
+   assuming a duration. */
+const playerFrame = page.frames().find((fr) => fr.url().includes('/retro/player.html'));
+await playerFrame
+  .waitForFunction(() => window.EJS_emulator?.started === true, { timeout: 60_000 })
+  .catch(() => {});
+await page.waitForTimeout(400);
 check('start press boots the game', (await emu(() => window.EJS_emulator.started)) === true);
 check('game is unpaused after start', (await emu(() => window.EJS_emulator.paused)) === false);
+
+/* The canvas must fill the LCD hole: the screen is 3:2 for exactly this reason,
+   and a letterboxed picture would mean the shell's proportions were wrong. */
+const lcd = await page.evaluate(() => {
+  const r = document.querySelector('.gb-screen').getBoundingClientRect();
+  return [Math.round(r.width), Math.round(r.height)];
+});
+const canvasBox = await emu(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  const r = c.getBoundingClientRect();
+  return [Math.round(r.width), Math.round(r.height)];
+});
+check('the picture fills the LCD edge to edge', !!canvasBox && Math.abs(canvasBox[0] - lcd[0]) <= 2 && Math.abs(canvasBox[1] - lcd[1]) <= 2, JSON.stringify({ canvasBox, lcd }));
 
 const audio = await emu(() => {
   const al = window.EJS_emulator.Module?.AL;
@@ -164,6 +185,21 @@ await page.waitForTimeout(300);
 const padInputs = await emu(() => window.__input);
 check('a connected controller drives the core', padInputs.some(([i]) => i === 8) && padInputs.some(([i]) => i === 4), JSON.stringify(padInputs));
 
+/* The plastic is wired to the core, not painted on top of it: a press on the
+   shell's own D-pad has to arrive as the same simulateInput call a pad makes. */
+await emu(() => { window.__input = []; });
+const upKey = page.getByRole('button', { name: 'Up', exact: true });
+await upKey.dispatchEvent('pointerdown', { pointerId: 1, isPrimary: true });
+await page.waitForTimeout(160);
+await upKey.dispatchEvent('pointerup', { pointerId: 1, isPrimary: true });
+const aKey = page.getByRole('button', { name: 'A', exact: true });
+await aKey.dispatchEvent('pointerdown', { pointerId: 2, isPrimary: true });
+await page.waitForTimeout(160);
+await aKey.dispatchEvent('pointerup', { pointerId: 2, isPrimary: true });
+await page.waitForTimeout(200);
+const shellInputs = await emu(() => window.__input);
+check('the shell\'s own D-pad and A reach the core', shellInputs.some(([i]) => i === 4) && shellInputs.some(([i]) => i === 8), JSON.stringify(shellInputs));
+
 /* -------------------------------------------------------------- chrome */
 await page.getByRole('button', { name: 'Pause' }).click();
 await page.waitForTimeout(350);
@@ -195,20 +231,37 @@ await page.getByRole('button', { name: 'Restart' }).click();
 await page.waitForTimeout(900);
 check('Restart keeps the session alive', (await emu(() => window.EJS_emulator.started)) === true);
 
+const shellBefore = await page.evaluate(() => Math.round(document.querySelector('.gb-device').getBoundingClientRect().width));
 await page.getByRole('button', { name: 'Fullscreen' }).click();
-await page.waitForTimeout(700);
+await page.waitForTimeout(900);
 check('Fullscreen takes over the screen', (await page.evaluate(() => !!document.fullscreenElement)) === true);
+const shellAfter = await page.evaluate(() => Math.round(document.querySelector('.gb-device').getBoundingClientRect().width));
+check('fullscreen hands the page chrome to the console', shellAfter > shellBefore, `${shellBefore}px → ${shellAfter}px`);
+/* The stage goes fullscreen — not just the LCD — so the rail that got you in is
+   still there to get you out, exactly like a handheld's power switch. */
 const fullBox = await page.evaluate(() => {
-  const el = document.querySelector('.retro-console');
+  const el = document.querySelector('.gb-stage');
+  const dev = document.querySelector('.gb-device').getBoundingClientRect();
   const r = el.getBoundingClientRect();
-  return { w: Math.round(r.width), vw: window.innerWidth, h: Math.round(r.height), vh: window.innerHeight };
+  return {
+    w: Math.round(r.width), h: Math.round(r.height), vw: window.innerWidth, vh: window.innerHeight,
+    device: [Math.round(dev.width), Math.round(dev.height)],
+    fits: dev.top >= -1 && dev.left >= -1 && dev.bottom <= window.innerHeight + 1 && dev.right <= window.innerWidth + 1,
+  };
 });
-check('console fills the fullscreen viewport', fullBox.w >= fullBox.vw - 2 && fullBox.h >= fullBox.vh - 2, JSON.stringify(fullBox));
-/* Browsers handle Esc themselves; the real check is that the button toggles
-   back out and the page is usable again. */
-await page.getByRole('button', { name: 'Fullscreen' }).click();
-await page.waitForTimeout(600);
-check('second press leaves fullscreen', (await page.evaluate(() => !document.fullscreenElement)) === true);
+check('fullscreen element is the console stage', (await page.evaluate(() => !!document.fullscreenElement?.classList.contains('gb-stage'))) === true);
+check('stage covers the fullscreen viewport', fullBox.w >= fullBox.vw - 2 && fullBox.h >= fullBox.vh - 2, JSON.stringify([fullBox.w, fullBox.h]));
+check('the shell still fits, whole, on screen', fullBox.fits, JSON.stringify(fullBox.device));
+/* Browsers handle Esc themselves; the real check is that the visible way out
+   works and the page is usable again. Inside fullscreen the rail is hidden, so
+   that way out is the floating button — not a guess about Esc. */
+check('fullscreen still offers a way out', await page.getByRole('button', { name: 'Exit fullscreen' }).isVisible());
+await page.getByRole('button', { name: 'Exit fullscreen' }).click();
+await page
+  .waitForFunction(() => !document.fullscreenElement, { timeout: 10_000 })
+  .catch(() => {});
+check('leaving fullscreen works and the rail comes back', (await page.evaluate(() => !document.fullscreenElement)) === true);
+check('the page chrome returns', await page.getByRole('button', { name: 'Pause' }).isVisible());
 
 /* --------------------------------------------------------- phone extras */
 if (PHONE) {
@@ -245,11 +298,15 @@ if (!PHONE) {
   const localFrame = page.frameLocator('iframe');
   await localFrame.locator('.ejs_start_button').waitFor({ timeout: 90_000 });
   await localFrame.locator('.ejs_start_button').click();
-  await page.waitForTimeout(1200);
   const localEmu = async (fn) => {
     const f = page.frames().find((fr) => fr.url().includes('/retro/player.html'));
     return f.evaluate(fn);
   };
+  await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .waitForFunction(() => window.EJS_emulator?.started === true, { timeout: 60_000 })
+    .catch(() => {});
   check('a local ROM boots in the player', (await localEmu(() => window.EJS_emulator.started)) === true);
   check('local ROM was not sent anywhere', requests.filter((u) => /\/retro\/local|\/upload/i.test(u)).length === before);
   const romBytes = readFileSync(romPath).length;

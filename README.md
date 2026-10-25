@@ -254,7 +254,11 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
   is no skip button on purpose — a skip button on a four-second splash is an admission that it
   is too long, so the sequence was tightened instead. Nothing in it is interactive, so reduced
   motion changes only the animation, never the flow.
-- Home hub: hero scene, Play now / Play together / Play solo, quick-continue, daily challenges, invite panel, library strip.
+- Home hub: a hero that puts the wordmark, one clear primary action, the private-arena ticket and the trainer
+  stub above an unframed, full-bleed picnic horizon with Pikachu standing on it; then quick-continue, daily
+  challenges, the four rotating game rails, the invite banner and the library strip. `src/components/HomeHero.tsx`
+  holds the hero on its own and `docs/hero-preview.png` shows the composition at 1440 px and 390 px — drawn
+  from the same fonts, colours and artwork, because this environment has no browser to screenshot.
 - Game Library with working search, mode/genre filters, sort (featured / name / duration / most played), favourites and recents.
 - Solo Adventures hub, Challenges, Achievements (16 badges, all awarded from real match data), Profile, Settings.
 - Honest loading: `ElectricLoader` is indeterminate unless a real `progress` number exists. There are no artificial delays anywhere.

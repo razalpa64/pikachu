@@ -29,8 +29,10 @@ beforeAll(() => {
   (HTMLMediaElement.prototype as any).play ??= () => Promise.resolve();
   (HTMLCanvasElement.prototype as any).getContext = () => ({
     setTransform() {}, clearRect() {}, fillRect() {}, beginPath() {}, moveTo() {}, lineTo() {},
-    stroke() {}, fill() {}, arc() {}, save() {}, restore() {}, translate() {}, rotate() {},
-    drawImage() {}, createLinearGradient: () => ({ addColorStop() {} }),
+    stroke() {}, fill() {}, arc() {}, ellipse() {}, save() {}, restore() {}, translate() {},
+    rotate() {}, scale() {}, drawImage() {},
+    createLinearGradient: () => ({ addColorStop() {} }),
+    createRadialGradient: () => ({ addColorStop() {} }),
     fillStyle: '', strokeStyle: '', lineWidth: 0, globalAlpha: 1,
   });
   (globalThis as any).requestAnimationFrame = (cb: FrameRequestCallback) => setTimeout(() => cb(performance.now()), 16) as unknown as number;
@@ -54,6 +56,16 @@ async function mount() {
 }
 
 describe('berry catch screen', () => {
+  it('keeps the decorative Pikachu out of the way of the field', async () => {
+    // he stands in front of the basket, over the canvas; if any part of that layer
+    // took pointer events, dragging the basket by its own sprite would not steer
+    await mount();
+    const pika = host.querySelector<HTMLImageElement>('img[src*="/art/pika/"]');
+    expect(pika, 'the character is drawn as a real image, not a canvas blob').toBeTruthy();
+    const layer = pika!.closest('[aria-hidden="true"]') as HTMLElement | null;
+    expect(layer?.className).toMatch(/pointer-events-none/);
+  });
+
   it('waits for the player before the clock starts', async () => {
     await mount();
     expect(host.textContent).toMatch(/Catch the ripe ones/);

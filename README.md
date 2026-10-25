@@ -442,11 +442,18 @@ Two layers, in `src/lib/audio.ts`:
 | `block` | `minun.ogg` | a blocked or losing exchange |
 | `zap` / `spark` | `emolga.ogg` / `plusle.ogg` | the speed bolt, a nudge |
 | `join` | `eevee.mp3` | the other seat filling |
+| `boot` | `pika-chu.mp3` | the arcade opening — the cold open's wordmark landing |
+| `open` | `pika-yay.mp3` 0–0.5s | a game opening — a short "pika-chu" hello |
 | `error` | `jigglypuff.ogg` | a rejected action |
 
 `hover`, `click`, `select`, `toggle` and `swipe` are deliberately **synth-only**. A character voice
 on every mouse movement is unbearable inside a minute, and a unit test asserts they stay that way.
-`boot` is synth-only too: the intro opens on the pad swell alone.
+
+**The opening cry and the autoplay gate.** A browser will not let Web Audio speak before a gesture,
+and most visitors watch the first second of the cold open without touching anything — so a cry fired
+at the title beat was silent for almost everyone. The intro therefore *asks* for it (`wantOpeningCry`)
+and `unlockAudio()` fires it on the first pointer or key event, after the clip has decoded. Landing
+in a game asks for the shorter `open` cue instead, which is the same voice answering the click.
 
 ### Why the arcade sounded wrong
 

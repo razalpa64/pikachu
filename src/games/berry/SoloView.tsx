@@ -29,6 +29,20 @@ import {
 const BASKET_SPEED = 660;      // field px per second under a held arrow key
 const HUD_EVERY_MS = 110;
 
+/**
+ * The foreground Pikachu, in field units.
+ *
+ * He holds the basket from its right-hand side rather than from dead centre: a
+ * face centred under the rim hid the weave that makes the sprite read as a
+ * basket, and put the character's eyes exactly on the catch line, which is where
+ * the player has to look. `HALF` is half the *character* (the clip is inset
+ * inside its own frame), used to keep him inside the field when the basket is
+ * run against an edge.
+ */
+const PIKA_W_PCT = 26.5;
+const PIKA_DX = 32;
+const PIKA_HALF = 64;
+
 export default function BerrySolo({ game }: { game: GameMeta }) {
   const touch = useTouch();
   const { sfx, finishMatch } = useStore();
@@ -47,7 +61,12 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
   const [hud, setHud] = useState({ score: 0, lives: 3, t: 0, over: false, caught: 0, reason: '' });
   const [dock, setDock] = useState<'ready' | 'playing' | 'over'>('ready');
 
-  const sprites = useRef<{ berry?: HTMLImageElement; rot?: HTMLImageElement; basket?: HTMLImageElement; pika?: HTMLImageElement }>({});
+  const sprites = useRef<{ berry?: HTMLImageElement; rot?: HTMLImageElement; basket?: HTMLImageElement }>({});
+  /* Pikachu is a DOM layer, not a canvas blit: the clip is an animated WebP and
+     drawImage() on an animated image paints one frozen frame forever. He stands
+     in front of the basket holding it, which is also why he has to be masked by
+     the same rounded box the canvas lives in. */
+  const pikaRef = useRef<HTMLDivElement | null>(null);
 
   /* ---------------------------------------------------------------- sprites */
   useEffect(() => {
@@ -61,7 +80,6 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
       berry: load('/art/berry/berry.webp'),
       rot: load('/art/berry/berry-rot.webp'),
       basket: load('/art/berry/basket.webp'),
-      pika: load('/art/pika/run.webp'),
     };
   }, []);
 
@@ -110,15 +128,26 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
 
     const s = stateRef.current;
 
-    // Pikachu stands behind the basket
-    const pika = sprites.current.pika;
-    if (pika?.complete && pika.naturalWidth) {
-      const ph = 96;
-      const pw = ph * (pika.naturalWidth / pika.naturalHeight);
-      ctx.globalAlpha = 0.97;
-      ctx.drawImage(pika, basketRef.current - pw * 0.62, CATCH_Y - ph * 0.62, pw, ph);
-      ctx.globalAlpha = 1;
-    }
+    /* The basket sits on the cloth, so it gets a contact shadow. Without one the
+       sprite floats a few pixels above the stripes and the lower half of the
+       field reads as pasted on — the same tell the old half-hidden Pikachu had. */
+    const basketTop = CATCH_Y - 96 * 0.16;
+    const shadowY = basketTop + 96 * 0.86;
+    ctx.save();
+    ctx.translate(basketRef.current, shadowY);
+    /* squash the space, not the shape: a radial gradient filled into an ellipse
+       leaves a hard edge where the circle stops short of it, so the gradient is
+       built round and the transform flattens it into an ellipse */
+    ctx.scale(1, 15 / 78);
+    const contact = ctx.createRadialGradient(0, 0, 2, 0, 0, 78);
+    contact.addColorStop(0, 'rgba(120,84,60,.28)');
+    contact.addColorStop(0.55, 'rgba(120,84,60,.13)');
+    contact.addColorStop(1, 'rgba(120,84,60,0)');
+    ctx.fillStyle = contact;
+    ctx.beginPath();
+    ctx.arc(0, 0, 78, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
 
     // the berries
     for (const d of s.drops) {
@@ -141,6 +170,32 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
       const bw = bh * (basket.naturalWidth / basket.naturalHeight);
       ctx.drawImage(basket, basketRef.current - bw / 2, CATCH_Y - bh * 0.16, bw, bh);
     }
+
+    /* Keep the foreground Pikachu beside the basket. Written straight onto the
+       element — this runs 60× a second, and a React state write per frame here
+       would re-render the panel twice per animation frame for a one-line move. */
+    if (pikaRef.current) {
+      const cx = Math.max(PIKA_HALF, Math.min(FIELD_W - PIKA_HALF, basketRef.current + PIKA_DX));
+      pikaRef.current.style.left = `${(cx / FIELD_W) * 100}%`;
+    }
+  }, []);
+
+  /* A small cheer when the basket takes a berry. Web Animations rather than a
+     class toggle so two catches 300 ms apart restart cleanly instead of fighting
+     over the same keyframes; motion never carries meaning here, so reduced motion
+     simply drops it. */
+  const hop = useCallback(() => {
+    const el = pikaRef.current;
+    if (!el || typeof el.animate !== 'function') return;
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    el.animate(
+      [
+        { transform: 'translateX(-50%) translateY(0)' },
+        { transform: 'translateX(-50%) translateY(-7px) scaleY(1.04)' },
+        { transform: 'translateX(-50%) translateY(0)' },
+      ],
+      { duration: 240, easing: 'ease-out' },
+    );
   }, []);
 
   /* ------------------------------------------------------------------ loop */
@@ -167,7 +222,7 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
       stateRef.current = next;
 
       if (next.lastEvent !== before.lastEvent) {
-        if (next.lastEvent === 'catch') sfx('pickup');
+        if (next.lastEvent === 'catch') { sfx('pickup'); hop(); }
         else if (next.lastEvent === 'rot') sfx('error');
         else if (next.lastEvent === 'miss') sfx('miss');
       }
@@ -192,7 +247,7 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
     };
     rafRef.current = requestAnimationFrame(frame);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [armed, draw, sfx, finishMatch]);
+  }, [armed, draw, sfx, finishMatch, hop]);
 
   /* -------------------------------------------------------------- controls */
   useEffect(() => {
@@ -255,15 +310,43 @@ export default function BerrySolo({ game }: { game: GameMeta }) {
     >
       <div className="w-full max-w-[900px] flex flex-col items-center gap-3">
         <div className="relative w-full panel panel-notch p-2 sm:p-3">
-          <canvas
-            ref={canvasRef}
-            aria-label="Berry Catch play field"
-            role="img"
-            className="w-full block rounded-[14px] touch-none select-none"
-            style={{ aspectRatio: `${FIELD_W} / ${FIELD_H}`, background: '#fffdf7', cursor: dock === 'playing' ? 'none' : 'default' }}
-            onPointerDown={(e) => { pointerTo(e); if (dock !== 'playing') start(); }}
-            onPointerMove={(e) => { if (dock === 'playing') pointerTo(e); }}
-          />
+          {/* The field and the character share one clipped box, so Pikachu can be
+              anchored to the basket's own coordinates and still be cut off cleanly
+              at the bottom edge of the canvas. */}
+          <div className="relative w-full overflow-hidden rounded-[14px]" style={{ background: '#fffdf7' }}>
+            <canvas
+              ref={canvasRef}
+              aria-label="Berry Catch play field"
+              role="img"
+              className="w-full block touch-none select-none"
+              style={{ aspectRatio: `${FIELD_W} / ${FIELD_H}`, background: '#fffdf7', cursor: dock === 'playing' ? 'none' : 'default' }}
+              onPointerDown={(e) => { pointerTo(e); if (dock !== 'playing') start(); }}
+              onPointerMove={(e) => { if (dock === 'playing') pointerTo(e); }}
+            />
+
+            {/* Pikachu carries the basket. `left` is driven from the draw loop;
+                 the width is chosen so the top of his head lands just under the
+                 rim — clear of the catch line, where the player has to look —
+                 with his body cut by the frame edge rather than floating. */}
+            <div
+              ref={pikaRef}
+              aria-hidden
+              className="absolute bottom-0 pointer-events-none select-none"
+              style={{ left: '50%', width: `${PIKA_W_PCT}%`, transform: 'translateX(-50%)' }}
+            >
+              <img
+                src="/art/pika/shy.webp"
+                alt=""
+                draggable={false}
+                decoding="async"
+                className="block w-full h-auto"
+                /* the clip is 300×143 with the character inset 56px from the
+                   left, so the box is nudged to keep his face centred on the
+                   basket instead of on the file's transparent edge */
+                style={{ transform: 'translateX(-2.5%)' }}
+              />
+            </div>
+          </div>
 
           {dock !== 'playing' && (
             <div className="absolute inset-0 grid place-items-center p-4" style={{ borderRadius: 14 }}>

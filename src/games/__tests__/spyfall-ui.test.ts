@@ -68,6 +68,17 @@ const cardTitle = () =>
     .find((p) => /Private card/.test(p.textContent ?? ''))
     ?.nextElementSibling?.textContent?.trim() ?? '';
 
+/**
+ * The scene with the default seat labels taken out.
+ *
+ * One of the stadium's roles is literally "Player", and the curtain labels the
+ * next person "Player 3". Asserting that the closed curtain does not contain the
+ * card just read therefore failed once every few dozen deals — on a real card,
+ * correctly hidden, because the card's *title* was a substring of a seat label.
+ * Stripping the labels keeps the guard exact instead of loosening it.
+ */
+const withoutSeatLabels = () => (host.textContent ?? '').replace(/Player \d+/g, '');
+
 /** Deal one card and return its title, hiding it again before the next hand. */
 async function passCard(): Promise<string> {
   const show = panelButton(/Show my card/);
@@ -115,7 +126,7 @@ describe('spyfall — passing the phone', () => {
       const title = await passCard();
       expect(title.length, 'the card has a title').toBeGreaterThan(2);
       // The closed curtain must not carry the card that was just read.
-      for (const earlier of seen) expect(host.textContent).not.toContain(earlier);
+      for (const earlier of seen) expect(withoutSeatLabels()).not.toContain(earlier);
       seen.push(title);
     }
 

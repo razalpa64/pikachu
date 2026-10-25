@@ -11,10 +11,18 @@ import { useStore } from '../lib/store';
 export default function Solo() {
   const { slug = '' } = useParams();
   const nav = useNavigate();
-  const { visit } = useStore();
+  const { visit, sfx } = useStore();
   const game = useMemo(() => gameBySlug(slug), [slug]);
 
-  useEffect(() => { if (game) visit(game.id, 'solo'); }, [game?.id]);
+  useEffect(() => {
+    if (!game) return;
+    visit(game.id, 'solo');
+    /* A short hello on the way in. It is the same voice as the opening cry, cut
+       to half a second, so arriving in a game sounds like the arcade answering
+       you rather than like a notification. Silent until a gesture has unlocked
+       audio, which by the time you have clicked a game it always has. */
+    sfx('open');
+  }, [game?.id]);
 
   if (!game) {
     return (

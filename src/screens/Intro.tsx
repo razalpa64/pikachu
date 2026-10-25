@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { PikachuMascot } from '../mascot';
 import { useStore } from '../lib/store';
+import { wantOpeningCry } from '../lib/audio';
 
 /**
  * The cold open.
@@ -10,14 +11,25 @@ import { useStore } from '../lib/store';
  * behind a three-second curtain. It has one job: make the first second feel like
  * something, then get out of the way.
  *
- *   0.00  paper, warm light, a slow vignette
- *   0.25  a hairline of electricity crosses the screen
+ * The staging is a lit table, not a flat gradient: a warm pool of light from
+ * above, a horizon where the paper meets the floor, and out-of-focus game covers
+ * drifting at the back of the room. That depth is what lets the one thing in
+ * focus read as a character rather than as a sticker on a colour, and it is the
+ * difference between this and the flat pink-to-yellow wash it replaced.
+ *
+ *   0.00  the room, lights down, grain and vignette only
+ *   0.25  the house lights come up, the covers drift into the back of shot
  *   0.60  the mascot rises, still a silhouette
- *   1.10  the strike — flash, two bolts, the zap
- *   1.45  colour, and it lands
- *   1.90  the wordmark, one letter at a time
- *   2.20  the tagline, and three of the covers fan out to say what is inside
+ *   1.10  the strike — flash, bolt, a ring of static, the zap
+ *   1.45  colour, and it lands on the floor
+ *   1.90  the wordmark, letter by letter, and the opening cry
+ *   2.20  the rule, the tagline, and what is inside
  *   2.95  fade out, hand over to the app
+ *
+ * Everything is mounted from the first frame and revealed by opacity, so the
+ * column never changes height mid-sequence: reserving the space up front is what
+ * stops a splash from *jumping*, which is the single cheapest way to make one
+ * look unfinished.
  *
  * There is no Skip button: this splash was asked for without one, and at 3.2 s
  * from a cold start it is short enough that dismissing it is not worth a
@@ -25,9 +37,6 @@ import { useStore } from '../lib/store';
  * for — the intro never appears again in the session, and it never appears at all
  * unless you arrived at the front page, so no deep link or room code ever waits
  * behind it. Anyone who has turned motion off gets a one-second static card.
- *
- * Anyone who prefers reduced motion gets a single static card for 1 s and no
- * animation at all.
  */
 const BEATS = [
   { at: 0,    name: 'dark' },
@@ -42,7 +51,21 @@ const BEATS = [
 ] as const;
 
 const WORDMARK = 'PIKACHU';
-const TILES = ['/art/game/chess.webp', '/art/game/reversi.webp', '/art/game/cards.webp'];
+
+/**
+ * Six covers thrown right out of focus behind the mascot. They are the only claim
+ * the splash makes about what is inside, and at 7px of blur they read as a shelf
+ * of games in the back of the room rather than as six more things to look at.
+ * Half of them are dropped on a phone, where they would crowd the headline.
+ */
+const BOKEH = [
+  { src: '/art/game/chess.webp',      x: 11, y: 14, w: 92, r: -13, d: 0.00, both: true },
+  { src: '/art/game/cards.webp',      x: 19, y: 57, w: 72, r: 9,   d: 0.90, both: false },
+  { src: '/art/game/reversi.webp',    x: 85, y: 19, w: 84, r: 11,  d: 0.45, both: false },
+  { src: '/art/game/battleship.webp', x: 82, y: 62, w: 76, r: -8,  d: 1.35, both: true },
+  { src: '/art/game/gomoku.webp',     x: 4,  y: 37, w: 58, r: 17,  d: 0.60, both: false },
+  { src: '/art/game/mancala.webp',    x: 93, y: 40, w: 54, r: -17, d: 0.20, both: false },
+];
 
 export default function Intro({ onDone }: { onDone: () => void }) {
   const { sfx, audioReady } = useStore();
@@ -65,12 +88,12 @@ export default function Intro({ onDone }: { onDone: () => void }) {
   const reduce = typeof window !== 'undefined'
     && (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off');
 
-  /* The halo drifts toward the pointer so the light feels like it is in the room.
+  /* The light drifts toward the pointer so the room feels real.
      It is written straight onto the element as CSS custom properties inside a
      requestAnimationFrame, NOT held in React state: a re-render per mousemove
      during a three-second animation is exactly how a splash starts to feel cheap
      on a phone. One frame, one style write, zero renders. */
-  const backdrop = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reduce) {
@@ -89,7 +112,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        const el = backdrop.current;
+        const el = stage.current;
         if (!el) return;
         el.style.setProperty('--gx', `${((e.clientX / window.innerWidth) * 100).toFixed(1)}%`);
         el.style.setProperty('--gy', `${((e.clientY / window.innerHeight) * 100).toFixed(1)}%`);
@@ -104,14 +127,34 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     };
   }, [onDone, reduce]);
 
+  /* The voice. `zap` is the strike; `boot` is the arcade's own opening cry.
+     Browsers will not let Web Audio speak before a gesture, so on a cold load the
+     cry is *asked for* here and replayed the instant the page is first touched —
+     otherwise a visitor who watches without tapping never hears Pikachu at all,
+     and one who taps after the title beat has already passed misses him too. */
   useEffect(() => {
-    if (!audioReady) return;
     if (beat === 'strike') sfx('zap');
-    if (beat === 'title') sfx('boot');
+    if (beat === 'title') {
+      if (audioReady) sfx('boot');
+      else wantOpeningCry();
+    }
   }, [beat, audioReady, sfx]);
 
-  const show = (n: string) => BEATS.findIndex((b) => b.name === beat) >= BEATS.findIndex((b) => b.name === n);
+  const show = (n: string) => {
+    if (reduce) return true;
+    return BEATS.findIndex((b) => b.name === beat) >= BEATS.findIndex((b) => b.name === n);
+  };
+  /** An inline animation that only exists once its beat has arrived. */
+  const anim = (on: boolean, css: string) => (on && !reduce ? css : undefined);
   const leaving = beat === 'leaving';
+
+  /* One clip for the whole sequence. Swapping `run` for `hello` halfway through
+     changed the character under the audience — the two cuts are not the same
+     drawing — which read as a glitch rather than as a reveal. */
+  const mascot = Math.round(Math.min(
+    360,
+    typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.7, window.innerHeight * 0.34) : 300,
+  ));
 
   return (
     <div
@@ -128,118 +171,182 @@ export default function Intro({ onDone }: { onDone: () => void }) {
         code, and play from anywhere. The arcade is opening.
       </p>
 
-      {/* warm paper, with the light following the pointer */}
-      <div ref={backdrop} aria-hidden className="absolute inset-0 intro-glow" />
-      <div aria-hidden className="absolute inset-0" style={{
-        background: 'radial-gradient(120% 100% at 50% 50%, transparent 42%, rgba(90,63,52,.16) 100%)',
-      }} />
-      {/* a whisper of paper tooth, so the flat gradients read as material */}
-      <div aria-hidden className="absolute inset-0 opacity-[.06]" style={{
-        backgroundImage: 'radial-gradient(rgba(90,63,52,.9) .5px, transparent .6px)',
-        backgroundSize: '4px 4px',
-      }} />
-      <div aria-hidden className="absolute inset-x-0 bottom-0 h-[38%]" style={{
-        background: 'linear-gradient(180deg, transparent, rgba(214,243,231,.7) 58%, rgba(188,234,212,.92) 100%)',
-      }} />
+      {/* ------------------------------------------------------------- the room */}
+      <div ref={stage} aria-hidden className={`absolute inset-0 intro-stage ${show('pulse') ? 'is-lit' : ''}`} />
 
-      {/* travelling electric pulse */}
-      {show('pulse') && (
-        <div aria-hidden className="absolute inset-x-0 top-[46%] h-[2px] overflow-hidden">
-          <div className="h-full w-[46%]"
-            style={{
-              background: 'linear-gradient(90deg, transparent, #ffc2d6 20%, #ffd24d 60%, transparent)',
-              filter: 'drop-shadow(0 0 14px rgba(255,173,198,.85))',
-              animation: 'introSweep 1.4s cubic-bezier(.45,0,.2,1) forwards',
-            }} />
-        </div>
-      )}
-
-      {/* the strike */}
-      {beat === 'strike' && (
-        <>
-          <div aria-hidden className="absolute inset-0 bg-white" style={{ animation: 'pk-flash .6s ease-out forwards' }} />
-          <svg aria-hidden className="absolute inset-0 w-full h-full" viewBox="0 0 1000 600" preserveAspectRatio="none">
-            <path d="M300,120 a34,34 0 0 1 58,-24 34,34 0 0 1 58,24 c0,48 -58,86 -58,86 S300,168 300,120 Z"
-              fill="#ffadc6" stroke="#f2779a" strokeWidth="4" strokeLinejoin="round"
-              style={{ filter: 'drop-shadow(0 0 18px rgba(255,173,198,.9))', animation: 'introBolt .55s steps(2) forwards' }} />
-            <path d="M620,170 a26,26 0 0 1 44,-18 26,26 0 0 1 44,18 c0,37 -44,66 -44,66 S620,207 620,170 Z"
-              fill="#ffd24d" stroke="#e8a21c" strokeWidth="4" strokeLinejoin="round" opacity=".92"
-              style={{ filter: 'drop-shadow(0 0 14px rgba(255,210,77,.9))', animation: 'introBolt .55s steps(2) .08s forwards' }} />
-          </svg>
-        </>
-      )}
-
-      {/* mascot: silhouette, then full colour and a landing */}
-      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[58%]">
-        {show('silhouette') && (
-          <div style={{
-            filter: show('reveal') ? 'none' : 'brightness(.32) saturate(.15) drop-shadow(0 10px 28px rgba(242,119,154,.45))',
-            transition: 'filter .45s ease-out',
-            animation: show('reveal') ? 'introLand .62s cubic-bezier(.2,.9,.3,1.4)' : 'introRise .7s cubic-bezier(.2,.8,.3,1)',
-          }}>
-            <PikachuMascot
-              state={show('reveal') ? 'excited' : 'competitive'}
-              size={Math.min(300, typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.5, window.innerHeight * 0.36) : 300)}
+      {/* the shelf of games, out of focus at the back of the room */}
+      <div aria-hidden className="absolute inset-0 overflow-hidden">
+        {BOKEH.map((b, i) => (
+          <span
+            key={b.src}
+            className={`absolute ${b.both ? '' : 'hidden sm:block'}`}
+            style={{ left: `${b.x}%`, top: `${b.y}%`, width: b.w, transform: `rotate(${b.r}deg)` }}
+          >
+            <img
+              src={b.src}
+              alt=""
+              decoding="async"
+              className="block w-full h-auto rounded-[18px]"
+              style={{
+                filter: 'blur(7px) saturate(.92) brightness(1.04)',
+                boxShadow: '0 18px 34px -20px rgba(120,84,60,.55)',
+                animation: anim(true, `inBokeh .9s ease-out ${b.d}s both, inDrift ${11 + i}s ease-in-out ${b.d}s infinite`),
+              }}
             />
-          </div>
-        )}
-        {/* the shadow it lands on, so it is standing on the floor rather than floating */}
-        {show('reveal') && (
-          <div aria-hidden className="mx-auto mt-1 h-[10px] w-[150px] rounded-full"
-            style={{ background: 'radial-gradient(50% 50% at 50% 50%, rgba(90,63,52,.26), transparent 72%)', animation: 'introShadow .5s ease-out both' }} />
-        )}
+          </span>
+        ))}
       </div>
 
-      {/* wordmark, letter by letter */}
-      {show('title') && (
-        <div className="absolute inset-x-0 bottom-[19%] flex flex-col items-center gap-3 px-6">
-          <h1 className="wordmark text-[clamp(44px,13vw,124px)] leading-none flex" aria-label="PIKACHU">
+      {/* vignette and house lights */}
+      <div aria-hidden className="absolute inset-0 intro-vignette" />
+      <div aria-hidden className="absolute inset-0" style={{
+        background: 'radial-gradient(90% 80% at 50% 40%, #2f1e18, #1c1110 78%)',
+        opacity: show('pulse') ? 0 : 0.62,
+        transition: 'opacity .8s ease-out',
+      }} />
+
+      {/* ---------------------------------------------------------------- strike */}
+      {!reduce && beat === 'strike' && (
+        <div aria-hidden className="absolute inset-0 overflow-hidden">
+          <div className="absolute inset-0" style={{ background: '#fff6e6', animation: 'inFlash .55s ease-out forwards' }} />
+          <svg className="absolute left-1/2 top-[3%] h-[58%] -translate-x-1/2" viewBox="0 0 100 160" fill="none"
+            style={{ animation: 'inBolt .7s steps(3) forwards' }}>
+            <path d="M61 2 24 86h23l-9 72 41-90H57l13-66Z" fill="#ffd24d" stroke="#6b4b3e" strokeWidth="5" strokeLinejoin="round" />
+          </svg>
+        </div>
+      )}
+
+      {/* --------------------------------------------------------------- content
+          Two rows, not one centred column: the sky above and the floor below meet
+          exactly at the mascot's feet, so he is standing on the horizon instead of
+          floating above it. The seam is derived from the text block's own height,
+          so it holds at 360px and at 2560px without a breakpoint to tune. */}
+      <div
+        className="absolute inset-0 flex flex-col transition-transform duration-300"
+        style={{ transform: leaving ? 'translateY(-14px) scale(.99)' : undefined }}
+      >
+        <div className="relative flex flex-1 items-end justify-center min-h-0">
+          {/* a shockwave along the floor, thrown by the strike — centred on his
+              feet, so it is anchored to the horizon at every viewport size */}
+          {!reduce && beat === 'strike' && (
+            <div aria-hidden className="absolute bottom-0 left-1/2 w-[220px] h-[220px] rounded-full pointer-events-none"
+              style={{
+                border: '3px solid #ffd24d', boxShadow: '0 0 26px rgba(255,210,77,.85)',
+                animation: 'inRing .85s cubic-bezier(.2,.7,.3,1) forwards',
+              }} />
+          )}
+          <div
+            style={{
+              opacity: show('silhouette') ? 1 : 0,
+              filter: show('reveal') ? 'none' : 'brightness(.34) saturate(.2)',
+              transition: 'filter .5s ease-out',
+              animation: anim(show('silhouette'), show('reveal')
+                ? 'inLand .7s cubic-bezier(.2,.85,.3,1.25) both'
+                : 'inRise .7s cubic-bezier(.2,.8,.3,1) both'),
+            }}
+          >
+            <PikachuMascot
+              state="excited"
+              size={mascot}
+              priority
+              label="Pikachu, cheering, welcoming you to the arcade"
+            />
+          </div>
+        </div>
+
+        <div className="relative flex flex-col items-center px-6 pt-2 pb-[clamp(34px,11vh,120px)] intro-floor">
+          <h1
+            className="wordmark flex leading-none text-[clamp(46px,14vw,104px)]"
+            aria-label="PIKACHU"
+            style={{ opacity: show('title') ? 1 : 0 }}
+          >
             {WORDMARK.split('').map((ch, i) => (
-              <span key={i} aria-hidden style={{ animation: `introLetter .5s cubic-bezier(.2,.9,.3,1.3) ${i * 0.055}s both` }}>{ch}</span>
+              <span
+                key={i}
+                aria-hidden
+                className="inline-block"
+                style={{ animation: anim(show('title'), `inLetter .58s cubic-bezier(.2,.9,.25,1) ${i * 0.045}s both`) }}
+              >
+                {ch}
+              </span>
             ))}
           </h1>
-          {show('signature') && (
-            <div className="flex items-center gap-3" style={{ animation: 'introFade .5s ease-out both' }}>
-              <span aria-hidden className="h-[3px] w-10 rounded-full bg-blush-300" />
-              <p className="eyebrow text-blush-600">A little arcade for two</p>
-              <span aria-hidden className="h-[3px] w-10 rounded-full bg-blush-300" />
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* three covers fan out — the only claim the splash makes about what is inside */}
-      {show('signature') && (
-        <div aria-hidden className="absolute inset-x-0 bottom-[7%] flex justify-center items-end gap-2.5">
-          {TILES.map((src, i) => (
-            <img key={src} src={src} alt="" loading="eager" decoding="async"
-              className="w-[62px] h-[62px] sm:w-[74px] sm:h-[74px] rounded-2xl border-2 border-ink-600 shadow-[0_3px_0_0_rgba(90,63,52,.18)] object-cover"
-              style={{
-                transform: `rotate(${(i - 1) * 7}deg)`,
-                animation: `introTile .55s cubic-bezier(.2,.9,.3,1.3) ${0.08 * i}s both`,
-              }} />
-          ))}
+          {/* the rule under the wordmark draws outward from the middle */}
+          <div aria-hidden className="mt-1 flex items-center gap-2" style={{ width: 'min(76%, 300px)', opacity: show('title') ? 1 : 0 }}>
+            <span className="h-[3px] flex-1 rounded-full intro-rule" style={{ animation: anim(show('title'), 'inRule .5s cubic-bezier(.2,.9,.3,1) .1s both') }} />
+            <svg width="15" height="17" viewBox="0 0 100 160" className="shrink-0" style={{ animation: anim(show('title'), 'inFade .45s ease-out .18s both') }}>
+              <path d="M61 2 24 86h23l-9 72 41-90H57l13-66Z" fill="#ffd24d" stroke="#6b4b3e" strokeWidth="12" strokeLinejoin="round" />
+            </svg>
+            <span className="h-[3px] flex-1 rounded-full intro-rule" style={{ animation: anim(show('title'), 'inRule .5s cubic-bezier(.2,.9,.3,1) .1s both') }} />
+          </div>
+
+          <div className="mt-2.5 flex flex-col items-center gap-1.5" style={{ opacity: show('signature') ? 1 : 0 }}>
+            <p className="eyebrow text-blush-600" style={{ animation: anim(show('signature'), 'inFade .5s ease-out .05s both') }}>
+              A little arcade for two
+            </p>
+            <p className="text-[11.5px] font-bold text-cream-300 tabnum" style={{ animation: anim(show('signature'), 'inFade .5s ease-out .2s both') }}>
+              26 games · one screen or two · no sign-up
+            </p>
+          </div>
         </div>
-      )}
+      </div>
 
       <style>{`
-        .intro-glow {
-          --gx: 50%; --gy: 22%;
-          background: radial-gradient(90% 70% at var(--gx) var(--gy), #fffaf0 0%, #fff2dd 38%, #ffe3d9 72%, #ffd3e2 100%);
-          transition: background 700ms ease-out;
+        .intro-stage {
+          --gx: 50%; --gy: 30%;
+          background:
+            radial-gradient(58% 46% at var(--gx) var(--gy), rgba(255,255,255,.9), rgba(255,246,224,.5) 46%, transparent 74%),
+            radial-gradient(120% 96% at 50% 8%, #fffaef 0%, #fff1dc 42%, #ffe6dd 74%, #ffdbe8 100%);
         }
-        @keyframes introSweep { from { transform: translateX(-120%) } to { transform: translateX(300%) } }
-        @keyframes introRise { from { transform: translateY(46px) scale(.9); opacity: 0 } to { transform: none; opacity: 1 } }
-        @keyframes introLand { 0% { transform: translateY(-26px) scale(1.07) } 60% { transform: translateY(6px) scale(.97,1.03) } 100% { transform: none } }
-        @keyframes introShadow { from { transform: scale(.4); opacity: 0 } to { transform: none; opacity: 1 } }
-        @keyframes introLetter { from { transform: translateY(28px) rotate(-6deg); opacity: 0 } to { transform: none; opacity: 1 } }
-        @keyframes introFade { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
-        @keyframes introTile { from { opacity: 0; transform: translateY(22px) scale(.86) } to { opacity: 1 } }
-        @keyframes introBolt { from { opacity: 0 } 40% { opacity: 1 } to { opacity: 0 } }
-        @media (prefers-reduced-motion: reduce) {
-          [style*="introLetter"], [style*="introFade"], [style*="introTile"], [style*="introRise"], [style*="introLand"] {
-            animation: none !important;
-          }
+        /* the light comes up a beat after the room does */
+        .intro-stage::after {
+          content: ""; position: absolute; inset: 0; pointer-events: none;
+          background: radial-gradient(34% 30% at 50% 38%, rgba(255,255,255,.95), transparent 70%);
+          opacity: 0; transition: opacity 700ms ease-out;
+        }
+        .intro-stage.is-lit::after { opacity: 1; }
+        /* the floor is the bottom row's own background, so its top edge is exactly
+           the horizon the character stands on — no second element to keep in sync */
+        .intro-floor {
+          background: linear-gradient(180deg, #ffeeda 0%, #ffe9d0 46%, #ffe0bf 100%);
+          border-top: 1px solid rgba(190,146,110,.3);
+          box-shadow: 0 -2px 0 rgba(255,252,244,.7), 0 26px 40px -30px rgba(140,94,70,.5) inset;
+        }
+        .intro-vignette {
+          background: radial-gradient(120% 104% at 50% 46%, transparent 48%, rgba(120,84,60,.16) 100%);
+        }
+        /* paper tooth: a dot screen at 6%, just enough that the flat gradients read
+           as material instead of as CSS */
+        .intro-vignette::after {
+          content: ""; position: absolute; inset: 0;
+          background-image: radial-gradient(rgba(120,84,60,.55) .5px, transparent .6px);
+          background-size: 4px 4px; opacity: .06;
+        }
+        .intro-rule { background: linear-gradient(90deg, transparent, #f2b23c 22%, #ffd24d 50%, #f2b23c 78%, transparent); }
+
+        @keyframes inBokeh { from { opacity: 0 } to { opacity: .62 } }
+        @keyframes inDrift { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+        @keyframes inRise { from { transform: translateY(44px) scale(.9); opacity: 0 } to { transform: none; opacity: 1 } }
+        @keyframes inLand {
+          0%   { transform: translateY(38px) scale(.94); opacity: 0 }
+          62%  { transform: translateY(-5px) scale(1.015); opacity: 1 }
+          100% { transform: none; opacity: 1 }
+        }
+        @keyframes inLetter { from { transform: translateY(.42em) scale(.96); opacity: 0 } to { transform: none; opacity: 1 } }
+        @keyframes inRule { from { transform: scaleX(.05); opacity: 0 } to { transform: none; opacity: 1 } }
+        @keyframes inFade { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+        @keyframes inFlash { 0% { opacity: 0 } 12% { opacity: .78 } 100% { opacity: 0 } }
+        @keyframes inBolt {
+          0% { opacity: 0; transform: translateX(-50%) scaleY(.62) }
+          18% { opacity: 1 }
+          42% { opacity: .25 }
+          58% { opacity: .95 }
+          100% { opacity: 0 }
+        }
+        @keyframes inRing {
+          0% { opacity: .9; transform: translate(-50%,-50%) scale(.34) }
+          100% { opacity: 0; transform: translate(-50%,-50%) scale(2.1) }
         }
       `}</style>
     </div>

@@ -95,13 +95,13 @@ export default function MemorySolo({ game }: { game: GameMeta }) {
         extra={<><span className="eyebrow ml-1">Board</span><Segmented value={sizeKey} onChange={setSizeKey} size="sm" label="Board size" options={SIZES as any} /></>} />}
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label={mode === 'solo' ? 'Pairs' : 'You'} value={state.score[0]} accent="#f0b429" />
-          {mode !== 'solo' && <Stat label={mode === 'ai' ? `AI ${difficulty}` : 'Player 2'} value={state.score[1]} accent="#4a9fd8" />}
+          <Stat label={mode === 'solo' ? 'Pairs' : 'You'} value={state.score[0]} accent="#8d5a05" />
+          {mode !== 'solo' && <Stat label={mode === 'ai' ? `AI ${difficulty}` : 'Player 2'} value={state.score[1]} accent="#1f6699" />}
           <Stat label="Flips" value={state.moves} />
-          <Stat label="Streak" value={state.streak[state.turn]} accent="#3fae82" />
+          <Stat label="Streak" value={state.streak[state.turn]} accent="#17795a" />
           <Stat label="Time" value={`${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`} />
           {mode !== 'solo' && (
-            <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-spark-400 text-[#5a3a12]'}`}>
+            <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-300 text-[#5a3a12]'}`}>
               {state.over ? 'Cleared' : state.turn === 0 ? 'Your flip' : mode === 'ai' ? 'AI recalling' : 'Player 2'}
             </span>
           )}
@@ -116,7 +116,7 @@ export default function MemorySolo({ game }: { game: GameMeta }) {
             playerA={{ name: 'You', score: state.score[0], you: true }}
             playerB={{ name: mode === 'solo' ? 'Par' : mode === 'ai' ? `AI (${difficulty})` : 'Player 2', score: mode === 'solo' ? Math.round(state.deck.length * 1.6) : state.score[1] }}
             rows={[{ label: 'Flips', a: state.moves, b: `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}` }, { label: 'Best streak', a: bestStreak, b: '' }]}
-            onRematch={reset} rematchLabel="Shuffle again" onExit={reset} exitLabel="New board" />
+            onRematch={reset} rematchLabel="Shuffle again" onExit={reset} />
         )}
       </div>
     </SoloShell>

@@ -80,7 +80,11 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
                     onPointerLeave={() => setHover((h) => (h === id ? null : h))}
                     aria-label={`Horizontal line, row ${r + 1}, column ${c + 1}${drawn ? ', drawn' : ''}`}
                     className={`group grid place-items-center no-tap ${can ? 'cursor-pointer' : 'cursor-default'}`}
-                    style={{ width: line, height: dot }}
+                    /* The drawn line is 5px of ink on a ~7px track, which made a
+                       finger-sized tap almost impossible. The hit box is padded
+                       out (and the padding cancelled with a negative margin, so
+                       the lattice keeps its geometry) to roughly 26px. */
+                    style={{ width: line, height: `calc(${dot} + 20px)`, marginBlock: -10 }}
                   >
                     <span
                       aria-hidden
@@ -111,7 +115,7 @@ export default function DotsBoard({ state, youSlot, onMove, interactive, names }
                     onPointerLeave={() => setHover((h) => (h === id ? null : h))}
                     aria-label={`Vertical line, row ${r + 1}, column ${c + 1}${drawn ? ', drawn' : ''}`}
                     className={`grid place-items-center no-tap ${can ? 'cursor-pointer' : 'cursor-default'}`}
-                    style={{ width: dot, height: line }}
+                    style={{ width: `calc(${dot} + 20px)`, height: line, marginInline: -10 }}
                   >
                     <span
                       aria-hidden

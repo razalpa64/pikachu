@@ -99,8 +99,8 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
         </>} />}
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          {state.clock && <Stat label="White" value={clock(state.clock[0])} accent={turn === 0 ? '#f0b429' : undefined} />}
-          {state.clock && <Stat label="Black" value={clock(state.clock[1])} accent={turn === 1 ? '#f0b429' : undefined} />}
+          {state.clock && <Stat label="White" value={clock(state.clock[0])} accent={turn === 0 ? '#8d5a05' : undefined} />}
+          {state.clock && <Stat label="Black" value={clock(state.clock[1])} accent={turn === 1 ? '#8d5a05' : undefined} />}
           <Stat label="Move" value={Math.ceil(state.pgnMoves.length / 2) + 1} />
           <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${inCheck ? 'bg-ember-400 text-[#4a0a1e]' : turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-100 text-cream-300'}`}>
             {state.over ? 'Game over' : inCheck ? 'Check' : turn === 0 ? 'White to move' : thinking ? 'Engine thinking' : 'Black to move'}
@@ -118,8 +118,8 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
             <ResultOverlay verdict={state.winner === null ? 'draw' : state.winner === 0 ? 'win' : 'loss'} reason={state.reason}
               playerA={{ name: 'White', score: Math.ceil(state.pgnMoves.length / 2), you: mode === 'ai' }}
               playerB={{ name: mode === 'ai' ? `Volt Engine (${difficulty})` : 'Black', score: Math.floor(state.pgnMoves.length / 2) }}
-              rows={[{ label: 'Moves', a: state.pgnMoves.length, b: state.reason }]}
-              onRematch={reset} rematchLabel="New game" onExit={reset} exitLabel="Reset board" />
+              rows={[{ label: 'Moves played', a: Math.ceil(state.pgnMoves.length / 2), b: '' }]}
+              onRematch={reset} rematchLabel="New game" onExit={reset} />
           )}
         </div>
 
@@ -142,8 +142,11 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
         </Panel>
       </div>
 
-      <ConfirmDialog open={resignOpen} title="Resign the game?" body="The engine takes the point." danger confirmLabel="Resign"
-        onConfirm={() => { setState((s) => doResign(s, 0)); setResignOpen(false); }} onCancel={() => setResignOpen(false)} />
+      {/* In same-device play the person resigning is whoever is on move, not
+          always White — and the prose must not blame an engine that isn't there. */}
+      <ConfirmDialog open={resignOpen} title="Resign the game?" danger confirmLabel="Resign"
+        body={mode === 'ai' ? 'The engine takes the point.' : `${turn === 0 ? 'White' : 'Black'} concedes — ${turn === 0 ? 'Black' : 'White'} takes the point.`}
+        onConfirm={() => { setState((s) => doResign(s, mode === 'ai' ? 0 : turn)); setResignOpen(false); }} onCancel={() => setResignOpen(false)} />
     </SoloShell>
   );
 }

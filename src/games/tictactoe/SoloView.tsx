@@ -93,10 +93,10 @@ export default function TicTacToeSolo({ game }: { game: GameMeta }) {
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
           <span className="flex items-center gap-2"><VoltMark size={22} /><span className="text-[12.5px] font-extrabold text-cream-100">{mode === 'ai' ? 'You' : 'Player 1'}</span></span>
-          <Stat label="Series" value={`${series.wins[0]} – ${series.wins[1]}`} accent="#f0b429" />
+          <Stat label="Series" value={`${series.wins[0]} – ${series.wins[1]}`} accent="#8d5a05" />
           {series.draws > 0 && <Stat label="Draws" value={series.draws} />}
           <span className="flex items-center gap-2"><span className="text-[12.5px] font-extrabold text-cream-100">{mode === 'ai' ? `AI · ${difficulty}` : 'Player 2'}</span><SparkMark size={22} /></span>
-          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-spark-400 text-[#5a3a12]'}`}>
+          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-300 text-[#5a3a12]'}`}>
             {state.over ? 'Round over' : state.turn === 0 ? (mode === 'ai' ? 'Your turn' : 'Player 1') : (mode === 'ai' ? 'AI thinking' : 'Player 2')}
           </span>
         </Panel>
@@ -110,7 +110,7 @@ export default function TicTacToeSolo({ game }: { game: GameMeta }) {
             reason={state.reason}
             playerA={{ name: mode === 'ai' ? 'You' : 'Player 1', score: series.wins[0], you: true }}
             playerB={{ name: mode === 'ai' ? `AI (${difficulty})` : 'Player 2', score: series.wins[1] }}
-            rows={[{ label: 'Draws', a: series.draws, b: series.draws }]}
+            rows={[{ label: 'Rounds played', a: series.wins[0] + series.wins[1] + series.draws, b: '' }]}
             rematchLabel={series.decided ? 'New series' : 'Next round'}
             onRematch={() => reset(!series.decided)}
             onExit={() => reset(false)} exitLabel="Reset series" />

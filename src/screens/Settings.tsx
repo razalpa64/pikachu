@@ -159,7 +159,7 @@ export default function Settings() {
           options={[{ value: 'performance', label: 'Performance' }, { value: 'balanced', label: 'Balanced' }, { value: 'high', label: 'High' }]} />
         <p className="text-[12.5px] text-cream-400">{QUALITY_COPY[settings.quality]}</p>
         <div className="flex gap-3 flex-wrap">
-          <Stat label="Suggested here" value={suggestQuality()} accent="#f0b429" />
+          <Stat label="Suggested here" value={suggestQuality()} accent="#8d5a05" />
           <Stat label="CPU threads" value={navigator.hardwareConcurrency ?? '—'} />
           <Stat label="Device memory" value={(navigator as any).deviceMemory ? `${(navigator as any).deviceMemory} GB` : '—'} />
         </div>

@@ -129,7 +129,10 @@ export default function SoloShell({
                     both copies at once. */}
                 <span className="sm:hidden"><PikachuMascot state={mascot} size={58} /></span>
                 <span className="hidden sm:inline-block"><PikachuMascot state={mascot} size={92} /></span>
-                <div className="panel notch-sm px-3 py-2 max-w-[34ch]"><p className="text-[12.5px] text-cream-100 font-semibold leading-snug">{mascotLine}</p></div>
+                {/* role=status: this line is where the game says "chain jump
+                    available", "check", "your turn" — without a live region the
+                    only people who get that information are the ones watching. */}
+                <div className="panel notch-sm px-3 py-2 max-w-[34ch]"><p role="status" className="text-[12.5px] text-cream-100 font-semibold leading-snug">{mascotLine}</p></div>
               </div>
             )}
             {footer}

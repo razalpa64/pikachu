@@ -85,9 +85,9 @@ export default function MancalaSolo({ game }: { game: GameMeta }) {
       }
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label={mode === 'ai' ? 'Your store' : 'Gold store'} value={state.board[storeOf(state, 0)]} accent="#f0b429" />
+          <Stat label={mode === 'ai' ? 'Your store' : 'Gold store'} value={state.board[storeOf(state, 0)]} accent="#8d5a05" />
           <Stat label="Series" value={`${series.wins[0]}–${series.wins[1]}`} />
-          <Stat label={mode === 'ai' ? 'AI store' : 'Rose store'} value={state.board[storeOf(state, 1)]} accent="#4a9fd8" />
+          <Stat label={mode === 'ai' ? 'AI store' : 'Rose store'} value={state.board[storeOf(state, 1)]} accent="#1f6699" />
           <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-200 text-[#5a3a12]'}`}>
             {state.over ? 'Round over' : state.turn === 0 ? 'Your turn' : mode === 'ai' ? 'AI sowing' : 'Rose to sow'}
           </span>
@@ -112,9 +112,7 @@ export default function MancalaSolo({ game }: { game: GameMeta }) {
             { label: 'Turns', a: state.history.filter((h) => h.slot === 0).length, b: state.history.filter((h) => h.slot === 1).length },
           ]}
           onRematch={() => reset(false)}
-          onExit={() => reset(false)}
           rematchLabel="Play again"
-          exitLabel="New board"
         />
       )}
     </SoloShell>

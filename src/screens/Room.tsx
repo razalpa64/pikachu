@@ -148,7 +148,7 @@ export default function Room() {
           <div className="flex-1" />
           <div className="flex items-center gap-2">
             <div className="hidden sm:block">
-              <Stat label="Series" value={`${room.series.wins[slot]}–${room.series.wins[oppSlot]}${room.series.draws ? ` · ${room.series.draws}D` : ''}`} accent="#f0b429" />
+              <Stat label="Series" value={`${room.series.wins[slot]}–${room.series.wins[oppSlot]}${room.series.draws ? ` · ${room.series.draws}D` : ''}`} accent="#8d5a05" />
             </div>
             <ConnectionIndicator state={conn} rtt={rtt} />
           </div>
@@ -499,7 +499,7 @@ function PlayerSeat({ member, you, colour }: { member: any; you: boolean; colour
   return (
     <div className="panel notch-sm p-4 flex flex-col items-center gap-2 relative" style={{ borderColor: member.ready ? colour : undefined }}>
       <span className="absolute top-2 right-2 flex items-center gap-1 text-[9px] font-extrabold uppercase tracking-wider"
-        style={{ color: member.connected ? '#3fae82' : '#e05a74' }}>
+        style={{ color: member.connected ? '#17795a' : '#b0301d' }}>
         <span className="w-1.5 h-1.5 rounded-full" style={{ background: member.connected ? '#3fae82' : '#e05a74' }} />
         {member.connected ? 'Online' : 'Away'}
       </span>
@@ -510,7 +510,7 @@ function PlayerSeat({ member, you, colour }: { member: any; you: boolean; colour
         <span className="px-2 py-0.5 rounded-full border-[1.5px] text-[9.5px] font-extrabold uppercase tracking-wider"
           style={
             member.ready
-              ? { background: colour, borderColor: colour, color: '#4a2e18' }
+              ? { background: colour, borderColor: colour, color: '#2b1a0c' }
               : { background: 'var(--color-ink-800)', borderColor: 'var(--color-ink-500)', color: 'var(--color-cream-500)' }
           }>
           {member.ready ? 'Ready' : 'Not ready'}
@@ -547,59 +547,59 @@ function MatchHud({ game, state, slot, names, myTurn, lastAction, onResign, onDr
         )}
         {game === 'memory' && (
           <>
-            <Stat label={names[0]} value={state.score?.[0] ?? 0} accent="#f0b429" />
-            <Stat label={names[1]} value={state.score?.[1] ?? 0} accent="#4a9fd8" />
-            <Stat label="Streak" value={state.streak?.[slot] ?? 0} accent="#3fae82" />
+            <Stat label={names[0]} value={state.score?.[0] ?? 0} accent="#8d5a05" />
+            <Stat label={names[1]} value={state.score?.[1] ?? 0} accent="#1f6699" />
+            <Stat label="Streak" value={state.streak?.[slot] ?? 0} accent="#17795a" />
           </>
         )}
         {game === 'battleship' && (
           <>
-            <Stat label="Your hits" value={state.hits?.[slot]?.length ?? 0} accent="#e05a74" />
-            <Stat label="Sunk" value={`${state.sunk?.[slot]?.length ?? 0}/5`} accent="#3fae82" />
+            <Stat label="Your hits" value={state.hits?.[slot]?.length ?? 0} accent="#a83350" />
+            <Stat label="Sunk" value={`${state.sunk?.[slot]?.length ?? 0}/5`} accent="#17795a" />
           </>
         )}
         {game === 'cards' && (
           <>
-            <Stat label="Your cards" value={state.hands?.[slot]?.length ?? 0} accent="#f0b429" />
-            <Stat label={names[slot === 0 ? 1 : 0]} value={state.hands?.[slot === 0 ? 1 : 0]?.length ?? 0} accent="#4a9fd8" />
+            <Stat label="Your cards" value={state.hands?.[slot]?.length ?? 0} accent="#8d5a05" />
+            <Stat label={names[slot === 0 ? 1 : 0]} value={state.hands?.[slot === 0 ? 1 : 0]?.length ?? 0} accent="#1f6699" />
             <Stat label="In play" value={state.suit ?? '—'} />
           </>
         )}
         {game === 'trivia' && (
           <>
-            <Stat label={names[0]} value={state.score?.[0] ?? 0} accent="#f0b429" />
-            <Stat label={names[1]} value={state.score?.[1] ?? 0} accent="#4a9fd8" />
-            <Stat label="Streak" value={state.streak?.[slot] ?? 0} accent="#3fae82" />
+            <Stat label={names[0]} value={state.score?.[0] ?? 0} accent="#8d5a05" />
+            <Stat label={names[1]} value={state.score?.[1] ?? 0} accent="#1f6699" />
+            <Stat label="Streak" value={state.streak?.[slot] ?? 0} accent="#17795a" />
           </>
         )}
         {game === 'tictactoe' && <Stat label="Moves" value={state.moves?.length ?? 0} />}
         {game === 'connect4' && <Stat label="Discs" value={state.history?.length ?? 0} />}
-        {game === 'checkers' && <Stat label="Pieces" value={`${state.board?.filter((b: any) => b?.p === slot).length ?? 0}`} accent="#f0b429" />}
+        {game === 'checkers' && <Stat label="Pieces" value={`${state.board?.filter((b: any) => b?.p === slot).length ?? 0}`} accent="#8d5a05" />}
         {game === 'reversi' && (
           <>
-            <Stat label={names[0]} value={state.counts?.[0] ?? 0} accent="#f0b429" />
-            <Stat label={names[1]} value={state.counts?.[1] ?? 0} accent="#4a9fd8" />
-            {state.passed !== null && state.passed !== undefined && <Stat label="Passed" value={names[state.passed]} accent="#e0a03c" />}
+            <Stat label={names[0]} value={state.counts?.[0] ?? 0} accent="#8d5a05" />
+            <Stat label={names[1]} value={state.counts?.[1] ?? 0} accent="#1f6699" />
+            {state.passed !== null && state.passed !== undefined && <Stat label="Passed" value={names[state.passed]} accent="#8a5a08" />}
           </>
         )}
         {game === 'gomoku' && (
           <>
-            <Stat label="Your stones" value={state.board?.filter((c: any) => c === slot).length ?? 0} accent="#f0b429" />
+            <Stat label="Your stones" value={state.board?.filter((c: any) => c === slot).length ?? 0} accent="#8d5a05" />
             <Stat label="Turns" value={state.history?.length ?? 0} />
           </>
         )}
         {game === 'dots' && (
           <>
-            <Stat label={names[0]} value={state.scores?.[0] ?? 0} accent="#f0b429" />
-            <Stat label={names[1]} value={state.scores?.[1] ?? 0} accent="#4a9fd8" />
+            <Stat label={names[0]} value={state.scores?.[0] ?? 0} accent="#8d5a05" />
+            <Stat label={names[1]} value={state.scores?.[1] ?? 0} accent="#1f6699" />
             <Stat label="Boxes left" value={(state.boxes ?? []).filter((b: any) => b === null).length} />
           </>
         )}
         {game === 'mancala' && (
           <>
-            <Stat label={names[0]} value={state.board?.[state.pits] ?? 0} accent="#f0b429" />
-            <Stat label={names[1]} value={state.board?.[state.pits * 2 + 1] ?? 0} accent="#4a9fd8" />
-            {state.lastCapture > 0 && <Stat label="Last capture" value={`+${state.lastCapture}`} accent="#3fae82" />}
+            <Stat label={names[0]} value={state.board?.[state.pits] ?? 0} accent="#8d5a05" />
+            <Stat label={names[1]} value={state.board?.[state.pits * 2 + 1] ?? 0} accent="#1f6699" />
+            {state.lastCapture > 0 && <Stat label="Last capture" value={`+${state.lastCapture}`} accent="#17795a" />}
           </>
         )}
       </div>

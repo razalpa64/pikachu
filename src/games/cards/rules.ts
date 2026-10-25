@@ -315,6 +315,7 @@ export const eightsRules: TurnGameRules<EightsState, EightsMove> = {
   },
 
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     switch (m.type) {
       case 'play': return playCard(s, p, m.card);
       case 'draw': return drawCard(s, p);

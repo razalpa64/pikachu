@@ -73,6 +73,7 @@ export const memoryRules: TurnGameRules<MemState, MemMove> = {
       && !s.matched.includes(mv.flip) && !s.revealed.includes(mv.flip);
   },
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     if ('resolve' in m) {
       const [a, b] = s.revealed;
       const hit = s.deck[a] === s.deck[b];

@@ -57,7 +57,11 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
       <button
         onClick={() => { if (interactive) onMove({ type: 'press' }); }}
         disabled={!interactive}
-        aria-label={live ? 'Strike now' : 'Wait for the signal'}
+        aria-label={live ? 'Strike now'
+          : state.phase === 'countdown' ? 'Get ready'
+          : myFalse ? 'False start — this round is lost'
+          : state.phase === 'reveal' || state.phase === 'done' ? 'Round result'
+          : 'Wait for the signal'}
         className="relative w-full aspect-[16/9] sm:aspect-[2/1] grid place-items-center border-2 overflow-hidden no-tap transition-[background] duration-75"
         style={{ background: bg, borderColor: live ? '#e8a21c' : myFalse ? '#d9456f' : '#c9a888', borderRadius: 26, cursor: interactive ? 'pointer' : 'default' }}>
 
@@ -137,7 +141,7 @@ function Tally({ name, wins, need, colour, me, align }: { name: string; wins: nu
       <p className="text-[12px] font-extrabold text-cream-100 truncate">{name}{me ? ' (you)' : ''}</p>
       <div className={`flex gap-1 mt-1 ${align === 'right' ? 'justify-end' : ''}`}>
         {Array.from({ length: need }).map((_, i) => (
-          <span key={i} className="w-5 h-[5px]" style={{ background: i < wins ? colour : '#2e2a1e' }} />
+          <span key={i} className="w-5 h-[5px]" style={{ background: i < wins ? colour : '#e0c9ae' }} />
         ))}
       </div>
     </div>

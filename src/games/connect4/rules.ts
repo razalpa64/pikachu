@@ -49,8 +49,8 @@ export const connect4Rules: TurnGameRules<C4State, C4Move> = {
     return { cols, rows, board: Array(cols * rows).fill(null), turn: 0, lastDrop: null, winLine: null, winner: null, over: false, reason: '', history: [] };
   },
   currentPlayer: (s) => (s.over ? null : s.turn),
-  legalMoves(s) {
-    if (s.over) return [];
+  legalMoves(s, p) {
+    if (s.over || s.turn !== p) return [];
     const out: C4Move[] = [];
     for (let c = 0; c < s.cols; c++) if (dropRow(s, c) >= 0) out.push({ col: c });
     return out;
@@ -62,6 +62,7 @@ export const connect4Rules: TurnGameRules<C4State, C4Move> = {
     return mv.col >= 0 && mv.col < s.cols && dropRow(s, mv.col) >= 0;
   },
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     const row = dropRow(s, m.col);
     const board = s.board.slice();
     board[row * s.cols + m.col] = p;

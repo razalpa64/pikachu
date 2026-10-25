@@ -59,9 +59,9 @@ export default function CheckersSolo({ game }: { game: GameMeta }) {
         </>} />}
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label="Gold" value={myPieces} accent="#f0b429" />
+          <Stat label="Gold" value={myPieces} accent="#8d5a05" />
           <Stat label="Charcoal" value={theirPieces} />
-          <Stat label="Kings" value={state.board.filter((b) => b?.king).length} accent="#3fae82" />
+          <Stat label="Kings" value={state.board.filter((b) => b?.king).length} accent="#17795a" />
           <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-100 text-cream-300'}`}>
             {state.over ? 'Game over' : state.turn === 0 ? 'Gold to move' : mode === 'ai' ? 'AI calculating' : 'Charcoal to move'}
           </span>
@@ -75,7 +75,7 @@ export default function CheckersSolo({ game }: { game: GameMeta }) {
             playerA={{ name: 'Gold', score: myPieces, you: true }}
             playerB={{ name: mode === 'ai' ? `AI (${difficulty})` : 'Charcoal', score: theirPieces }}
             rows={[{ label: 'Moves', a: state.history.length, b: '' }]}
-            onRematch={reset} rematchLabel="New game" onExit={reset} exitLabel="Reset board" />
+            onRematch={reset} rematchLabel="New game" onExit={reset} />
         )}
       </div>
     </SoloShell>

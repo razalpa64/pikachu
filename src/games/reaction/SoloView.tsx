@@ -99,7 +99,7 @@ export default function ReactionSolo({ game }: { game: GameMeta }) {
           options={[{ value: 3, label: 'Bo3' }, { value: 5, label: 'Bo5' }, { value: 7, label: 'Bo7' }]} /></>} />}
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label="Best" value={mine.length ? `${Math.min(...mine)} ms` : '—'} accent="#f0b429" />
+          <Stat label="Best" value={mine.length ? `${Math.min(...mine)} ms` : '—'} accent="#8d5a05" />
           <Stat label="Average" value={avg ? `${avg} ms` : '—'} />
           <Stat label="Rounds" value={`${state.rounds.length}/${state.bestOf}`} />
         </Panel>
@@ -112,7 +112,7 @@ export default function ReactionSolo({ game }: { game: GameMeta }) {
             playerA={{ name: 'You', score: state.wins[0], you: true }}
             playerB={{ name: `AI (${difficulty})`, score: state.wins[1] }}
             rows={[{ label: 'Best time', a: mine.length ? `${Math.min(...mine)} ms` : '—', b: '' }, { label: 'Average', a: avg ? `${avg} ms` : '—', b: '' }]}
-            onRematch={reset} rematchLabel="Run it back" onExit={reset} exitLabel="Reset" />
+            onRematch={reset} rematchLabel="Run it back" onExit={reset} />
         )}
       </div>
     </SoloShell>

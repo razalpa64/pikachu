@@ -56,16 +56,25 @@ export default function ReversiBoard({ state, youSlot, onMove, interactive, hint
               }
               className={`relative grid place-items-center rounded-[9px] transition-colors duration-150 no-tap
                 ${playable ? 'cursor-pointer hover:bg-white/55' : 'cursor-default'}
-                ${isLast ? 'ring-2 ring-[#ffd24d]' : ''}`}
+                ${isLast ? 'ring-2 ring-[#7a4a12] ring-inset' : ''}`}
               style={{ width: cell, height: cell, border: '2px solid rgba(143,163,150,.35)', background: 'rgba(255,255,255,.32)' }}
             >
               {v !== null && <Coin who={v} toggle={toggle} pop={isLast} />}
-              {v === null && (playable || (hint && interactive)) && (
+              {/* Only squares that would actually flip something get a ghost.
+                  Painting every empty square (at 25% opacity) made legal moves
+                  indistinguishable from decorative dots. */}
+              {v === null && playable && (
                 <span
                   aria-hidden
-                  className={`w-[42%] h-[42%] rounded-full border-2 border-dashed ${playable ? 'opacity-90' : 'opacity-25'}`}
+                  className="w-[46%] h-[46%] rounded-full border-2 border-dashed opacity-90 grid place-items-center tabnum"
                   style={{ borderColor: youSlot === 0 ? GOLD : ROSE }}
-                />
+                >
+                  {/* the count is the loudest hint a beginner can get: "this one
+                      turns four of theirs" beats a bare circle */}
+                  {hint && wouldFlip > 1 && (
+                    <span className="text-[9px] font-extrabold leading-none" style={{ color: youSlot === 0 ? '#8d5a05' : '#a83350' }}>{wouldFlip}</span>
+                  )}
+                </span>
               )}
             </button>
           );

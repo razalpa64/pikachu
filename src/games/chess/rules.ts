@@ -50,8 +50,12 @@ export const chessRules: TurnGameRules<ChessState, ChessMove> = {
     };
   },
   currentPlayer: (s) => (s.over ? null : (s.fen.split(' ')[1] === 'w' ? 0 : 1)),
-  legalMoves(s) {
+  legalMoves(s, p) {
     if (s.over) return [];
+    // The enumeration belongs to whoever was asked about. Handing the side to
+    // move's list to the other seat is how "why is the board lighting up my
+    // opponent's moves" bugs start.
+    if (p !== this.currentPlayer(s)) return [];
     return load(s.fen).moves({ verbose: true }).map((m) => ({ from: m.from, to: m.to, promotion: m.promotion as ChessMove['promotion'] }));
   },
   isLegal(s, p, m): m is ChessMove {
@@ -65,6 +69,9 @@ export const chessRules: TurnGameRules<ChessState, ChessMove> = {
     );
   },
   applyMove(s, p, m) {
+    // chess.js throws (or returns null) on anything it cannot parse, so an
+    // unchecked call would take the room down instead of ignoring the move.
+    if (!this.isLegal(s, p, m)) return s;
     const c = load(s.fen);
     const res = c.move({ from: m.from, to: m.to, promotion: m.promotion ?? 'q' });
     let clock = s.clock;

@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PikachuMascot, ConfettiBurst } from '../mascot';
 import { Button, Icon } from './ui';
 import { useStore } from '../lib/store';
 
 export type Verdict = 'win' | 'loss' | 'draw';
 
-const COPY: Record<Verdict, { eyebrow: string; title: string; line: string; mascot: 'victory' | 'defeated' | 'thinking'; colour: string }> = {
-  win:  { eyebrow: 'Match complete', title: 'Victory',  line: 'The arena is yours.',            mascot: 'victory',  colour: '#f0b429' },
-  loss: { eyebrow: 'Match complete', title: 'Defeated', line: 'Close one. Run it back?',        mascot: 'defeated', colour: '#4a9fd8' },
-  draw: { eyebrow: 'Match complete', title: 'Drawn',    line: 'Dead even. Someone has to break the tie.', mascot: 'thinking', colour: '#F7F1DF' },
+const COPY: Record<Verdict, { eyebrow: string; title: string; line: string; mascot: 'victory' | 'defeated' | 'thinking'; colour: string; ink: string }> = {
+  win:  { eyebrow: 'Match complete', title: 'Victory',  line: 'The arena is yours.',            mascot: 'victory',  colour: '#f0b429', ink: '#8d5a05' },
+  loss: { eyebrow: 'Match complete', title: 'Defeated', line: 'Close one. Run it back?',        mascot: 'defeated', colour: '#1f6699', ink: '#1f6699' },
+  draw: { eyebrow: 'Match complete', title: 'Drawn',    line: 'Dead even. Someone has to break the tie.', mascot: 'thinking', colour: '#c9a888', ink: '#74564a' },
 };
 
 export interface ScoreRow { label: string; a: ReactNode; b: ReactNode }
@@ -28,7 +29,18 @@ export function ResultOverlay({
   onChangeGame?: () => void; changeGameLabel?: string;
 }) {
   const { sfx } = useStore();
+  const navigate = useNavigate();
   const c = COPY[verdict];
+  /**
+   * Solo screens used to pass the same reset function as both `onRematch` and
+   * `onExit`, which produced a dialog with two buttons that did the same thing —
+   * "New game" and "Reset board" — and no way back to the library. When the two
+   * handlers are the same, the secondary button now means what its position
+   * implies: leave the table.
+   */
+  const isDuplicateExit = !onExit || onExit === onRematch;
+  const exit = isDuplicateExit ? () => navigate('/library') : (onExit as () => void);
+  const exitText = isDuplicateExit ? 'Library' : exitLabel;
   const ref = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const [reveal, setReveal] = useState(0);
@@ -52,18 +64,17 @@ export function ResultOverlay({
    * confirm could never be dismissed.
    */
   useEffect(() => {
-    if (!onExit) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
       if (dialogs.some((d) => d !== rootRef.current)) return; // something is on top of us
       e.preventDefault();
       e.stopPropagation();
-      onExit();
+      exit();
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [onExit]);
+  }, [exit]);
 
   return (
     <div ref={rootRef} className="absolute inset-0 z-40 grid place-items-center p-4 bg-ink-900/88 blur-heavy backdrop-blur-[3px]"
@@ -76,9 +87,9 @@ export function ResultOverlay({
 
         <div className="relative">
           <PikachuMascot state={c.mascot} size={170} className="mx-auto" />
-          <p className="eyebrow mt-1 mb-1" style={{ color: c.colour }}>{c.eyebrow}</p>
+          <p className="eyebrow mt-1 mb-1" style={{ color: c.ink }}>{c.eyebrow}</p>
           <h2 className="wordmark text-[46px] sm:text-[58px] leading-none mb-1.5"
-            style={verdict !== 'win' ? { background: `linear-gradient(177deg,#fff,${c.colour} 60%,#6b6250)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'none' } : undefined}>
+            style={verdict !== 'win' ? { background: `linear-gradient(177deg,#fff,${c.ink} 60%,#6b6250)`, WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', filter: 'none' } : undefined}>
             {c.title}
           </h2>
           <p className="text-[13px] text-cream-300">{reason ? `${reason} — ${c.line}` : c.line}</p>
@@ -121,7 +132,7 @@ export function ResultOverlay({
                 {changeGameLabel}
               </Button>
             )}
-            {onExit && <Button variant="ghost" size="lg" onClick={onExit} cue="back" icon={<Icon name="back" size={16} />}>{exitLabel}</Button>}
+            <Button variant="ghost" size="lg" onClick={exit} cue="back" icon={<Icon name="back" size={16} />}>{exitText}</Button>
           </div>
         </div>
       </div>

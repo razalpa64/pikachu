@@ -136,7 +136,7 @@ export default function DetectiveSolo({ game }: { game: GameMeta }) {
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
             <Stat label="Clues" value={`${state.revealedClues}/${file.clues.length}`} />
-            <Stat label="Attempts" value={`${state.attemptsLeft}/${MAX_ATTEMPTS}`} accent={state.attemptsLeft === 1 ? '#e05a74' : undefined} />
+            <Stat label="Attempts" value={`${state.attemptsLeft}/${MAX_ATTEMPTS}`} accent={state.attemptsLeft === 1 ? '#a83350' : undefined} />
             <Stat label="Time" value={`${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`} />
         </Panel>
       }
@@ -252,7 +252,7 @@ export default function DetectiveSolo({ game }: { game: GameMeta }) {
               { label: 'Clues used', a: state.revealedClues, b: file.clues.length },
               { label: 'Accusations', a: state.accusations.length, b: MAX_ATTEMPTS },
             ]}
-            onRematch={() => reset()} rematchLabel="New case" onExit={() => reset()} exitLabel="Fresh mystery"
+            onRematch={() => reset()} rematchLabel="New case"
           />
         )}
       </div>

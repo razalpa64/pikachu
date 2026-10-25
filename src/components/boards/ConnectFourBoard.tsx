@@ -20,7 +20,9 @@ export default function ConnectFourBoard({ state, youSlot, onMove, interactive }
         </div>
 
         {/* drop slots */}
-        <div className="grid gap-[5px] mb-1.5" style={{ gridTemplateColumns: `repeat(${cols}, ${size})` }}>
+        {/* px-[13px] matches the inner board's p-2.5 + 3px border, so the drop
+            slots sit exactly over their columns instead of 13px to the left. */}
+        <div className="grid gap-[5px] mb-1.5 px-[13px]" style={{ gridTemplateColumns: `repeat(${cols}, ${size})` }}>
           {Array.from({ length: cols }).map((_, c) => {
             const ok = legal.has(c);
             return (

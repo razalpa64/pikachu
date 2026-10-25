@@ -104,6 +104,7 @@ export default function SparkQuizBoard({ state, youSlot, onMove, interactive, na
                 onClick={() => onMove({ type: 'answer', option: slot })}
                 disabled={!interactive || !open || myPick !== null}
                 aria-label={`Answer ${LETTERS[slot]}: ${q.a[answerIdx]}`}
+                aria-pressed={iPicked}
                 className={`flex items-center gap-2.5 px-3 py-2.5 border-2 notch-sm text-left transition-colors
                   disabled:cursor-default ${cls}`}
               >
@@ -139,7 +140,7 @@ export default function SparkQuizBoard({ state, youSlot, onMove, interactive, na
         )}
       </div>
 
-      <p className="mt-3 text-center text-[12px] text-cream-500">
+      <p role="status" className="mt-3 text-center text-[12px] text-cream-500">
         {state.over
           ? state.reason
           : revealing

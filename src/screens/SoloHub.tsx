@@ -59,9 +59,9 @@ export default function SoloHub() {
               </Button>
             </div>
             <div className="flex gap-3 mt-4 flex-wrap">
-              <Stat label="Solo matches" value={totalSolo} accent="#f0b429" />
+              <Stat label="Solo matches" value={totalSolo} accent="#8d5a05" />
               <Stat label="Games tried" value={`${played.length}/${games.length}`} />
-              <Stat label="Favourites" value={progress.favourites.length} accent="#3fae82" />
+              <Stat label="Favourites" value={progress.favourites.length} accent="#17795a" />
             </div>
           </div>
           <div className="hidden lg:block shrink-0">

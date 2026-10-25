@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { load, type ChessState, type ChessMove } from '../../games/chess/rules';
 import ChessPiece from './ChessPiece';
@@ -11,6 +11,7 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
   const { sfx } = useStore();
   const [sel, setSel] = useState<string | null>(null);
   const [promo, setPromo] = useState<{ from: string; to: string } | null>(null);
+  const promoRef = useRef<HTMLButtonElement>(null);
 
   const chess = useMemo(() => load(state.fen), [state.fen]);
   const flipped = youSlot === 1;
@@ -31,6 +32,17 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
 
   useEffect(() => { if (chess.inCheck() && !state.over) sfx('check'); }, [state.fen]);
   useEffect(() => { setSel(null); setPromo(null); }, [state.fen, interactive]);
+
+  /* The promotion chooser covers the board, so it must behave like a dialog:
+     take focus, and let Escape back out. It used to leave the keyboard on the
+     square behind it, where Enter re-opened the chooser for ever. */
+  useEffect(() => {
+    if (!promo) return;
+    promoRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); setPromo(null); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [promo]);
 
   const squares: string[] = [];
   for (let r = 8; r >= 1; r--) for (let f = 0; f < 8; f++) squares.push(`${FILES[f]}${r}`);
@@ -73,7 +85,7 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
             const playable = !!target || (!!piece && piece.color === myColour);
             return (
               <button key={sq} role="gridcell" onClick={() => onSquare(sq)}
-                aria-label={`${sq}${piece ? `, ${piece.color === 'w' ? 'white' : 'black'} ${piece.type}` : ', empty'}`}
+                aria-label={`${sq}${piece ? `, ${piece.color === 'w' ? 'white' : 'black'} ${piece.type}` : ', empty'}${isCheck ? ', in check' : ''}${isSel ? ', selected' : ''}`}
                 data-playable={interactive && playable ? 'true' : undefined}
                 className="chess-sq relative grid place-items-center no-tap"
                 style={{
@@ -130,13 +142,14 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
 
       {/* promotion chooser */}
       {promo && (
-        <div className="absolute inset-0 z-20 grid place-items-center bg-white/92" role="dialog" aria-label="Choose promotion piece">
+        <div className="absolute inset-0 z-20 grid place-items-center bg-white/92" role="dialog" aria-modal="true" aria-label="Choose promotion piece">
           <div className="panel notch-sm p-4 text-center a-pop">
             <p className="eyebrow mb-2.5">Promote to</p>
             <div className="flex gap-2">
-              {(['q', 'r', 'b', 'n'] as const).map((t) => (
-                <button key={t} onClick={() => { sfx('select'); onMove({ from: promo.from, to: promo.to, promotion: t }); setPromo(null); setSel(null); }}
-                  aria-label={`Promote to ${t}`}
+              {(['q', 'r', 'b', 'n'] as const).map((t, i) => (
+                <button key={t} ref={i === 0 ? promoRef : undefined}
+                  onClick={() => { sfx('select'); onMove({ from: promo.from, to: promo.to, promotion: t }); setPromo(null); setSel(null); }}
+                  aria-label={`Promote to ${PROMO_NAME[t]}`}
                   className="w-14 h-14 grid place-items-center rounded-2xl bg-white border-2 border-ink-500 hover:border-blush-300 hover:bg-blush-100 no-tap transition-colors">
                   <ChessPiece type={t} colour={myColour} size={42} />
                 </button>
@@ -149,6 +162,8 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
     </div>
   );
 }
+
+const PROMO_NAME = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' } as const;
 
 /** Captured-material strip, shown either side of the clock. */
 export function CapturedRow({ fen, colour }: { fen: string; colour: 'w' | 'b' }) {

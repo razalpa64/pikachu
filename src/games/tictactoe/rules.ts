@@ -54,8 +54,8 @@ export const tictactoeRules: TurnGameRules<TTTState, TTTMove> = {
     return { size, need, cells: Array(size * size).fill(null), turn: 0, moves: [], winLine: null, winner: null, over: false, reason: '' };
   },
   currentPlayer: (s) => (s.over ? null : s.turn),
-  legalMoves(s) {
-    if (s.over) return [];
+  legalMoves(s, p) {
+    if (s.over || s.turn !== p) return [];
     const out: TTTMove[] = [];
     for (let i = 0; i < s.cells.length; i++) if (s.cells[i] === null) out.push({ cell: i });
     return out;
@@ -67,6 +67,7 @@ export const tictactoeRules: TurnGameRules<TTTState, TTTMove> = {
     return mv.cell >= 0 && mv.cell < s.cells.length && s.cells[mv.cell] === null;
   },
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     const cells = s.cells.slice();
     cells[m.cell] = p;
     const next: TTTState = { ...s, cells, turn: p === 0 ? 1 : 0, moves: [...s.moves, m.cell] };

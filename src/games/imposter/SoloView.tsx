@@ -199,7 +199,7 @@ export default function ImposterSolo({ game }: { game: GameMeta }) {
                 >
                 {card.role === 'imposter' ? (
                 <div>
-                  <p className="font-display text-[clamp(22px,4.5vw,34px)] font-extrabold text-[#e05a74]">You are the imposter</p>
+                  <p className="font-display text-[clamp(22px,4.5vw,34px)] font-extrabold text-[#b0301d]">You are the imposter</p>
                   <p className="mt-2 text-[13.5px] text-cream-300">
                     The topic is <strong className="text-cream-100">{card.topic}</strong>.
                   </p>
@@ -315,7 +315,7 @@ export default function ImposterSolo({ game }: { game: GameMeta }) {
           <Panel className="p-7 text-center">
             <p className="eyebrow mb-1">{state.winner === 'crew' ? 'The crew holds' : 'The imposter wins'}</p>
             <h2 className="font-display text-[clamp(24px,5vw,38px)] font-extrabold"
-              style={{ color: state.winner === 'crew' ? '#2f9c71' : '#e05a74' }}>
+              style={{ color: state.winner === 'crew' ? '#17795a' : '#b0301d' }}>
               {state.winner === 'crew' ? 'Caught them' : 'Got away with it'}
             </h2>
             <p className="mt-2 text-[13.5px] text-cream-100">{state.reason}</p>
@@ -328,7 +328,7 @@ export default function ImposterSolo({ game }: { game: GameMeta }) {
               </div>
               <div className="p-3.5 border-2 border-ink-500 notch-sm bg-ink-800">
                 <p className="eyebrow mb-1">{state.imposterSeats.length > 1 ? 'The imposters' : 'The imposter'}</p>
-                <p className="font-display text-[20px] font-extrabold text-[#e05a74]">
+                <p className="font-display text-[20px] font-extrabold text-[#b0301d]">
                   {state.imposterSeats.map((s) => nameOf(state, s)).join(', ')}
                 </p>
                 {state.decoyWord && <p className="text-[12px] text-cream-500 mt-0.5">decoy: {state.decoyWord}</p>}

@@ -101,9 +101,9 @@ export default function GomokuSolo({ game }: { game: GameMeta }) {
       }
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label={mode === 'ai' ? 'You' : 'Gold'} value={series.wins[0]} accent="#f0b429" />
+          <Stat label={mode === 'ai' ? 'You' : 'Gold'} value={series.wins[0]} accent="#8d5a05" />
           <Stat label="Draws" value={series.draws} />
-          <Stat label={mode === 'ai' ? `AI ${difficulty}` : 'Rose'} value={series.wins[1]} accent="#4a9fd8" />
+          <Stat label={mode === 'ai' ? `AI ${difficulty}` : 'Rose'} value={series.wins[1]} accent="#1f6699" />
           <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-200 text-[#5a3a12]'}`}>
             {state.over ? 'Round over' : state.turn === 0 ? 'Gold to place' : mode === 'ai' ? 'AI thinking' : 'Rose to place'}
           </span>
@@ -126,9 +126,7 @@ export default function GomokuSolo({ game }: { game: GameMeta }) {
           playerB={{ name: mode === 'ai' ? `AI (${difficulty})` : 'Rose', score: stones(1) }}
           rows={[{ label: 'Stones placed', a: stones(0), b: stones(1) }]}
           onRematch={() => reset(false)}
-          onExit={() => reset(false)}
           rematchLabel="Play again"
-          exitLabel="New board"
         />
       )}
     </SoloShell>

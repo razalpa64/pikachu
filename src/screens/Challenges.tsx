@@ -40,8 +40,8 @@ export default function Challenges() {
               Three small goals, drawn from today&rsquo;s date so you both get exactly the same set. Progress only moves when a real match finishes — nothing here can be clicked to completion.
             </p>
             <div className="flex gap-3 mt-4 flex-wrap">
-              <Stat label="Completed" value={`${done}/${list.length}`} accent="#f0b429" />
-              <Stat label="XP banked" value={`${earned}/${totalXp}`} accent="#3fae82" />
+              <Stat label="Completed" value={`${done}/${list.length}`} accent="#8d5a05" />
+              <Stat label="XP banked" value={`${earned}/${totalXp}`} accent="#17795a" />
               <Stat label="Level" value={lvl.level} />
             </div>
           </div>

@@ -171,7 +171,7 @@ export default function TriviaSolo({ game }: { game: GameMeta }) {
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
             <Stat label="Score" value={state.score} />
             {mode === 'ai' && <Stat label="Rival" value={state.rivalScore} />}
-            <Stat label="Streak" value={state.streak} accent={state.streak >= 3 ? '#e05a74' : undefined} />
+            <Stat label="Streak" value={state.streak} accent={state.streak >= 3 ? '#a83350' : undefined} />
             <Stat label="Round" value={`${Math.min(state.index + 1, state.queue.length)}/${state.queue.length}`} />
         </Panel>
       }
@@ -230,7 +230,7 @@ export default function TriviaSolo({ game }: { game: GameMeta }) {
             </div>
 
             {locked && (
-              <div className="mt-4 flex flex-wrap items-center gap-3 border-t-2 border-dashed border-ink-500 pt-3.5">
+              <div role="status" className="mt-4 flex flex-wrap items-center gap-3 border-t-2 border-dashed border-ink-500 pt-3.5">
                 <p className="flex-1 min-w-[220px] text-[13px] text-cream-300">
                   {picked === correctSlot
                     ? <><strong className="text-leaf-700">Correct.</strong> {question.note ?? ''}</>
@@ -258,7 +258,7 @@ export default function TriviaSolo({ game }: { game: GameMeta }) {
               { label: 'Correct', a: correctCount(state), b: mode === 'ai' ? state.asked.filter((x) => x.rivalPicked !== null && x.order[x.rivalPicked] === 0).length : '' },
               { label: 'Best streak', a: state.bestStreak, b: '' },
             ]}
-            onRematch={reset} rematchLabel="New quiz" onExit={reset} exitLabel="Change topics"
+            onRematch={reset} rematchLabel="New quiz" onExit={reset}
           />
         )}
       </div>

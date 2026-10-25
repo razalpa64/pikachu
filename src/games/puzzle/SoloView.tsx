@@ -81,10 +81,10 @@ export default function PuzzleSolo({ game }: { game: GameMeta }) {
       }
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label="Chamber" value={info.name} accent="#9b7ad6" />
+          <Stat label="Chamber" value={info.name} accent="#6f4fad" />
           <Stat label="Moves" value={moves} />
           <Stat label="Time" value={`${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`} />
-          <Stat label="Chambers cleared" value={`${kindsCleared.length}/5`} accent="#3fae82" />
+          <Stat label="Chambers cleared" value={`${kindsCleared.length}/5`} accent="#17795a" />
         </Panel>
       }>
       <div className="relative w-full flex flex-col items-center gap-4">

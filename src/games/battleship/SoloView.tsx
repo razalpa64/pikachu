@@ -81,11 +81,11 @@ export default function BattleshipSolo({ game }: { game: GameMeta }) {
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
           <Stat label="Shots" value={shots} />
-          <Stat label="Hits" value={hits} accent="#e05a74" />
-          <Stat label="Accuracy" value={shots ? `${Math.round((hits / shots) * 100)}%` : '—'} accent="#4a9fd8" />
-          <Stat label="Sunk" value={`${state.sunk[0].length}/5`} accent="#3fae82" />
+          <Stat label="Hits" value={hits} accent="#a83350" />
+          <Stat label="Accuracy" value={shots ? `${Math.round((hits / shots) * 100)}%` : '—'} accent="#1f6699" />
+          <Stat label="Sunk" value={`${state.sunk[0].length}/5`} accent="#17795a" />
           <Stat label="Lost" value={`${state.sunk[1].length}/5`} />
-          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.phase === 'placement' ? 'bg-blush-100 text-cream-300' : state.turn === 0 ? 'bg-spark-400 text-[#5a3a12]' : 'bg-ember-400 text-[#4a0a1e]'}`}>
+          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.phase === 'placement' ? 'bg-blush-100 text-cream-300' : state.turn === 0 ? 'bg-blush-300 text-[#5a3a12]' : 'bg-ember-400 text-[#4a0a1e]'}`}>
             {state.over ? 'Battle over' : state.phase === 'placement' ? 'Deployment' : state.turn === 0 ? 'Your salvo' : 'Incoming fire'}
           </span>
         </Panel>
@@ -100,7 +100,7 @@ export default function BattleshipSolo({ game }: { game: GameMeta }) {
             playerB={{ name: `AI (${difficulty})`, score: `${state.sunk[1].length}/5` }}
             rows={[{ label: 'Shots fired', a: state.shots[0].length, b: state.shots[1].length },
                    { label: 'Accuracy', a: `${shots ? Math.round((hits / shots) * 100) : 0}%`, b: `${state.shots[1].length ? Math.round((state.hits[1].length / state.shots[1].length) * 100) : 0}%` }]}
-            onRematch={reset} rematchLabel="New battle" onExit={reset} exitLabel="Redeploy" />
+            onRematch={reset} rematchLabel="New battle" onExit={reset} />
         )}
       </div>
     </SoloShell>

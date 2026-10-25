@@ -164,6 +164,7 @@ export const quizOnlineRules: TurnGameRules<OnlineQuizState, QuizMove> = {
   },
 
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     const now = Date.now();
     const picked: [number | null, number | null] = [s.picked[0], s.picked[1]];
     const took: [number, number] = [s.tookMs[0], s.tookMs[1]];

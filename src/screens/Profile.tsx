@@ -78,10 +78,10 @@ export default function Profile() {
           <div>
             <SectionTitle eyebrow="Career" title="Lifetime record" />
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3.5">
-              <Panel className="p-3.5"><Stat label="Matches" value={totals.played} accent="#f0b429" /></Panel>
-              <Panel className="p-3.5"><Stat label="Wins" value={totals.wins} accent="#3fae82" /></Panel>
+              <Panel className="p-3.5"><Stat label="Matches" value={totals.played} accent="#8d5a05" /></Panel>
+              <Panel className="p-3.5"><Stat label="Wins" value={totals.wins} accent="#17795a" /></Panel>
               <Panel className="p-3.5"><Stat label="Draws" value={totals.draws} /></Panel>
-              <Panel className="p-3.5"><Stat label="Losses" value={totals.losses} accent="#e05a74" /></Panel>
+              <Panel className="p-3.5"><Stat label="Losses" value={totals.losses} accent="#a83350" /></Panel>
             </div>
           </div>
 

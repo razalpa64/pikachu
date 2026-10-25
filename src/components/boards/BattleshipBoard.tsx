@@ -137,6 +137,7 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
         <p className="eyebrow mb-2 text-blush-600">Enemy waters — fire here</p>
         <Grid size={size} label="Enemy radar" radar onCell={interactive ? (c) => { if (!myShots.has(c)) { onMove({ type: 'fire', cell: c }); } } : undefined}
           disabledCell={(c) => myShots.has(c)}
+          cellLabel={(c) => (!myShots.has(c) ? 'not fired yet' : myHits.has(c) ? (enemySunkCells.has(c) ? 'hit, ship sunk' : 'hit') : 'miss')}
           cellRender={(cell) => {
             if (!myShots.has(cell)) return null;
             const hit = myHits.has(cell);
@@ -154,6 +155,12 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
       <div>
         <p className="eyebrow mb-2 text-volt-700">Your waters</p>
         <Grid size={size} label="Your fleet" small
+          cellLabel={(c) => {
+            const ship = myShipCells.get(c);
+            const where = ship ? (sunkOfMine.has(ship) ? 'your ship, sunk' : 'your ship') : 'empty water';
+            const hot = theirHits.has(c) ? ', hit' : theirShots.has(c) ? ', enemy missed here' : '';
+            return `${where}${hot}`;
+          }}
           cellRender={(cell) => {
             const ship = myShipCells.get(cell);
             const hit = theirHits.has(cell);
@@ -176,10 +183,14 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
 }
 
 function Grid({
-  size, label, onCell, cellRender, radar, small, disabledCell,
+  size, label, onCell, cellRender, radar, small, disabledCell, cellLabel,
 }: {
   size: number; label: string; onCell?: (c: number) => void;
   cellRender: (c: number) => React.ReactNode; radar?: boolean; small?: boolean; disabledCell?: (c: number) => boolean;
+  /** What the cell means, read after the coordinate: "B4, miss". A bare
+   *  coordinate left a screen-reader user with 100 identical-sounding squares
+   *  and no way to know which ones had already been fired at. */
+  cellLabel?: (c: number) => string;
 }) {
   const cw = small ? `min(6.4vw, 27px)` : `min(8.2vw, 38px)`;
   return (
@@ -200,7 +211,7 @@ function Grid({
               const dis = disabledCell?.(cell);
               return (
                 <button key={cell} role="gridcell" disabled={!onCell || dis} onClick={() => onCell?.(cell)}
-                  aria-label={`${LETTERS[c]}${r + 1}`}
+                  aria-label={`${LETTERS[c]}${r + 1}${cellLabel ? `, ${cellLabel(cell)}` : ''}`}
                   className={`relative border border-[#b9d6e8] transition-colors ${onCell && !dis ? 'hover:bg-[#bfe0f5] cursor-crosshair' : ''}`}
                   style={{ width: cw, height: cw, background: 'rgba(255,255,255,.72)' }}>
                   {cellRender(cell)}

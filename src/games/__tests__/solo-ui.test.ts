@@ -28,7 +28,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { gameById } from '../registry';
 import { StoreProvider } from '../../lib/store';
 
-const GAMES = ['reversi', 'gomoku', 'dots', 'mancala', 'cards'] as const;
+const GAMES = ['reversi', 'gomoku', 'dots', 'mancala', 'cards', 'connect4', 'tictactoe'] as const;
 
 let host: HTMLDivElement;
 let root: Root;
@@ -116,6 +116,31 @@ describe('the new solo screens respond to a click', () => {
     await settle(1500);
 
     expect(stones().length, 'your stone plus the AI reply').toBeGreaterThanOrEqual(2);
+  });
+
+  it('Drop Four drops a disc in the column you pick', async () => {
+    await mount('connect4');
+    const slots = () => enabled([...host.querySelectorAll<HTMLElement>('button[aria-label^="Drop in column"]')]);
+    expect(slots().length, 'every open column offers a drop').toBe(7);
+    const discs = () => host.querySelectorAll('[role="gridcell"] img').length;
+    expect(discs()).toBe(0);
+
+    await click(slots()[0]);
+    await settle(1200);
+
+    expect(discs(), 'your disc plus the AI reply').toBeGreaterThanOrEqual(2);
+  });
+
+  it('Tic-Tac-Toe marks the square you click and the AI answers', async () => {
+    await mount('tictactoe');
+    const empty = () => enabled(cells().filter((c) => /empty/.test(c.getAttribute('aria-label') ?? '')));
+    expect(empty().length).toBe(9);
+    const marks = () => host.querySelectorAll('[role="gridcell"] img[data-mark]').length;
+
+    await click(empty()[4]);
+    await settle(1200);
+
+    expect(marks(), 'your mark plus the AI reply').toBeGreaterThanOrEqual(2);
   });
 
   it('Dots & Boxes draws the line you click', async () => {

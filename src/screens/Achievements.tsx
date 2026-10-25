@@ -69,7 +69,7 @@ export default function Achievements() {
             {unlocked.length} of {rows.length} unlocked. Each one is awarded by the match recorder when the condition actually happens — never by visiting a page.
           </p>
           <div className="flex gap-3 mt-3.5 flex-wrap">
-            <Stat label="Level" value={lvl.level} accent="#f0b429" />
+            <Stat label="Level" value={lvl.level} accent="#8d5a05" />
             <Stat label="XP" value={progress.xp.toLocaleString()} />
             <Stat label="Next level" value={`${Math.max(0, lvl.ceil - progress.xp)} XP`} />
           </div>
@@ -93,7 +93,7 @@ export default function Achievements() {
             <div className="min-w-0">
               <h3 className={`display text-[14.5px] leading-tight ${a.at ? 'text-cream-100' : 'text-cream-400'}`}>{a.name}</h3>
               <p className="text-[12px] text-cream-500 mt-0.5">{a.description}</p>
-              <p className="text-[10.5px] uppercase tracking-wider font-bold mt-1.5" style={{ color: a.at ? '#3fae82' : '#5a5a50' }}>
+              <p className="text-[10.5px] uppercase tracking-wider font-bold mt-1.5" style={{ color: a.at ? '#17795a' : '#5a5a50' }}>
                 {a.at ? `Earned ${new Date(a.at).toLocaleDateString()}` : 'Locked'}
               </p>
             </div>

@@ -256,7 +256,7 @@ export default function SnakeSolo({ game }: { game: GameMeta }) {
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
           <Stat label={mode === 'local' ? 'P1' : 'Charge'} value={me?.score ?? 0} accent={SKINS[skin].body} />
           <Stat label="Length" value={me?.body.length ?? 0} />
-          {rival && <Stat label={withAi ? `AI ${difficulty}` : 'P2'} value={rival.score} accent="#ef4b35" />}
+          {rival && <Stat label={withAi ? `AI ${difficulty}` : 'P2'} value={rival.score} accent="#b0301d" />}
           <Stat label="Ticks" value={state.tick} />
           {paused && <span className="px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm bg-blush-100 text-cream-300">Paused</span>}
         </Panel>
@@ -293,7 +293,7 @@ export default function SnakeSolo({ game }: { game: GameMeta }) {
             playerA={{ name: mode === 'local' ? 'Player 1' : 'You', score: me.score, you: true }}
             playerB={{ name: mode === 'solo' ? `Best (${difficulty})` : withAi ? `AI (${difficulty})` : 'Player 2', score: rival ? rival.score : best }}
             rows={[{ label: 'Length', a: me.body.length, b: rival?.body.length ?? '' }, { label: 'Ticks survived', a: state.tick, b: '' }]}
-            onRematch={reset} rematchLabel="Run again" onExit={reset} exitLabel="Reset arena" />
+            onRematch={reset} rematchLabel="Run again" onExit={reset} />
         )}
       </div>
     </SoloShell>

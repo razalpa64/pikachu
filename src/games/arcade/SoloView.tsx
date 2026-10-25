@@ -624,7 +624,7 @@ export default function ArcadeSolo({ game }: { game: GameMeta }) {
       }
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label="Score" value={hud.score.toLocaleString()} accent="#ffcb05" />
+          <Stat label="Score" value={hud.score.toLocaleString()} accent="#8d5a05" />
           <Stat label="Best" value={best.toLocaleString()} />
           {/* The HUD is a no-wrap scroll strip on mobile, so a phone only gets
               what it can show without a hidden scroll: score, the best to beat,
@@ -632,8 +632,8 @@ export default function ArcadeSolo({ game }: { game: GameMeta }) {
               (score = distance + 25 per charge) and speed is decorative, so
               those two are the ones that yield. */}
           <div className="hidden sm:block"><Stat label="Distance" value={`${hud.dist} m`} /></div>
-          <Stat label="Charges" value={hud.charges} accent="#5fd28a" />
-          <div className="hidden sm:block"><Stat label="Speed" value={`${hud.speed}x`} accent="#ef4b35" /></div>
+          <Stat label="Charges" value={hud.charges} accent="#17795a" />
+          <div className="hidden sm:block"><Stat label="Speed" value={`${hud.speed}x`} accent="#b0301d" /></div>
         </Panel>
       }
       footer={

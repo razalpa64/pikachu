@@ -103,8 +103,8 @@ export default function DotsSolo({ game }: { game: GameMeta }) {
       }
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label={mode === 'ai' ? 'You' : 'Gold'} value={state.scores[0]} accent="#f0b429" />
-          <Stat label={mode === 'ai' ? 'AI' : 'Rose'} value={state.scores[1]} accent="#4a9fd8" />
+          <Stat label={mode === 'ai' ? 'You' : 'Gold'} value={state.scores[0]} accent="#8d5a05" />
+          <Stat label={mode === 'ai' ? 'AI' : 'Rose'} value={state.scores[1]} accent="#1f6699" />
           <Stat label="Series" value={`${series.wins[0]}–${series.wins[1]}`} />
           <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-200 text-[#5a3a12]'}`}>
             {state.over ? 'Grid complete' : state.turn === 0 ? 'Gold to draw' : mode === 'ai' ? 'AI drawing' : 'Rose to draw'}
@@ -127,9 +127,7 @@ export default function DotsSolo({ game }: { game: GameMeta }) {
           playerB={{ name: mode === 'ai' ? `AI (${difficulty})` : 'Rose', score: state.scores[1] }}
           rows={[{ label: 'Boxes', a: state.scores[0], b: state.scores[1] }]}
           onRematch={() => reset(false)}
-          onExit={() => reset(false)}
           rematchLabel="Play again"
-          exitLabel="New grid"
         />
       )}
     </SoloShell>

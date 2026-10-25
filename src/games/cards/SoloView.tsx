@@ -310,7 +310,7 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
               { label: 'Cards left', a: state.hands[you].length, b: state.hands[rival].length },
               { label: 'Penalty points', a: handValue(state.hands[you]), b: handValue(state.hands[rival]) },
             ]}
-            onRematch={reset} rematchLabel="Deal again" onExit={reset} exitLabel="New game"
+            onRematch={reset} rematchLabel="Deal again" onExit={reset}
           />
         )}
       </div>

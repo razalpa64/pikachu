@@ -82,6 +82,7 @@ export const checkersRules: TurnGameRules<CKState, CKMove> = {
     return this.legalMoves(s, p).some((l) => l.from === mv.from && l.to === mv.to);
   },
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     const board = s.board.slice();
     const pc = board[m.from]!;
     board[m.from] = null;

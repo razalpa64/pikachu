@@ -71,10 +71,10 @@ export default function ConnectFourSolo({ game }: { game: GameMeta }) {
         extra={canUndo ? <Button size="sm" variant="ghost" onClick={() => { sfx('back'); setState((s) => undoC4(s, 2)); setExplain(null); }} icon={<Icon name="undo" size={13} />}>Undo</Button> : null} />}
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label={mode === 'ai' ? 'You' : 'Player 1'} value={series.wins[0]} accent="#f0b429" />
+          <Stat label={mode === 'ai' ? 'You' : 'Player 1'} value={series.wins[0]} accent="#8d5a05" />
           <Stat label="Draws" value={series.draws} />
-          <Stat label={mode === 'ai' ? `AI ${difficulty}` : 'Player 2'} value={series.wins[1]} accent="#4a9fd8" />
-          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-spark-400 text-[#5a3a12]'}`}>
+          <Stat label={mode === 'ai' ? `AI ${difficulty}` : 'Player 2'} value={series.wins[1]} accent="#1f6699" />
+          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-300 text-[#5a3a12]'}`}>
             {state.over ? 'Round over' : state.turn === 0 ? 'Gold to drop' : mode === 'ai' ? 'AI calculating' : 'Blue to drop'}
           </span>
         </Panel>
@@ -87,7 +87,8 @@ export default function ConnectFourSolo({ game }: { game: GameMeta }) {
             playerA={{ name: mode === 'ai' ? 'You' : 'Player 1', score: series.wins[0], you: true }}
             playerB={{ name: mode === 'ai' ? `AI (${difficulty})` : 'Player 2', score: series.wins[1] }}
             rows={[{ label: 'Discs played', a: Math.ceil(state.history.length / 2), b: Math.floor(state.history.length / 2) }]}
-            onRematch={() => reset(true)} onExit={() => reset(false)} exitLabel="Reset series" />
+            rematchLabel={series.decided ? 'New series' : 'Next round'}
+            onRematch={() => reset(!series.decided)} onExit={() => reset(false)} exitLabel="Reset series" />
         )}
       </div>
     </SoloShell>

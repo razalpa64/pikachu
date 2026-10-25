@@ -92,7 +92,7 @@ export default function Home() {
               <Stat label="Level" value={lvl.level} accent="var(--color-volt-700)" />
               <Stat label="Matches" value={totals.played} />
               <Stat label="Wins" value={totals.wins} accent="var(--color-leaf-700)" />
-              <Stat label="Trophies" value={totals.ach} accent="#2f7fc4" />
+              <Stat label="Trophies" value={totals.ach} accent="#1f6699" />
               <Stat label="vs Rival" value={`${progress.versus.wins}–${progress.versus.losses}`} accent="var(--color-blush-600)" />
             </div>
           </div>

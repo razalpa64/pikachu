@@ -92,7 +92,9 @@ export const battleshipRules: TurnGameRules<BSState, BSMove> = {
   currentPlayer: (s) => (s.over ? null : s.phase === 'placement' ? null : s.turn),
   legalMoves(s, p) {
     if (s.over) return [];
-    if (s.phase === 'placement') return s.fleets[p].length ? [{ type: 'ready' } as BSMove] : [];
+    // `ready` is only on offer while you have a fleet down and have not pressed it
+    // yet — otherwise the UI lists an action the referee will reject.
+    if (s.phase === 'placement') return s.fleets[p].length && !s.ready[p] ? [{ type: 'ready' } as BSMove] : [];
     if (s.turn !== p) return [];
     const out: BSMove[] = [];
     for (let i = 0; i < s.size * s.size; i++) if (!s.shots[p].includes(i)) out.push({ type: 'fire', cell: i });
@@ -110,6 +112,7 @@ export const battleshipRules: TurnGameRules<BSState, BSMove> = {
     return false;
   },
   applyMove(s, p, m) {
+    if (!this.isLegal(s, p, m)) return s;
     if (m.type === 'place') {
       const fleets = [s.fleets[0], s.fleets[1]] as [Ship[], Ship[]];
       fleets[p] = m.ships.map((x) => ({ id: x.id, len: x.cells.length, cells: [...x.cells], hits: [] }));

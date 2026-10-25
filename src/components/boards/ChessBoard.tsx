@@ -103,8 +103,12 @@ export default function ChessBoard({ state, youSlot, onMove, interactive, hint =
                 )}
 
                 {/* the piece itself — transparent artwork, sized like a real set */}
+                {/* Positioned with `inset` rather than percentage width/height: an
+                    absolutely-positioned box always resolves against the square, even in
+                    the odd browser that treats a percentage height inside a grid item as
+                    indefinite (which would collapse the piece to nothing). */}
                 {piece && (
-                  <span className="relative z-[1] grid place-items-center w-[88%] h-[88%] pointer-events-none">
+                  <span className="absolute inset-[6%] z-[1] grid place-items-center pointer-events-none">
                     <ChessPiece type={piece.type} colour={piece.color} size="100%" lifted={isSel} />
                   </span>
                 )}

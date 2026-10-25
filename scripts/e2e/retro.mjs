@@ -79,9 +79,14 @@ const hold = async (target, key, ms = 160) => {
 console.log(`\n${PHONE ? 'PHONE' : 'DESKTOP'} · ${BASE}`);
 
 /* ------------------------------------------------------------ the shelf */
+const manifest = JSON.parse(readFileSync('public/retro/roms.json', 'utf8'));
 await page.goto(`${BASE}/retro`, { waitUntil: 'networkidle' });
 const cards = page.locator('article');
-check('shelf renders the cartridges from the manifest', (await cards.count()) === 3, `${await cards.count()} cards`);
+check(
+  'shelf renders every cartridge in the manifest',
+  (await cards.count()) === manifest.games.length,
+  `${await cards.count()} of ${manifest.games.length} cards`,
+);
 const coversLoaded = await page.evaluate(() =>
   [...document.querySelectorAll('article img')].every((i) => i.complete && i.naturalWidth === 240),
 );
@@ -96,6 +101,9 @@ await page.waitForTimeout(250);
 await page.getByRole('radio', { name: 'Shooters' }).click();
 await page.waitForTimeout(250);
 check('tag lens narrows the shelf', (await cards.count()) === 1);
+await page.getByRole('radio', { name: 'Puzzles' }).click();
+await page.waitForTimeout(250);
+check('puzzle lens finds the puzzle cartridge', (await cards.count()) === 1, `${await cards.count()} cards`);
 await page.getByRole('radio', { name: 'All carts' }).click();
 await page.waitForTimeout(200);
 
@@ -231,27 +239,66 @@ await page.getByRole('button', { name: 'Restart' }).click();
 await page.waitForTimeout(900);
 check('Restart keeps the session alive', (await emu(() => window.EJS_emulator.started)) === true);
 
-const shellBefore = await page.evaluate(() => Math.round(document.querySelector('.gb-device').getBoundingClientRect().width));
+/* Fullscreen is the other job for this page: the console covers the glass and
+   the picture is as large as the glass allows. Everything below is measured. */
+const windowedScreen = await page.evaluate(() => {
+  const r = document.querySelector('.gb-screen').getBoundingClientRect();
+  return Math.round(r.width);
+});
 await page.getByRole('button', { name: 'Fullscreen' }).click();
-await page.waitForTimeout(900);
+await page.waitForTimeout(1200);
 check('Fullscreen takes over the screen', (await page.evaluate(() => !!document.fullscreenElement)) === true);
-const shellAfter = await page.evaluate(() => Math.round(document.querySelector('.gb-device').getBoundingClientRect().width));
-check('fullscreen hands the page chrome to the console', shellAfter > shellBefore, `${shellBefore}px → ${shellAfter}px`);
-/* The stage goes fullscreen — not just the LCD — so the rail that got you in is
-   still there to get you out, exactly like a handheld's power switch. */
-const fullBox = await page.evaluate(() => {
-  const el = document.querySelector('.gb-stage');
-  const dev = document.querySelector('.gb-device').getBoundingClientRect();
-  const r = el.getBoundingClientRect();
+
+const full = await page.evaluate(() => {
+  const box = (el) => { const r = el.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; };
+  const inside = ([l, t, r, b]) => l >= -1 && t >= -1 && r <= window.innerWidth + 1 && b <= window.innerHeight + 1;
+  const shell = document.querySelector('.gb-device');
+  const screen = document.querySelector('.gb-screen');
+  const shellBox = shell.getBoundingClientRect();
+  const screenBox = screen.getBoundingClientRect();
+  const controls = ['.gb-dpad', '.gb-face', '.gb-system'].map((s) => box(document.querySelector(s)));
   return {
-    w: Math.round(r.width), h: Math.round(r.height), vw: window.innerWidth, vh: window.innerHeight,
-    device: [Math.round(dev.width), Math.round(dev.height)],
-    fits: dev.top >= -1 && dev.left >= -1 && dev.bottom <= window.innerHeight + 1 && dev.right <= window.innerWidth + 1,
+    vw: window.innerWidth, vh: window.innerHeight,
+    shell: [Math.round(shellBox.width), Math.round(shellBox.height)],
+    shellCovers: shellBox.left <= 1 && shellBox.top <= 1
+      && shellBox.right >= window.innerWidth - 1 && shellBox.bottom >= window.innerHeight - 1,
+    screen: [Math.round(screenBox.width), Math.round(screenBox.height)],
+    screenShareOfWidth: screenBox.width / window.innerWidth,
+    screenShareOfHeight: screenBox.height / window.innerHeight,
+    controlsInside: controls.every(inside),
+    controls,
   };
 });
-check('fullscreen element is the console stage', (await page.evaluate(() => !!document.fullscreenElement?.classList.contains('gb-stage'))) === true);
-check('stage covers the fullscreen viewport', fullBox.w >= fullBox.vw - 2 && fullBox.h >= fullBox.vh - 2, JSON.stringify([fullBox.w, fullBox.h]));
-check('the shell still fits, whole, on screen', fullBox.fits, JSON.stringify(fullBox.device));
+check('the shell covers the whole viewport', full.shellCovers, JSON.stringify(full.shell));
+check('the screen is the largest thing on the glass', full.screen[0] >= full.vw * 0.55 || full.screen[1] >= full.vh * 0.6,
+  `${full.screen[0]}×${full.screen[1]} of ${full.vw}×${full.vh}`);
+check('every control is inside the viewport', full.controlsInside, JSON.stringify(full.controls));
+check('the picture grew when the page went fullscreen', full.screen[0] > windowedScreen, `${windowedScreen}px → ${full.screen[0]}px`);
+
+/* The emulator canvas has to follow the frame it lives in: a bigger LCD with a
+   small picture inside it is the bug this whole layout exists to avoid. */
+const fsLcd = await page.evaluate(() => {
+  const r = document.querySelector('.gb-screen').getBoundingClientRect();
+  return [Math.round(r.width), Math.round(r.height)];
+});
+const fsCanvas = await emu(() => {
+  const c = document.querySelector('canvas');
+  if (!c) return null;
+  const r = c.getBoundingClientRect();
+  return [Math.round(r.width), Math.round(r.height)];
+});
+check('the canvas fills the LCD in fullscreen too', !!fsCanvas && Math.abs(fsCanvas[0] - fsLcd[0]) <= 2 && Math.abs(fsCanvas[1] - fsLcd[1]) <= 2,
+  JSON.stringify({ fsCanvas, fsLcd }));
+
+/* The plastic is the only control surface once the rail is hidden, so it has to
+   still reach the core from here. */
+await emu(() => { window.__input = []; });
+await page.getByRole('button', { name: 'A', exact: true }).dispatchEvent('pointerdown', { pointerId: 5, isPrimary: true });
+await page.waitForTimeout(160);
+await page.getByRole('button', { name: 'A', exact: true }).dispatchEvent('pointerup', { pointerId: 5, isPrimary: true });
+await page.waitForTimeout(200);
+const fsInputs = await emu(() => window.__input);
+check('the plastic still drives the core in fullscreen', fsInputs.some(([i, v]) => i === 8 && v === 1), JSON.stringify(fsInputs));
 /* Browsers handle Esc themselves; the real check is that the visible way out
    works and the page is usable again. Inside fullscreen the rail is hidden, so
    that way out is the floating button — not a guess about Esc. */
@@ -262,6 +309,44 @@ await page
   .catch(() => {});
 check('leaving fullscreen works and the rail comes back', (await page.evaluate(() => !document.fullscreenElement)) === true);
 check('the page chrome returns', await page.getByRole('button', { name: 'Pause' }).isVisible());
+
+/* ------------------------------------------------- a browser without it */
+/* iOS Safari has no element fullscreen at all, and a phone is where covering the
+   screen matters most — so the page falls back to covering the viewport itself.
+   Simulated here by removing the API before the app loads. */
+{
+  const noFs = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await noFs.addInitScript(() => {
+    Object.defineProperty(Element.prototype, 'requestFullscreen', { value: undefined, configurable: true });
+    Object.defineProperty(document, 'fullscreenElement', { get: () => null, configurable: true });
+  });
+  const p2 = await noFs.newPage();
+  await p2.goto(`${BASE}/retro/simple-frogger`, { waitUntil: 'domcontentloaded' });
+  await p2.waitForTimeout(1500);
+  await p2.getByRole('button', { name: 'Fullscreen' }).click();
+  await p2.waitForTimeout(500);
+  const fallback = await p2.evaluate(() => {
+    const shell = document.querySelector('.gb-device').getBoundingClientRect();
+    const rails = [...document.querySelectorAll('.gb-rail')].map((e) => getComputedStyle(e).display);
+    return {
+      native: !!document.fullscreenElement,
+      covers: shell.left <= 1 && shell.top <= 1 && shell.right >= window.innerWidth - 1 && shell.bottom >= window.innerHeight - 1,
+      rail: rails,
+      exit: !!document.querySelector('.gb-fs-exit'),
+    };
+  });
+  check('without the fullscreen API the page still covers the screen', fallback.covers, JSON.stringify(fallback));
+  check('the fallback keeps a way out', fallback.exit);
+  /* Escape is the page's own key, so give the page the focus: while the frame
+     holds it, keys belong to the emulator, and the visible button is the way out
+     there — which is why the button exists. */
+  await p2.locator('.gb-brand').click();
+  await p2.keyboard.press('Escape');
+  await p2.waitForTimeout(400);
+  const back = await p2.evaluate(() => document.querySelector('.gb-stage').dataset.full === 'off');
+  check('Escape leaves the fallback fullscreen', back);
+  await noFs.close();
+}
 
 /* --------------------------------------------------------- phone extras */
 if (PHONE) {
@@ -286,10 +371,74 @@ if (PHONE) {
   check('no horizontal overflow on a phone', overflow <= 1, `${overflow}px`);
 }
 
+/* ------------------------------------------- every cartridge really runs */
+/* A count and a cover only prove the shelf rendered. These four are the
+   cartridges added after the first three, and each one is booted here so a ROM
+   that stops working (a bad download, a core that lost a mode) fails the suite
+   instead of quietly showing a dead LCD. */
+if (!PHONE) {
+  for (const id of ['lander-advance', 'pong', 'wigly-hunt', 'xorlix']) {
+    await page.goto(`${BASE}/retro/${id}`, { waitUntil: 'domcontentloaded' });
+    const frame = page.frameLocator('iframe');
+    const boot = frame.locator('.ejs_start_button');
+    const reached = await boot.waitFor({ timeout: 90_000 }).then(() => true).catch(() => false);
+    if (!reached) { check(`${id} reaches its start screen`, false); continue; }
+    await boot.click();
+    const inner = page.frames().find((fr) => fr.url().includes('/retro/player.html'));
+    await inner.waitForFunction(() => window.EJS_emulator?.started === true, { timeout: 90_000 }).catch(() => {});
+    await page.waitForTimeout(4500);
+    check(`${id} boots the core`, (await inner.evaluate(() => window.EJS_emulator?.started === true)) === true);
+    const shot = await frame.locator('canvas').first().screenshot();
+    /* Count colours in the frame the browser composited. One or two colours is
+       what a blank LCD looks like; a running cartridge paints far more. */
+    const paint = await page.evaluate(async (b64) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${b64}`;
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.width;
+      c.height = img.height;
+      const g = c.getContext('2d');
+      g.drawImage(img, 0, 0);
+      const d = g.getImageData(0, 0, c.width, c.height).data;
+      const seen = new Set();
+      for (let i = 0; i < d.length; i += 4) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+      return { w: c.width, h: c.height, colours: seen.size };
+    }, shot.toString('base64'));
+    check(`${id} paints a live picture`, paint.colours >= 8 && Math.abs(paint.w / paint.h - 1.5) < 0.02, JSON.stringify(paint));
+  }
+}
+
 /* ------------------------------------------------- a ROM from your device */
 /* The same cartridge, handed over as a File exactly like a file input would:
    no upload, no server, validation on the client. */
 if (!PHONE) {
+  await page.goto(`${BASE}/retro`, { waitUntil: 'networkidle' });
+  const dropZone = page.locator('section[aria-labelledby="own-cart-h"] .panel').first();
+
+  /* The panel's copy says "drop a .gba file here", so a drop is a supported
+     gesture and has to behave exactly like the file picker — including saying
+     no to something that is not a cartridge. */
+  const junk = await page.evaluateHandle(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])], 'photo.gba'));
+    return dt;
+  });
+  await dropZone.dispatchEvent('drop', { dataTransfer: junk });
+  await page.waitForTimeout(500);
+  const refusal = await page.locator('[role=alert]').textContent().catch(() => '');
+  check('dropping a file that is not a GBA is refused', /cartridge header/i.test(refusal ?? '') && page.url().endsWith('/retro'), refusal?.slice(0, 60));
+
+  const dropped = await page.evaluateHandle(async () => {
+    const buf = await (await fetch('/retro/roms/simple-frogger.gba')).arrayBuffer();
+    const dt = new DataTransfer();
+    dt.items.add(new File([buf], 'frogger.gba'));
+    return dt;
+  });
+  await dropZone.dispatchEvent('drop', { dataTransfer: dropped });
+  const openedByDrop = await page.waitForURL(/\/retro\/local$/, { timeout: 20_000 }).then(() => true).catch(() => false);
+  check('dropping a real cartridge opens the local player', openedByDrop, page.url());
+
   await page.goto(`${BASE}/retro`, { waitUntil: 'networkidle' });
   const romPath = 'public/retro/roms/simple-frogger.gba';
   const before = requests.filter((u) => /\/retro\/local|\/upload/i.test(u)).length;

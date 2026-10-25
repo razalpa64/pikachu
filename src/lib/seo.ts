@@ -259,13 +259,17 @@ export const LIBRARY_FAQ: { q: string; a: string }[] = [
 
 /**
  * The retro shelf is data on disk (`public/retro/roms.json`) read at runtime, so
- * the three titles are mirrored here for structured data only. A unit test keeps
- * this list and the manifest in step — see `retro.test.ts`.
+ * the titles are mirrored here for structured data only. A unit test keeps this
+ * list and the manifest in step — see `retro.test.ts`.
  */
 export const RETRO_TITLES = [
   { id: 'alien-invasion', title: 'Alien Invasion' },
   { id: 'cyber-citadel', title: 'Cyber Citadel' },
   { id: 'simple-frogger', title: 'Simple Frogger' },
+  { id: 'lander-advance', title: 'Lander Advance' },
+  { id: 'pong', title: 'Pong' },
+  { id: 'wigly-hunt', title: 'Wigly Hunt' },
+  { id: 'xorlix', title: 'Xorlix' },
 ] as const;
 
 const STATIC_PAGES: Record<string, PageCopy> = {

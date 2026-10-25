@@ -19,7 +19,11 @@
       "marquee": "covers/alien-invasion-marquee.png",
       "bytes": 64680,
       "accent": "#7fd4ff",
-      "tags": ["shooter", "arcade", "single player"],
+      "tags": [
+        "shooter",
+        "arcade",
+        "single player"
+      ],
       "players": 1,
       "save": false
     },
@@ -39,7 +43,11 @@
       "marquee": "covers/cyber-citadel-marquee.png",
       "bytes": 9910776,
       "accent": "#ff7bd5",
-      "tags": ["action", "side-scroller", "single player"],
+      "tags": [
+        "action",
+        "side-scroller",
+        "single player"
+      ],
       "players": 1,
       "save": false
     },
@@ -59,7 +67,107 @@
       "marquee": null,
       "bytes": 47744,
       "accent": "#8ee06a",
-      "tags": ["arcade", "reflex", "single player"],
+      "tags": [
+        "arcade",
+        "reflex",
+        "single player"
+      ],
+      "players": 1,
+      "save": false
+    },
+    {
+      "id": "lander-advance",
+      "title": "Lander Advance",
+      "tagline": "Touch down on fumes",
+      "year": 2026,
+      "author": "edefelice",
+      "engine": "GBA C / devkitARM",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/gbadev-org/games/blob/master/entries/edefelice_lander-advance/files/lander-advance_jam/LICENSE",
+      "sourceUrl": "https://github.com/gbadev-org/games/tree/master/entries/edefelice_lander-advance",
+      "description": "A first-person lunar lander with a full cockpit: propellant gauges, RCS thrusters, a radar sweep and landing lights for night descents. Simulation mode flies it straight, Fast mode gives you a stronger ship and a shorter fall.",
+      "rom": "roms/lander-advance.gba",
+      "cover": "covers/lander-advance.png",
+      "marquee": null,
+      "bytes": 260716,
+      "accent": "#ff9d57",
+      "tags": [
+        "simulation",
+        "arcade",
+        "single player"
+      ],
+      "players": 1,
+      "save": false
+    },
+    {
+      "id": "pong",
+      "title": "Pong",
+      "tagline": "P1 versus the CPU",
+      "year": 2023,
+      "author": "ZeroDayArcade",
+      "engine": "GBA C / mode 3",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/ZeroDayArcade/Pong-Homebrew-GBA/blob/main/LICENSE",
+      "sourceUrl": "https://github.com/ZeroDayArcade/Pong-Homebrew-GBA",
+      "description": "The arcade original, rebuilt as a teaching cartridge: player one against the computer, scored on a bitmap rendered straight from C. Small enough to read in an evening, precise enough to be worth winning.",
+      "rom": "roms/pong.gba",
+      "cover": "covers/pong.png",
+      "marquee": null,
+      "bytes": 8884,
+      "accent": "#5b7cff",
+      "tags": [
+        "arcade",
+        "sports",
+        "single player"
+      ],
+      "players": 1,
+      "save": false
+    },
+    {
+      "id": "wigly-hunt",
+      "title": "Wigly Hunt",
+      "tagline": "Deeper and deeper",
+      "year": 2021,
+      "author": "rawbits2010",
+      "engine": "GBA C",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://github.com/rawbits2010/Wigly-Hunt/blob/main/LICENSE",
+      "sourceUrl": "https://github.com/rawbits2010/Wigly-Hunt",
+      "description": "Wigly is a worm who has to dive into the abyss, and the fish are hungry. Swim with the D-pad, lash left with A and right with B, and see how far down you get. Written in 48 hours for Ludum Dare 48.",
+      "rom": "roms/wigly-hunt.gba",
+      "cover": "covers/wigly-hunt.png",
+      "marquee": null,
+      "bytes": 57692,
+      "accent": "#6f8dff",
+      "tags": [
+        "arcade",
+        "reflex",
+        "single player"
+      ],
+      "players": 1,
+      "save": false
+    },
+    {
+      "id": "xorlix",
+      "title": "Xorlix",
+      "tagline": "Lights out, one pin at a time",
+      "year": 2014,
+      "author": "egillespie",
+      "engine": "GBA C / tile mode",
+      "license": "MIT",
+      "licenseUrl": "https://github.com/egillespie/xorlix-gba/blob/master/LICENSE",
+      "sourceUrl": "https://github.com/egillespie/xorlix-gba",
+      "description": "A toggle puzzle on parchment: every pin you flip changes its neighbours, and the board is only cleared when they all agree. Score, moves, bonus and a hi-score that outlives the reset.",
+      "rom": "roms/xorlix.gba",
+      "cover": "covers/xorlix.png",
+      "marquee": null,
+      "bytes": 37908,
+      "accent": "#e6d3a3",
+      "tags": [
+        "puzzle",
+        "logic",
+        "single player"
+      ],
       "players": 1,
       "save": false
     }

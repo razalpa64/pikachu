@@ -23,13 +23,14 @@ import { useStore } from '../lib/store';
  * HTML, one 240×160 PNG per game, and a manifest.
  */
 
-type Lens = 'all' | 'arcade' | 'action' | 'shooter';
+type Lens = 'all' | 'arcade' | 'action' | 'shooter' | 'puzzle';
 
 const LENSES: { value: Lens; label: string }[] = [
   { value: 'all', label: 'All carts' },
   { value: 'arcade', label: 'Arcade' },
   { value: 'action', label: 'Action' },
   { value: 'shooter', label: 'Shooters' },
+  { value: 'puzzle', label: 'Puzzles' },
 ];
 
 /* ------------------------------------------------------------------ cart */
@@ -150,6 +151,7 @@ export default function Retro() {
   const [lens, setLens] = useState<Lens>('all');
   const [localProblem, setLocalProblem] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const deferred = useDeferredValue(query);
   const searchRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -283,13 +285,37 @@ export default function Retro() {
 
       {/* ---------------- your own cartridge ---------------- */}
       <section aria-labelledby="own-cart-h" className="mt-9 grid gap-4 lg:grid-cols-[1.15fr_1fr]">
-        <Panel className="p-5 sm:p-6">
+        {/* The copy says "drop a file here", so dropping has to work. Files never
+            leave the tab: the drop handler hands the File to the same header
+            check the picker uses. */}
+        <Panel
+          className="p-5 sm:p-6 transition-colors"
+          style={dragging ? { borderColor: 'var(--color-volt-400)', background: '#fffbe6', boxShadow: 'inset 0 0 0 3px rgba(255, 210, 77, .35)' } : undefined}
+          onDragOver={(e: React.DragEvent) => { e.preventDefault(); if (!dragging) setDragging(true); }}
+          onDragLeave={(e: React.DragEvent) => {
+            const next = e.relatedTarget;
+            if (next instanceof Node && e.currentTarget.contains(next)) return;
+            setDragging(false);
+          }}
+          onDrop={(e: React.DragEvent) => {
+            e.preventDefault();
+            setDragging(false);
+            void onPickCartridge(e.dataTransfer.files?.[0]);
+          }}
+        >
           <p className="eyebrow text-volt-700 mb-1.5">Your own cartridge</p>
           <h2 id="own-cart-h" className="display text-[23px] text-cream-100 leading-tight">Play a ROM you already own</h2>
           <p className="text-[13px] text-cream-400 mt-2 max-w-[52ch]">
-            Drop a <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gba</code> file here
-            and it runs in this tab. The file is read by your browser, checked for a real GBA cartridge header, and handed
-            straight to the emulator — it is never uploaded, never saved, and disappears when you close the page.
+            {dragging ? (
+              'Let go and the cartridge drops straight into the emulator.'
+            ) : (
+              <>
+                Drop a <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gba</code> file
+                on this card — or pick one — and it runs in this tab. The file is read by your browser, checked for a real
+                GBA cartridge header, and handed straight to the emulator: never uploaded, never saved, gone when you close
+                the page.
+              </>
+            )}
           </p>
           <div className="flex flex-wrap items-center gap-2.5 mt-4">
             <input
@@ -339,7 +365,7 @@ export default function Retro() {
         <p className="eyebrow text-volt-700 mb-2">Under the hood</p>
         <h2 id="retro-faq" className="display text-[24px] sm:text-[28px] text-cream-100 leading-tight">How this shelf works</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-4">
-          {[
+          {([
             {
               t: 'Nothing loads until you press Insert',
               d: 'The GBA core (a 1 MB WebAssembly build of mGBA) and the emulator runtime are fetched only when a cartridge launches. Browsing this page downloads the manifest and one small PNG per card.',
@@ -347,6 +373,7 @@ export default function Retro() {
             {
               t: 'Every ROM is open source',
               d: 'Each cartridge links to the repository it was built from and the licence it ships under. Covers are frames captured from the running emulator, not artwork we invented.',
+              href: '/retro/licenses/NOTICE.txt',
             },
             {
               t: 'Isolated on purpose',
@@ -354,7 +381,7 @@ export default function Retro() {
             },
             {
               t: 'Save states in your browser',
-              d: 'Save and load live in your browser’s own storage, per cartridge. Battery-backed in-game saves depend on the ROM itself; the three titles here were tested for save states, not for battery saves.',
+              d: 'Save and load live in your browser’s own storage, per cartridge. Battery-backed in-game saves depend on the ROM itself; every title here was tested for save states, not for battery saves.',
             },
             {
               t: 'No BIOS required',
@@ -364,10 +391,20 @@ export default function Retro() {
               t: 'Audio needs one click',
               d: 'Browsers refuse to start audio before a gesture, which is why the player shows a Start button over the screen. Press it once and sound runs for the rest of the session.',
             },
-          ].map((item) => (
+          ] as { t: string; d: string; href?: string }[]).map((item) => (
             <div key={item.t} className="p-4 rounded-2xl border-2 border-ink-600 bg-ink-800">
               <h3 className="text-[13px] font-extrabold text-cream-100">{item.t}</h3>
               <p className="text-[12px] text-cream-400 mt-1 leading-snug">{item.d}</p>
+              {item.href && (
+                <a
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1 text-[11.5px] font-bold text-volt-700 hover:text-volt-600 underline decoration-volt-700/40 underline-offset-2"
+                >
+                  Full licence notices <Icon name="external" size={11} />
+                </a>
+              )}
             </div>
           ))}
         </div>

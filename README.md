@@ -92,9 +92,15 @@ registry would produce.
 
 ### The canonical origin
 
-`SITE_URL` in `src/lib/seo.ts` is `https://pikachu-bay.vercel.app` (the same host as
-`SITE_URL` in the static head, the sitemap and `robots.txt`). Change it in one place
-when a custom domain lands, then re-run `npm run seo`.
+The canonical origin is **`https://pikachu.invytra.in`** — the custom domain, not the
+`*.vercel.app` host. It lives in `SITE_URL` in `src/lib/seo.ts`, and `npm run seo`
+stamps it into `robots.txt`, `sitemap.xml` and the `<noscript>` block; the static
+`index.html` head carries it too. Change the constant, the head, and re-run
+`npm run seo`.
+
+The old `pikachu-bay.vercel.app` host still resolves (Vercel keeps the deployment
+URL), so `vercel.json` answers it with a **301 to the custom domain** — otherwise the
+same site would be indexed at two addresses and split its own signals.
 
 ### Honest limits
 

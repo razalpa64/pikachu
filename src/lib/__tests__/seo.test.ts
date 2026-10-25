@@ -157,7 +157,7 @@ describe('sitemap and robots', () => {
 describe('the static shell', () => {
   it('has the head tags a non-JS crawler needs', () => {
     expect(indexHtml).toContain('<html lang="en-GB">');
-    expect(indexHtml).toMatch(/<link rel="canonical" href="https:\/\/pikachu-bay\.vercel\.app\/" \/>/);
+    expect(indexHtml).toContain(`<link rel="canonical" href="${SITE_URL}/" />`);
     expect(indexHtml).toContain('property="og:image"');
     expect(indexHtml).toContain('name="twitter:card" content="summary_large_image"');
     expect(indexHtml).toContain('application/ld+json');

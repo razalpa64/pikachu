@@ -58,7 +58,7 @@ export default function SoloShell({
             <span className="hidden sm:inline">Library</span>
           </Button>
           <div className="min-w-0">
-            <p className="display text-[14px] sm:text-[15px] text-cream-100 leading-tight truncate">{game.title}</p>
+            <h1 className="display text-[14px] sm:text-[15px] text-cream-100 leading-tight truncate">{game.title}</h1>
             <p className="hidden sm:block text-[10.5px] uppercase tracking-wider font-bold truncate" style={{ color: game.accent }}>{game.tagline}</p>
           </div>
           <div className="flex-1" />

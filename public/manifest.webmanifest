@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "Pikachu Arcade — an arcade for two",
+  "short_name": "Pikachu",
+  "description": "Twenty free browser games for one or two people. Private rooms with a five-letter code, no downloads, no accounts.",
+  "lang": "en-GB",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fff8ec",
+  "theme_color": "#fff8ec",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    { "src": "/og/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/og/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/og/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

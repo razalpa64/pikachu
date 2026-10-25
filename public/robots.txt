@@ -1,0 +1,17 @@
+# PIKACHU — an arcade for two
+User-agent: *
+Allow: /
+# Private, one-off and device-local screens: nothing to index, but crawl the
+# links inside them so a shared room link is not treated as a dead end.
+Disallow: /room/
+Disallow: /profile
+Disallow: /settings
+
+# Social and preview fetchers need the Open Graph tags, never a rate limit.
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+Sitemap: https://pikachu-bay.vercel.app/sitemap.xml

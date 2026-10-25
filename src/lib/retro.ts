@@ -75,7 +75,7 @@ const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ROM_RE = /^roms\/[a-z0-9]+(?:-[a-z0-9]+)*\.gba$/;
 const COVER_RE = /^covers\/[a-z0-9]+(?:-[a-z0-9]+)*\.png$/;
 const ACCENT_RE = /^#[0-9a-fA-F]{6}$/;
-const MAX_ROM_BYTES = 32 * 1024 * 1024;
+export const MAX_ROM_BYTES = 32 * 1024 * 1024;
 
 /**
  * The first 156 bytes of every GBA cartridge after the entry-point branch: the
@@ -202,13 +202,20 @@ export const romUrlFor = (game: RetroGame): string => `/retro/${game.rom}`;
 export const coverUrlFor = (game: RetroGame): string => `/retro/${game.cover}`;
 export const marqueeUrlFor = (game: RetroGame): string | null => (game.marquee ? `/retro/${game.marquee}` : null);
 
-/** Reads a ROM's first 0xC0 bytes and checks the cartridge header. */
+/**
+ * Reads a ROM's first 0xC0 bytes and checks the cartridge header: the Nintendo
+ * logo, or — for homebrew that deliberately blanks it, like `grimlight` — the
+ * ARM branch the BIOS jumps through at 0x00. Same rule the importer applies, so
+ * every cartridge the shelf hosts is a cartridge the player will accept back.
+ */
 export function looksLikeGbaRom(head: Uint8Array): boolean {
   if (head.length < 0xc0) return false;
-  for (let i = 0; i < GBA_LOGO.length; i += 1) {
-    if (head[4 + i] !== GBA_LOGO[i]) return false;
+  let logo = true;
+  for (let i = 0; i < GBA_LOGO.length && logo; i += 1) {
+    if (head[4 + i] !== GBA_LOGO[i]) logo = false;
   }
-  return true;
+  if (logo) return true;
+  return head[3] === 0xea;
 }
 
 /**
@@ -240,8 +247,10 @@ export type CartridgeKind = 'gba' | 'gb';
  * handheld — the shelf itself stays GBA-only.
  */
 export function detectCartridge(head: Uint8Array): CartridgeKind | null {
-  if (looksLikeGbaRom(head)) return 'gba';
+  /* Game Boy first: its logo sits at 0x0104 and is strict, so a Game Boy dump
+     can never be mistaken for a GBA build that happens to blank its logo. */
   if (looksLikeGbRom(head)) return 'gb';
+  if (looksLikeGbaRom(head)) return 'gba';
   return null;
 }
 

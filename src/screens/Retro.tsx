@@ -12,6 +12,14 @@ import {
   type RetroGame,
   type RetroLibrary,
 } from '../lib/retro';
+import {
+  describeCartridge,
+  forgetCartridge,
+  openRememberedCartridge,
+  rememberCartridge,
+  rememberedCartridge,
+  type RememberedCartridge,
+} from '../lib/localCartridge';
 import { Button, ErrorState, Icon, Panel, Segmented } from '../components/ui';
 import { useStore } from '../lib/store';
 
@@ -25,6 +33,13 @@ import { useStore } from '../lib/store';
  */
 
 type Lens = 'all' | 'arcade' | 'action' | 'shooter' | 'puzzle';
+
+/** Why a cartridge could not be kept in this browser. Never blocks playing it. */
+const STORAGE_NOTE: Record<'too-big' | 'empty' | 'storage', string> = {
+  'too-big': 'That cartridge is too big to keep in this browser, so it will play once and then be gone on reload.',
+  empty: 'That file is empty, so there is nothing to keep.',
+  storage: 'This browser refused to store the cartridge (private mode, or no space left), so it plays now but will not survive a reload.',
+};
 
 const LENSES: { value: Lens; label: string }[] = [
   { value: 'all', label: 'All carts' },
@@ -156,6 +171,8 @@ export default function Retro() {
   const [localProblem, setLocalProblem] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [remembered, setRemembered] = useState<RememberedCartridge | null>(null);
+  const [storageNote, setStorageNote] = useState<string | null>(null);
   const deferred = useDeferredValue(query);
   const searchRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -165,6 +182,7 @@ export default function Retro() {
     loadRetroLibrary()
       .then((lib) => { if (alive) setLibrary(lib); })
       .catch(() => { if (alive) setError('The cartridge shelf could not be loaded.'); });
+    rememberedCartridge().then((cart) => { if (alive) setRemembered(cart); }).catch(() => {});
     return () => { alive = false; };
   }, []);
 
@@ -192,16 +210,48 @@ export default function Retro() {
   const onPickCartridge = async (file: File | undefined) => {
     if (!file) return;
     setLocalProblem(null);
+    setStorageNote(null);
     setChecking(true);
     const problem = await inspectLocalCartridge(file);
     const kind = problem ? null : await cartridgeKind(file);
+    if (problem) {
+      setChecking(false);
+      setLocalProblem(LOCAL_CARTRIDGE_MESSAGE[problem]);
+      return;
+    }
+    /* Keep a copy in this browser so a reload does not eject the cartridge —
+       and so its save file has something to belong to. Failure is not fatal:
+       the cartridge still plays, this browser just will not remember it. */
+    const stored = await rememberCartridge(file, kind ?? 'gba');
     setChecking(false);
-    if (problem) { setLocalProblem(LOCAL_CARTRIDGE_MESSAGE[problem]); return; }
+    setRemembered(stored.ok ? stored.cartridge : null);
+    if (!stored.ok) setStorageNote(STORAGE_NOTE[stored.reason]);
     sfx('select');
     // The File stays in this tab's memory: a route-state hand-off, not an upload.
     nav('/retro/local', {
       state: { name: file.name.replace(/\.(gba|agb|bin|gb|gbc)$/i, ''), file, kind: kind ?? 'gba' },
     });
+  };
+
+  const continueRemembered = async () => {
+    const cart = await openRememberedCartridge();
+    if (!cart) {
+      setRemembered(null);
+      setLocalProblem(
+        'This browser no longer has that cartridge stored — it may have been cleared, or the file was too big for the space left. Drop it in again.',
+      );
+      return;
+    }
+    sfx('select');
+    nav('/retro/local', {
+      state: { name: cart.file.name.replace(/\.(gba|agb|bin|gb|gbc)$/i, ''), file: cart.file, kind: cart.kind },
+    });
+  };
+
+  const eject = async () => {
+    await forgetCartridge();
+    setRemembered(null);
+    setStorageNote(null);
   };
 
   return (
@@ -321,11 +371,30 @@ export default function Retro() {
                 <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gb</code> or{' '}
                 <code className="font-mono text-[12px] px-1 rounded bg-ink-850 border border-ink-600">.gbc</code> file on
                 this card — or pick one — and it runs in this tab. The file is read by your browser, checked for a real
-                cartridge header, and handed straight to the emulator: never uploaded, never saved, gone when you close
-                the page.
+                cartridge header, and kept in <em>this</em> browser so a reload does not eject it, along with its save.
+                It is never uploaded anywhere, and Eject removes it.
               </>
             )}
           </p>
+          {remembered && (
+            <div className="mt-3.5 rounded-lg border border-ink-600 bg-ink-900/60 px-3 py-2.5">
+              <p className="text-[11px] font-bold uppercase tracking-[.07em] text-cream-500">In the handheld</p>
+              <p className="text-[12.5px] text-cream-200 mt-0.5 break-words">{describeCartridge(remembered)}</p>
+              <div className="flex flex-wrap items-center gap-2 mt-2.5">
+                <Button size="sm" onClick={() => { void continueRemembered(); }} icon={<Icon name="play" size={12} />}>
+                  Continue
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => { void eject(); }}
+                  className="text-[11.5px] font-bold text-cream-500 hover:text-blush-600 underline underline-offset-2"
+                >
+                  Eject cartridge
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2.5 mt-4">
             <input
               ref={fileRef}
@@ -335,12 +404,15 @@ export default function Retro() {
               onChange={(e) => { void onPickCartridge(e.target.files?.[0]); e.currentTarget.value = ''; }}
             />
             <Button onClick={() => fileRef.current?.click()} icon={<Icon name="plus" size={14} />} disabled={checking}>
-              {checking ? 'Checking cartridge…' : 'Choose a ROM'}
+              {checking ? 'Checking cartridge…' : remembered ? 'Choose another' : 'Choose a ROM'}
             </Button>
-            <span className="text-[11.5px] text-cream-500">GBA · GB · GBC · up to 32 MB · stays on your device</span>
+            <span className="text-[11.5px] text-cream-500">GBA · GB · GBC · up to 32 MB · stays in this browser</span>
           </div>
           {localProblem && (
             <p role="alert" className="mt-3 text-[12.5px] font-bold text-blush-600">{localProblem}</p>
+          )}
+          {storageNote && (
+            <p role="status" className="mt-3 text-[12px] text-cream-400">{storageNote}</p>
           )}
           <p className="text-[11px] text-cream-500 mt-3">
             Please only load ROMs you are legally allowed to play. This site hosts none of them for you.

@@ -482,6 +482,67 @@ if (!PHONE) {
   const romBytes = readFileSync(romPath).length;
   check('cartridge size is unchanged in memory', romBytes === 47_744);
 
+  /* -------------------------------- the cartridge is kept in this browser */
+  /* A dropped cartridge used to be gone on reload, which also threw away the
+     save file attached to it. It is now stored in this browser's IndexedDB, so
+     these three checks are the whole promise: it is still there, it starts
+     without picking the file again, and Eject really removes it. */
+  await page.goto(`${BASE}/retro`, { waitUntil: 'networkidle' });
+  const ownPanel = page.locator('section[aria-labelledby="own-cart-h"] .panel').first();
+  await page.waitForTimeout(600);
+  const panelText = (await ownPanel.textContent()) ?? '';
+  check('the shelf remembers the cartridge it was given', /In the handheld/i.test(panelText) && /Simple Frogger/i.test(panelText), panelText.match(/In the handheld[\s\S]{0,80}/)?.[0]);
+
+  const beforeContinue = requests.length;
+  await page.getByRole('button', { name: /^Continue$/ }).click();
+  await page.waitForURL(/\/retro\/local$/, { timeout: 20_000 });
+  const continuedFrame = page.frameLocator('iframe');
+  await continuedFrame.locator('.ejs_start_button').waitFor({ timeout: 90_000 });
+  await continuedFrame.locator('.ejs_start_button').click();
+  await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .waitForFunction(() => window.EJS_emulator?.started === true, { timeout: 60_000 })
+    .catch(() => {});
+  const continuedStarted = await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .evaluate(() => window.EJS_emulator?.started === true);
+  check('Continue starts the stored cartridge without picking it again', continuedStarted === true);
+  check(
+    'and continuing uploads nothing',
+    requests.slice(beforeContinue).filter((u) => /\/retro\/local|\/upload/i.test(u)).length === 0,
+  );
+
+  /* A hard reload of the player route has no route state at all: everything it
+     needs has to come back out of the browser's own store. */
+  await page.reload({ waitUntil: 'networkidle' });
+  const reloadedFrame = page.frameLocator('iframe');
+  await reloadedFrame.locator('.ejs_start_button').waitFor({ timeout: 90_000 });
+  await reloadedFrame.locator('.ejs_start_button').click();
+  await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .waitForFunction(() => window.EJS_emulator?.started === true, { timeout: 60_000 })
+    .catch(() => {});
+  const reloadedStarted = await page
+    .frames()
+    .find((fr) => fr.url().includes('/retro/player.html'))
+    .evaluate(() => window.EJS_emulator?.started === true);
+  check('a hard reload of the player still has the cartridge', reloadedStarted === true);
+
+  await page.goto(`${BASE}/retro`, { waitUntil: 'networkidle' });
+  await page.getByRole('button', { name: /Eject cartridge/i }).click();
+  await page.waitForTimeout(500);
+  const afterEject = (await ownPanel.textContent()) ?? '';
+  check('Eject takes the cartridge out of the browser', !/In the handheld/i.test(afterEject));
+  await page.goto(`${BASE}/retro/local`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(800);
+  check(
+    'with nothing stored the player says so instead of hanging',
+    /No cartridge in the handheld/i.test((await page.locator('body').innerText()) ?? ''),
+  );
+
   /* ------------------------------------------- a Game Boy cartridge, too */
   /* The mGBA core runs GB/GBC as well, so a dump of a Game Boy cartridge is
      accepted and plays in the same handheld. The probe cartridge is *generated

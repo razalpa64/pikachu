@@ -584,17 +584,90 @@ binaries executed by a WebAssembly emulator.
 | **Wigly Hunt** | rawbits2010 | GPL-3.0 | 56 KB | arcade |
 | **Xorlix** | egillespie | MIT | 37 KB | puzzle |
 
+Those seven were picked by hand. The rest of the shelf is **imported** from
+[`gbadev-org/games`](https://github.com/gbadev-org/games), the JSON database
+behind Homebrew Hub, by `npm run retro:import` — see
+[the importer](#the-importer) below.
+
+| Cartridge | Author | Licence | ROM | Genre |
+|---|---|---|---|---|
+| **Apotris** | akouzoukos | GPL-3.0-only | 4.0 MB | puzzle |
+| **Attack on Voxelburg** | nuclear | GPL-3.0-or-later | 808 KB | shooter |
+| **Cat Fish** | goldcube | MIT | 1.3 MB | arcade |
+| **Galactic Quest** | origamiscienceguy | GPL-3.0-only | 2.6 MB | strategy |
+| **GBADEV Containers** | BreadMakesYouFull | Zlib | 2.5 MB | demo-ish arcade |
+| **GBAtris** | John Tsiombikas & Greig Stewart | GPL-3.0-or-later | 2.2 MB | puzzle |
+| **GRIMLIGHT: The Hollow Bell** | retroromrunner | MIT | 51 KB | puzzle |
+| **MeteoRain (GBA Jam 2021)** | Dr. Ludos | MIT | 1.6 MB | arcade |
+| **Solar Guard** | Deft Spade | GPL-3.0-only | 4.1 MB | shooter |
+| **The Hat Chooses the Wizard** | Corwin & Gwilym Kuiper | MPL-2.0 | 2.0 MB | arcade |
+| **The purple night** | Corwin & Gwilym Kuiper | MPL-2.0 | 8.0 MB | platformer |
+| **uCity Advance** | AntonioND | GPL-3.0-or-later | 1.8 MB | city sim |
+| **xniq** | exelotl, Rik, Pyro_Pyro | MIT | 1.4 MB | puzzle |
+
 Every one is a freely redistributable homebrew build from a public repository —
 `public/retro/roms.json` links each entry to its source and its licence, and the
 licence text is committed alongside the ROMs in `public/retro/licenses/`
-(`NOTICE.txt` is the per-cartridge provenance list). **No commercial ROMs are
-hosted, downloaded or bundled anywhere in this repository** — not from a ROM
-site, not as a "sample", not behind a flag.
+(`NOTICE.txt` is the hand-picked provenance list, `imported.txt` the archive one,
+with a per-entry `entry`/`upstream` URL and the SHA-256 of the exact bytes).
+**No commercial ROMs are hosted, downloaded or bundled anywhere in this
+repository** — not from a ROM site, not as a "sample", not behind a flag.
 
-The cover images are not artwork anyone drew: each one is a 240×160 frame the
-emulator itself produced while that cartridge was running, screenshotted from the
-canvas at 2× and committed at the GBA's native size. Cards with a `marquee` entry
-cross-fade to a second frame on hover.
+The cover images are not artwork anyone drew, and no author's screenshot is
+re-hosted: each one is a 240×160 frame the emulator itself produced while that
+cartridge was running, captured from the canvas at 2× and committed at the GBA's
+native size. Cards with a `marquee` entry cross-fade to a second frame on hover.
+
+### The importer
+
+`npm run retro:import` is an admin command, not a route: it needs
+`PIKACHU_MAINTAINER=1`, a GitHub token and a Chromium, and it writes files a
+human then commits. It never runs in the deployed site.
+
+```bash
+PIKACHU_MAINTAINER=1 npm run retro:import -- --dry-run      # plan only
+PIKACHU_MAINTAINER=1 npm run retro:import                   # download + playtest
+PIKACHU_MAINTAINER=1 npm run retro:import -- --retry-failed  # after a failure
+PIKACHU_MAINTAINER=1 npm run retro:import -- --retest        # re-test the shelf
+```
+
+A run, in order: read the archive's git tree (one request); read `game.json` for
+entries whose blob is not already cached; read the entry's own licence file when
+it declares no SPDX id; decide per entry whether the cartridge may live here;
+download only the authorised ones; verify each; boot each one in Chromium
+against this site's own player; then write the shelf, the catalogue, the
+generated id list and the notices.
+
+Three rules hold the whole thing up:
+
+* **The archive licence is not a game licence.** `gbadev-org/games` is GPL-3.0,
+  but that covers the database. A cartridge is imported only when *its own*
+  entry declares a redistributable licence (`gameLicense`/`license`, or a
+  GPL/MPL/MIT/Zlib/BSD/Apache/CC-BY licence file in the entry folder). No
+  declaration, an NC/ND licence, a proprietary notice, a fan game of somebody
+  else's character, or a cartridge whose assets are licensed separately from its
+  code — all of those are skipped, with the reason recorded in
+  `public/retro/catalog.json`.
+* **A download is not an import.** Each file is checked against the archive's git
+  blob hash and the GBA cartridge header before anything is written, then
+  playtested: the LCD has to repaint after a START/A/D-pad sequence, or the
+  cartridge never appears on the shelf. Failures land in
+  `data/retro/import-state.json` with a retryable reason, and `--retry-failed`
+  picks them up.
+* **Metadata is separate from ROMs.** `data/retro/metadata.json` caches the
+  archive's `game.json` and licence text keyed by git blob sha, so re-planning the
+  catalogue costs no network traffic and re-testing a shelf costs no downloads.
+  The ROMs live in `public/retro/roms/`, and the catalogue that describes them in
+  `public/retro/catalog.json`.
+
+The archive's own census, at the commit in `data/retro/last-report.json`:
+251 entries, 240 GBA games, 14 of them authorised to be redistributed here, 13
+importable under this shelf's 8 MB-per-cartridge budget, 13 downloaded, 13
+tested playable, 0 failed. The other 237 are skipped: 215 declare no licence at
+all, 10 are tools or demos rather than games, 4 ship no `.gba`, 3 are fan games
+of third-party characters, 2 are over the size budget, 1 is not a GBA build, 1
+licenses its code but not the music in the ROM, and 1 declares a licence the
+importer does not recognise.
 
 ### How it is wired
 
@@ -605,9 +678,18 @@ public/retro/
   data/                EmulatorJS runtime: loader.js, emulator.min.{js,css},
                        compression/, localization/en-US.json,
                        cores/mgba-wasm.data + cores/reports/mgba.json
+  catalog.json         every discovered entry, its licence and its verdict
   roms/*.gba           the cartridges
   covers/*.png         real captured frames
-  licenses/*.txt       MIT texts for the ROMs and for EmulatorJS
+  licenses/*.txt       licence texts for the ROMs, imported.txt + NOTICE.txt,
+                       and EmulatorJS's own MIT licence
+data/retro/
+  metadata.json        cached game.json + licence text, keyed by git blob sha
+  import-state.json    installed cartridges and retryable failures
+  last-report.json     the counts a run actually produced
+src/lib/gbadevCatalog.ts   licence rules, entry parsing, the import gate
+src/lib/retroImport.ts     planner, metadata cache, state, shelf rendering
+scripts/retro/import.ts    the admin command
 src/lib/retro.ts       manifest validation, cartridge-header check, shared types
 src/screens/Retro.tsx  /retro — the searchable shelf
 src/screens/RetroPlayer.tsx  /retro/:id — the console

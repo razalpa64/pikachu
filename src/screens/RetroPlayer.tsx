@@ -356,7 +356,7 @@ export default function RetroPlayer() {
         <div className="gb-head-title">
           <p className="gb-head-name">{title}</p>
           <p className="gb-head-meta">
-            Game Boy Advance{game ? ` · ${game.author} · ${game.year}` : ' · from your device'}
+            Game Boy Advance{game ? ` · ${game.author}${game.year ? ` · ${game.year}` : ''}` : ' · from your device'}
           </p>
         </div>
 
@@ -558,7 +558,7 @@ export default function RetroPlayer() {
                   <dl className="gb-facts">
                     <div><dt>Licence</dt><dd>{game.license}</dd></div>
                     <div><dt>ROM</dt><dd>{formatBytes(game.bytes)}</dd></div>
-                    <div><dt>Year</dt><dd>{game.year}</dd></div>
+                    <div><dt>Year</dt><dd>{game.year ?? '—'}</dd></div>
                     <div><dt>Players</dt><dd>{game.players === 2 ? '2' : '1'}</dd></div>
                   </dl>
                 )}
@@ -567,7 +567,7 @@ export default function RetroPlayer() {
                     <Icon name="external" size={13} /> Source &amp; licence
                   </a>
                 )}
-                {game && !game.save && (
+                {game && game.save === false && (
                   <p className="gb-plate-note">
                     {game.title} does not write battery saves, so progress lives in the save states on the
                     rail rather than in the cartridge.

@@ -87,9 +87,17 @@ check(
   (await cards.count()) === manifest.games.length,
   `${await cards.count()} of ${manifest.games.length} cards`,
 );
-const coversLoaded = await page.evaluate(() =>
-  [...document.querySelectorAll('article img')].every((i) => i.complete && i.naturalWidth === 240),
-);
+/* Covers below the fold are `loading="lazy"`, and a phone only ever shows a
+   few cards at once — so ask for them all, wait for the decode, then judge. */
+const coversLoaded = await page.evaluate(async () => {
+  const images = [...document.querySelectorAll('article img')];
+  for (const img of images) {
+    img.loading = 'eager';
+    if (!img.complete) img.src = img.getAttribute('src');
+  }
+  await Promise.all(images.map((img) => img.decode().catch(() => undefined)));
+  return images.length > 0 && images.every((img) => img.naturalWidth === 240 && img.naturalHeight === 160);
+});
 check('every cover is a real 240×160 frame', coversLoaded);
 
 const search = page.getByRole('searchbox', { name: /search retro cartridges/i });
@@ -100,12 +108,21 @@ await search.fill('');
 await page.waitForTimeout(250);
 await page.getByRole('radio', { name: 'Shooters' }).click();
 await page.waitForTimeout(250);
-check('tag lens narrows the shelf', (await cards.count()) === 1);
+const shooterCount = await cards.count();
+check(
+  'tag lens narrows the shelf',
+  shooterCount > 0 && shooterCount < manifest.games.length,
+  `${shooterCount} of ${manifest.games.length}`,
+);
 await page.getByRole('radio', { name: 'Puzzles' }).click();
 await page.waitForTimeout(250);
-check('puzzle lens finds the puzzle cartridge', (await cards.count()) === 1, `${await cards.count()} cards`);
+const puzzleCount = await cards.count();
+check('puzzle lens finds the puzzle cartridges', puzzleCount > 0, `${puzzleCount} cards`);
+check('a known puzzle cartridge is under the puzzle lens', (await cards.filter({ hasText: 'Apotris' }).count()) === 1);
+check('and a shooter is not', (await cards.filter({ hasText: 'Attack on Voxelburg' }).count()) === 0);
 await page.getByRole('radio', { name: 'All carts' }).click();
 await page.waitForTimeout(200);
+check('the lens goes back to the whole shelf', (await cards.count()) === manifest.games.length);
 
 /* ------------------------------------------------------- launch a game */
 const requests = [];

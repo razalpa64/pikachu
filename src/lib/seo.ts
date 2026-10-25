@@ -16,6 +16,7 @@
  * structured data, which is what actually survives a Google update.
  */
 
+import { RETRO_SHELF } from './retroShelf.generated';
 import { GAMES, gameBySlug, GENRE_LABEL } from '../games/registry';
 
 /** Counted from the registry, never typed by hand — the headline has to stay true
@@ -258,19 +259,12 @@ export const LIBRARY_FAQ: { q: string; a: string }[] = [
 ];
 
 /**
- * The retro shelf is data on disk (`public/retro/roms.json`) read at runtime, so
- * the titles are mirrored here for structured data only. A unit test keeps this
- * list and the manifest in step — see `retro.test.ts`.
+ * The retro shelf is data on disk (`public/retro/roms.json`) read at runtime. The
+ * list here is generated from that manifest by `npm run retro:import`, so
+ * structured data and the sitemap never list a cartridge that is not playable.
+ * A unit test keeps the two in step — see `retro.test.ts`.
  */
-export const RETRO_TITLES = [
-  { id: 'alien-invasion', title: 'Alien Invasion' },
-  { id: 'cyber-citadel', title: 'Cyber Citadel' },
-  { id: 'simple-frogger', title: 'Simple Frogger' },
-  { id: 'lander-advance', title: 'Lander Advance' },
-  { id: 'pong', title: 'Pong' },
-  { id: 'wigly-hunt', title: 'Wigly Hunt' },
-  { id: 'xorlix', title: 'Xorlix' },
-] as const;
+export const RETRO_TITLES = RETRO_SHELF;
 
 const STATIC_PAGES: Record<string, PageCopy> = {
   '/': {

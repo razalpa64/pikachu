@@ -46,6 +46,8 @@ VITE_RELAY_URL=                # e.g. wss://your-relay.onrender.com/rt (for Verc
 RELAY_PORT=8787
 ```
 
+Motion, sound and interaction rules are written down in [`docs/motion.md`](docs/motion.md) — four durations, one scene animation per screen, and the reduced-motion contract every new animation has to live inside.
+
 See [`supabase/README.md`](supabase/README.md) for the schema, RLS policies and migration.
 When the two `VITE_SUPABASE_*` vars are absent the SDK is never downloaded at all — the import is
 dynamic and gated, so the default setup ships ~200 kB less JavaScript.

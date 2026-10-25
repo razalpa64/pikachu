@@ -106,6 +106,14 @@ body {
   background-size: auto, auto, auto, 22px 22px;
   background-attachment: fixed, fixed, fixed, fixed;
 }
+/* `background-attachment: fixed` forces the compositor to repaint the whole
+   viewport's worth of gradients on every scroll frame, which is exactly the kind
+   of idle GPU burn a phone cannot afford. Keep it on desktop where it costs
+   nothing visible; let it scroll on small screens and on the performance tier. */
+@media (max-width: 900px), (pointer: coarse) {
+  body { background-attachment: scroll, scroll, scroll, scroll; }
+}
+html[data-quality="performance"] body { background-attachment: scroll, scroll, scroll, scroll; }
 img { -webkit-user-drag: none; user-select: none; }
 button { font-family: inherit; }
 

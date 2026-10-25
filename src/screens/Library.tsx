@@ -120,8 +120,9 @@ export default function Library() {
 
       {/* Controls. Sticky under the header: on a long library page the search box
           used to scroll away, so narrowing 20 games meant scrolling back to the
-          top to type. `top` matches the header's 58px row plus its 3px XP line. */}
-      <div className="sticky top-[61px] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-3 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
+          top to type. `top` is the same 58 px every other sticky bar in the app uses, so the search
+          box tucks under the header instead of leaving a sliver of page visible. */}
+      <div className="sticky top-[58px] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-3 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
         <div className="flex flex-col lg:flex-row gap-2.5 lg:items-center">
           <div className="relative flex-1 min-w-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-500"><Icon name="search" size={16} /></span>

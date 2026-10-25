@@ -19,7 +19,7 @@ import { GAMES } from '../registry';
 import type { Slot, TurnGameRules } from '../types';
 
 /** Free-form or clock-driven games: no enumerable legal move to drive them with. */
-const NOT_TURN_BASED = new Set(['sketch', 'reaction']);
+const NOT_TURN_BASED = new Set(['sketch', 'reaction', 'bluff']);
 
 /** Deterministic RNG so a failure is reproducible from the seed in the message. */
 function rng(seed: number) {

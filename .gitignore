@@ -33,6 +33,7 @@ dist-ssr
 art-src/game/
 art-src/piece/
 art-src/run/
+art-src/berry/
 
 # Relay match history
 .pikachu-data

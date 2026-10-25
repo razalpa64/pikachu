@@ -200,6 +200,37 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'The imposter should give a word that could belong to any of a dozen answers. Vague, never wrong.',
   },
+  spyfall: {
+    goal: 'Work out where you are and who does not know, before the vote — while the spy tries to blend in and survive long enough to name the location.',
+    steps: [
+      'Three to eight players, one phone. Each person is dealt a private card: either a role at a secret location, or nothing at all — that person is the spy.',
+      'Pass the phone round. Cards are only ever shown to their owner; the screen stays covered between players.',
+      'Take turns asking each other questions out loud about the place. Answer in character — specific enough to prove you know it, vague enough that the spy cannot learn it.',
+      'When the clock runs out, or someone calls the vote, everyone votes in secret on one device. A clear most-voted player is accused; a tie accuses nobody.',
+      'Caught spy: every other player scores a point. Escaped spy: the spy scores two — plus one more if they can name the location in a final guess.',
+    ],
+    tip: 'Ask questions whose answers only make sense in this place, and answer with something only a local would say. The spy has to bluff every answer at once, so press the person who keeps answering with questions.',
+  },
+  bluff: {
+    goal: 'Write a lie convincing enough to steal a vote, and stay sharp enough to spot the real answer among the inventions.',
+    steps: [
+      'Every round starts with a real trivia question. Both players invent a wrong answer — something that sounds plausible — and nobody sees the other lie.',
+      'The truth and both lies are shuffled into one ballot. Pick the answer you believe; you are not allowed to vote for your own lie.',
+      'Voting for the truth is worth two points. Every vote your own lie steals is worth one point to you.',
+      'After the vote the ballot opens up: the true answer is marked, and so is whose lie was whose.',
+    ],
+    tip: 'A lie in the right shape wins: same length and same kind of answer as the truth. A number in the hundreds beats a vague amount, and a near-miss beats an invention.',
+  },
+  berry: {
+    goal: 'Fill the picnic basket with ripe berries for a minute without taking a rotten one, and keep a streak alive for the bonus.',
+    steps: [
+      'Slide a thumb — or hold the arrow keys — to move the basket under the falling berries.',
+      'A ripe berry that lands in the basket scores. Every fourth one in a row is worth an extra point, up to five.',
+      'A rotten berry in the basket costs one of three lives. A ripe one you let fall just resets the streak, so patience is cheap.',
+      'The run ends when the clock does or the lives are gone; the score is the berries you actually caught.',
+    ],
+    tip: 'Do not chase every berry. A rotten one falling toward you is not a problem — moving out of its way is always cheaper than catching it.',
+  },
   daily: {
     goal: 'Reproduce the hidden picture from its row and column counts alone — one grid a day, the same grid for everyone.',
     steps: [

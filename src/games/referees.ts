@@ -13,6 +13,8 @@ import { reversiRules } from './reversi/rules';
 import { gomokuRules } from './gomoku/rules';
 import { dotsRules } from './dots/rules';
 import { mancalaRules } from './mancala/rules';
+import { wyrRules } from './wyr/rules';
+import { wordBombRules } from './wordbomb/rules';
 
 /**
  * The server's rulebook, in one place.
@@ -37,4 +39,6 @@ export const REFEREES: Record<string, TurnGameRules<any, any>> = {
   gomoku: gomokuRules,
   dots: dotsRules,
   mancala: mancalaRules,
+  wyr: wyrRules,
+  wordbomb: wordBombRules,
 };

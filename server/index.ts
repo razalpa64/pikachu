@@ -33,8 +33,16 @@ const HISTORY_FILE = path.join(DATA_DIR, 'matches.json');
 /* The referee list lives in src/games/referees.ts so the browser, the server and
    the catalogue test all read the same map. */
 const RULES = REFEREES;
-/** games whose state advances on a server timer */
-const TICKING = new Set(['reaction', 'chess', 'trivia', 'sketch']);
+/**
+ * Games whose state advances on a server timer.
+ *
+ * `wyr` and `wordbomb` belong here for a reason worth spelling out: both have a
+ * deadline that *ends a turn even if nobody touches anything*. Would You
+ * Rather reveals and moves on when its window closes; Word Bomb strikes the
+ * player who lets the fuse reach zero. If the relay does not tick them, a
+ * silent opponent stalls the match forever and the clock is decoration.
+ */
+const TICKING = new Set(['reaction', 'chess', 'trivia', 'sketch', 'wyr', 'wordbomb']);
 
 /* ------------------------------------------------------------------ model */
 interface Member {

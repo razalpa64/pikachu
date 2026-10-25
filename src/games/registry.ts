@@ -227,6 +227,35 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    id: 'wordbomb', slug: 'word-bomb', title: 'Word Bomb',
+    tagline: 'Keep the fuse moving',
+    description: 'A letter is lit and a fuse is burning. Answer with a word that starts with that letter — the last letter of your word becomes the next light — before the clock runs out. Two strikes and it goes off.',
+    genre: 'puzzle', modes: ['ai', 'online'], players: [1, 2], duration: 4,
+    accent: '#28759c', artKey: 'wordbomb', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'turnMs', label: 'Fuse', type: 'select', default: 20000, options: [
+        { value: 30000, label: 'Gentle · 30s' }, { value: 20000, label: 'Normal · 20s' }, { value: 12000, label: 'Cruel · 12s' },
+      ] },
+      { key: 'rounds', label: 'Turns', type: 'select', default: 12, options: [
+        { value: 8, label: 'Eight turns' }, { value: 12, label: 'Twelve turns' }, { value: 20, label: 'Twenty turns' },
+      ] },
+    ],
+  },
+  {
+    id: 'wyr', slug: 'would-you-rather', title: 'Would You Rather',
+    tagline: 'Guess what they would pick',
+    description: 'One of you answers honestly, the other bets on the answer, and the roles swap every round. Forty dilemmas, no third option, and a point for every read that lands.',
+    genre: 'party', modes: ['ai', 'online'], players: [1, 2], duration: 6,
+    accent: '#8f4a2b', artKey: 'wyr', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'rounds', label: 'Rounds', type: 'select', default: 10, options: [
+        { value: 6, label: 'Six rounds' }, { value: 10, label: 'Ten rounds' }, { value: 14, label: 'Fourteen rounds' },
+      ] },
+    ],
+  },
+  {
     id: 'dare', slug: 'truth-or-dare', title: 'Truth or Dare',
     tagline: 'Sweet, flirty, or neither',
     description: 'A deck written for two people who already like each other, at three heat levels. The spicy deck is behind its own switch, and every single card can be passed on with no penalty.',

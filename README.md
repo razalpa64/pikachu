@@ -565,13 +565,146 @@ Nothing calls a language model to pick a move. Everything runs locally and finis
 
 ---
 
+## Retro Arcade (Game Boy Advance)
+
+`/retro` is a shelf of real Game Boy Advance cartridges running in the browser on
+**EmulatorJS 4.2.3** with the **mGBA** core. It is deliberately separate from the
+twenty-six games above: those are written for this site, these are actual `.gba`
+binaries executed by a WebAssembly emulator.
+
+### What is on the shelf
+
+| Cartridge | Author | Licence | ROM | Save states |
+|---|---|---|---|---|
+| **Alien Invasion** | amberephraim | MIT | 63 KB | ✅ |
+| **Cyber Citadel** | amberephraim | MIT | 9.5 MB | ✅ |
+| **Simple Frogger** | amberephraim | MIT | 47 KB | ✅ |
+
+Every one is a freely redistributable homebrew build from a public repository —
+`public/retro/roms.json` links each entry to its source and its licence, and the
+licence text is committed alongside the ROMs in `public/retro/licenses/`. **No
+commercial ROMs are hosted, downloaded or bundled anywhere in this repository.**
+
+The cover images are not artwork anyone drew: each one is a 240×160 frame the
+emulator itself produced while that cartridge was running, captured with
+`gameManager.screenshot()` and committed as a PNG. Cards cross-fade to a second
+frame (the cartridge's title screen) on hover.
+
+### How it is wired
+
+```
+public/retro/
+  player.html          the emulator document (served as a plain static file)
+  roms.json            the shelf — the only source of cartridge ids and paths
+  data/                EmulatorJS runtime: loader.js, emulator.min.{js,css},
+                       compression/, localization/en-US.json,
+                       cores/mgba-wasm.data + cores/reports/mgba.json
+  roms/*.gba           the cartridges
+  covers/*.png         real captured frames
+  licenses/*.txt       MIT texts for the ROMs and for EmulatorJS
+src/lib/retro.ts       manifest validation, cartridge-header check, shared types
+src/screens/Retro.tsx  /retro — the searchable shelf
+src/screens/RetroPlayer.tsx  /retro/:id — the console
+scripts/e2e/retro.mjs  the proof (see below)
+```
+
+* **The emulator is an iframe, and only on the player route.** EmulatorJS is a
+  classic script bundle that measures the whole document as its viewport, so it
+  gets its own document (`/retro/player.html`). React never imports it.
+* **Nothing emulator-shaped is fetched until a cartridge launches.** `/retro`
+  loads the manifest and three small PNGs. `data/loader.js`, the 1 MB core and
+  the ROM are requested only when a player page mounts — `retro.mjs` asserts
+  this by watching the network log.
+* **Ids are validated twice.** `loadRetroLibrary()` checks each manifest row
+  against a strict shape (id slug, `roms/<slug>.gba`, `covers/<slug>.png`,
+  `https` source, a sane byte count and accent colour) and drops anything that
+  fails; `player.html` re-resolves the `?game=` id against the same manifest, so
+  a hand-edited URL cannot point the emulator at a remote file.
+* **Your own ROM never leaves the device.** The file input reads the first 0xC0
+  bytes, checks the Nintendo logo the GBA boot ROM itself checks for, then hands
+  the `File` to the player through route state. The player turns it into a
+  `blob:` URL in memory. No request is made, nothing is written to storage, and
+  a reload forgets it — `retro.mjs` asserts both the boot and the absence of an
+  upload.
+
+### Controls
+
+Mapping is EmulatorJS's GBA default, and every row below was pressed in a real
+browser against a real ROM before it was printed on the page:
+
+| Keys | Button |
+|---|---|
+| Arrow keys | D-pad |
+| Z | A |
+| X | B |
+| Enter | Start |
+| V | Select |
+| Q / E | L / R |
+
+On a touch device the console draws its own pad under the screen (D-pad, A/B,
+Start/Select) and sends `simulateInput` calls straight to the core — the same
+call a hardware controller produces. Connected controllers are picked up via the
+browser Gamepad API; if a pad was already plugged in when the page loaded,
+`player.html` claims it for player 1, because EmulatorJS dispatches its
+`connected` event for pre-existing pads before it has attached its own listener.
+
+### Verified, and how to re-verify
+
+```
+npm run build && npm run preview        # or: npm run dev
+node scripts/e2e/retro.mjs              # desktop
+node scripts/e2e/retro.mjs --phone      # touch emulation
+```
+
+`scripts/e2e/retro.mjs` drives a real Chromium: shelf search and filters, launch,
+the start gesture, audio-context state, keyboard *and* synthetic-controller input
+asserted against captured `simulateInput` calls, pause/resume, save/load, PNG
+capture, mute, restart, fullscreen entry and exit, the local-ROM path, plus a
+layout overflow check and the touch pad on a phone profile. It needs a real
+browser with WebGL2; on a machine whose Chromium lacks `libnss`/`libnspr`, pass
+`PIKACHU_CHROME=/path/to/chromium PIKACHU_LD=/path/to/libs`.
+
+### Limitations, stated plainly
+
+* **Save states, not battery saves.** Save/load lives in the browser's own
+  IndexedDB, per cartridge. None of the three cartridges writes battery-backed
+  save data, so progress beyond a save state does not persist — the player says
+  so on the page.
+* **No BIOS file.** The mGBA core boots these builds directly; some commercial
+  cartridges are stricter, which is a non-issue here because none are hosted.
+* **Audio needs one click.** The Start button over the screen is also the
+  gesture that unlocks WebAudio. After that press, sound runs for the session.
+* **`EJS_threads` is deliberately off.** Threads would need COOP/COEP headers
+  across the whole site, which would break the rest of the arcade. GBA runs
+  comfortably single-threaded.
+* **`/retro/<id>` is `noindex`.** It renders nothing until ~1.5 MB has
+  downloaded, so the shelf (`/retro`, which is in the sitemap and carries the
+  structured data) is what search should rank.
+* **EmulatorJS checks for updates on localhost only.** That produces one
+  harmless console line in dev ("Failed to fetch" for `cdn.emulatorjs.org`);
+  production is silent and makes no third-party request.
+
+### Rebuilding the vendored runtime
+
+`emulator.min.js` / `emulator.min.css` in `public/retro/data/` were produced
+from the unminified sources of the published npm packages (EmulatorJS 4.2.3
+ships no minified build) with terser, concatenating
+`emulator, nipplejs, shaders, storage, gamepad, GameManager, socket.io.min,
+compression` in that order — the same order `loader.js` uses for its own
+fallback. The 1 MB core is `@emulatorjs/core-mgba@4.2.3`'s `mgba-wasm.data`.
+Nothing at runtime reaches the network for these files.
+
+EmulatorJS is MIT — `public/retro/data/LICENSE-EmulatorJS.txt`.
+
+---
+
 ## Tests
 
 ```
 npm test
 ```
 
-567 tests across 38 files covering: legality and junk-payload rejection for all seventeen
+607 tests across 42 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake

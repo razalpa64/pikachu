@@ -12,7 +12,7 @@ await page.evaluate(() => sessionStorage.setItem('pikachu.intro.v1','1'));
 const routes = ['/','/library','/together','/solo','/challenges','/achievements','/profile','/settings',
   '/solo/chess-arena','/solo/tic-tac-toe-duel','/solo/connect-four','/solo/memory-match','/solo/reaction-duel',
   '/solo/snake-arena','/solo/battleship','/solo/checkers','/solo/puzzle-quest','/solo/electric-arcade',
-  '/solo/spark-quiz','/solo/wild-eights','/solo/case-files','/solo/imposter','/solo/truth-or-dare'];
+  '/solo/spark-quiz','/solo/wild-eights','/solo/case-files','/solo/imposter','/solo/truth-or-dare','/retro'];
 for (const r of routes) {
   const before = errs.length;
   await page.goto('http://127.0.0.1:5173'+r, { waitUntil: 'domcontentloaded' });

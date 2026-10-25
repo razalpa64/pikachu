@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Retro Arcade player</title>
+<style>
+  @font-face {
+    font-family: "Baloo";
+    src: url("/fonts/baloo2.woff2") format("woff2");
+    font-weight: 400 800;
+    font-display: swap;
+  }
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #0b0d12; }
+  body { overflow: hidden; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #shell { position: fixed; inset: 0; display: flex; flex-direction: column; }
+  #game { position: relative; flex: 1 1 auto; min-height: 0; background: #0b0d12; }
+  #boot {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #8b93a7; font-size: 13px; letter-spacing: .08em; text-transform: uppercase;
+    transition: opacity .25s ease;
+  }
+  #boot[hidden] { display: none; }
+  .ejs_parent { border-radius: 0 !important; --ejs-background-color: #0b0d12; }
+
+  /* EmulatorJS ships a full toolbar. The parent app draws its own chrome with
+     the same actions plus a real game title, so the toolbar is redundant here —
+     hiding it is what makes the player feel like a handheld instead of an embed.
+     The virtual gamepad is *not* hidden: on a phone it is the only way to play. */
+  .ejs_menu_bar,
+  .ejs_context_menu,
+  .ejs_settings_parent,
+  .ejs_virtualGamepad_parent,
+  .ejs_virtualGamepad_open { display: none !important; }
+
+  /* Restyle the start button the emulator renders over the canvas. It is the
+     click that unlocks audio, so it has to look like it belongs to this site. */
+  .ejs_start_button {
+    font-family: "Baloo", ui-rounded, "Segoe UI", system-ui, sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    letter-spacing: .1em !important;
+    line-height: 44px !important;
+    height: 44px !important;
+    padding: 0 28px !important;
+    color: #5a3a12 !important;
+    background: #ffd24d !important;
+    border: 2px solid #5a3a12 !important;
+    border-radius: 999px !important;
+    box-shadow: 0 4px 0 0 #c89b78 !important;
+    text-shadow: none !important;
+    bottom: 30px !important;
+  }
+  .ejs_start_button:hover,
+  .ejs_start_button:active { animation: none !important; background: #ffe27a !important; }
+  .ejs_loading_text { color: #8b93a7 !important; font-size: 11px !important; letter-spacing: .12em !important; text-transform: uppercase; }
+
+</style>
+</head>
+<body>
+<div id="shell">
+  <div id="game"><div id="boot">Preparing handheld…</div></div>
+</div>
+<script>
+(function () {
+  "use strict";
+  var CHANNEL = "pikachu-retro";
+  var params = new URLSearchParams(location.search);
+  var booted = false;
+  var bootEl = document.getElementById("boot");
+  var manifestPromise = null;
+
+  function post(msg) {
+    msg.channel = CHANNEL;
+    try { parent.postMessage(msg, location.origin); } catch (e) {}
+  }
+  function status(state, message) {
+    post({ type: "state", status: state, message: message || "" });
+  }
+  function setBootText(text) {
+    if (!bootEl) return;
+    if (!text) { bootEl.hidden = true; return; }
+    bootEl.hidden = false;
+    bootEl.textContent = text;
+  }
+
+  function emulator() { return window.EJS_emulator || null; }
+
+  /* EmulatorJS starts polling gamepads in its constructor and dispatches the
+     "connected" event for pads that are *already* plugged in before it has
+     attached its own handler — so a controller that was live when the page
+     loaded is detected but never assigned to a player slot, and every button on
+     it does nothing. Claim any unassigned pad for player 1. */
+  function bindConnectedGamepads() {
+    var emu = emulator();
+    if (!emu || !emu.gamepad || !Array.isArray(emu.gamepadSelection)) return;
+    var pads = emu.gamepad.gamepads || [];
+    for (var i = 0; i < pads.length; i += 1) {
+      var pad = pads[i];
+      if (!pad || !pad.id) continue;
+      var key = pad.id + "_" + pad.index;
+      if (emu.gamepadSelection.indexOf(key) !== -1) continue;
+      var slot = emu.gamepadSelection.indexOf("");
+      if (slot === -1) return;
+      emu.gamepadSelection[slot] = key;
+      try { if (typeof emu.updateGamepadLabels === "function") emu.updateGamepadLabels(); } catch (e) {}
+      post({ type: "gamepad", message: pad.id });
+    }
+  }
+  window.addEventListener("gamepadconnected", bindConnectedGamepads);
+  window.addEventListener("focus", bindConnectedGamepads);
+
+  function loadManifest() {
+    if (!manifestPromise) {
+      manifestPromise = fetch("roms.json", { cache: "no-cache" }).then(function (r) {
+        if (!r.ok) throw new Error("manifest " + r.status);
+        return r.json();
+      });
+    }
+    return manifestPromise;
+  }
+
+  /* Only paths that come out of our own manifest are ever handed to the emulator.
+     A caller cannot inject an arbitrary URL through the query string. */
+  function resolveCuratedGame(id) {
+    return loadManifest().then(function (manifest) {
+      var games = (manifest && manifest.games) || [];
+      for (var i = 0; i < games.length; i++) {
+        if (games[i].id === id) return games[i];
+      }
+      throw new Error("Unknown game id");
+    });
+  }
+
+  function boot(game) {
+    if (booted) return;
+    booted = true;
+    setBootText("Loading core…");
+
+    var romUrl = game.romUrl;
+    window.EJS_player = "#game";
+    window.EJS_core = "gba";
+    window.EJS_pathtodata = "data/";
+    window.EJS_gameUrl = romUrl;
+    window.EJS_gameName = (game.name || "Game").slice(0, 60);
+    window.EJS_gameID = game.numericId || 0;
+    window.EJS_startOnLoaded = false;
+    window.EJS_volume = 0.7;
+    window.EJS_color = "#e8a21c";
+    window.EJS_backgroundColor = "#0b0d12";
+    window.EJS_language = "en-US";
+    window.EJS_disableAutoLang = false;
+    /* EmulatorJS only switches its on-screen pad on by default when the user
+       agent smells like a phone. A tablet with a desktop UA is still a touch
+       device, so ask the hardware instead of the string. */
+    window.EJS_defaultOptions = { "virtual-gamepad": "disabled" };
+
+    window.EJS_Buttons = {
+      cacheManager: { visible: false },
+      netplay: { visible: false },
+      diskButton: { visible: false },
+      contextMenu: { visible: true }
+    };
+
+    window.EJS_onGameStart = function () {
+      setBootText("");
+      status("running");
+      post({ type: "start" });
+      bindConnectedGamepads();
+      var emu = emulator();
+      if (emu && emu.elements && emu.elements.parent && emu.elements.parent.focus) {
+        try { emu.elements.parent.focus({ preventScroll: true }); } catch (e) {}
+      }
+    };
+    window.EJS_ready = function () {
+      setBootText("");
+      bindConnectedGamepads();
+      post({ type: "ready" });
+      var emu = emulator();
+      if (emu && typeof emu.mute === "function") { /* noop: API is setVolume */ }
+    };
+    window.EJS_onSaveState = function () { post({ type: "saved" }); };
+    window.EJS_onLoadState = function () { post({ type: "loaded" }); };
+
+    var script = document.createElement("script");
+    script.src = "data/loader.js";
+    script.async = false;
+    script.onerror = function () {
+      setBootText("The emulator failed to load.");
+      status("error", "emulator-script");
+    };
+    document.head.appendChild(script);
+  }
+
+  function bytesToUrl(value) {
+    if (typeof value === "string" && value) return value;
+    return null;
+  }
+
+  function stateKey(emu) {
+    return emu.getBaseFileName() + ".state";
+  }
+
+  function handleCommand(msg) {
+    var emu = emulator();
+    if (!emu || !emu.gameManager) return;
+    var gm = emu.gameManager;
+    switch (msg.cmd) {
+      case "play":
+        if (emu.paused) emu.play();
+        status("running");
+        break;
+      case "pause":
+        if (!emu.paused) emu.pause();
+        status("paused");
+        break;
+      case "toggle":
+        emu.togglePlaying();
+        status(emu.paused ? "paused" : "running");
+        break;
+      case "restart":
+        gm.restart();
+        if (emu.paused) emu.play();
+        status("running");
+        break;
+      case "mute":
+        /* EmulatorJS keeps the *chosen* volume in `volume` and silences by
+           setting gain to 0, so unmuting restores the slider position. */
+        emu.setVolume(msg.value ? 0 : (emu.volume > 0 ? emu.volume : 0.7));
+        post({ type: "volume", value: emu.muted ? 0 : emu.volume });
+        break;
+      case "volume":
+        emu.setVolume(Math.max(0, Math.min(1, Number(msg.value) || 0)));
+        post({ type: "volume", value: emu.volume });
+        break;
+      case "saveState":
+        try {
+          emu.storage.states.put(stateKey(emu), gm.getState());
+          post({ type: "saved" });
+        } catch (err) {
+          post({ type: "error", message: "save-failed" });
+        }
+        break;
+      case "loadState":
+        emu.storage.states.get(stateKey(emu)).then(function (saved) {
+          if (!saved) { post({ type: "error", message: "no-save" }); return; }
+          try {
+            gm.loadState(saved);
+            post({ type: "loaded" });
+          } catch (err) {
+            post({ type: "error", message: "load-failed" });
+          }
+        });
+        break;
+      case "screenshot":
+        emu.takeScreenshot(emu.capture.photo.source, "png", 2).then(function (shot) {
+          var reader = new FileReader();
+          reader.onload = function () { post({ type: "shot", dataUrl: reader.result }); };
+          reader.readAsDataURL(shot.blob);
+        }).catch(function () {
+          post({ type: "error", message: "screenshot-failed" });
+        });
+        break;
+      case "fullscreen":
+        emu.toggleFullscreen(typeof msg.value === "boolean" ? msg.value : undefined);
+        break;
+      case "input":
+        /* The parent app draws the touch pad (it knows the handheld frame), so
+           it sends button indices straight through to the core. */
+        if (msg.value && typeof msg.value.index === "number") {
+          try { gm.simulateInput(0, msg.value.index, msg.value.pressed ? 1 : 0); } catch (e) {}
+        }
+        break;
+      case "focus":
+        if (emu.elements && emu.elements.parent) {
+          try { emu.elements.parent.focus({ preventScroll: true }); } catch (e) {}
+        }
+        break;
+    }
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.origin !== location.origin) return;
+    var data = event.data;
+    if (!data || data.channel !== CHANNEL) return;
+    if (data.type === "boot") {
+      if (booted) return;
+      var payload = data.game || {};
+      var url = bytesToUrl(payload.romUrl);
+      if (payload.romFile && payload.romFile instanceof Blob) {
+        try { url = URL.createObjectURL(payload.romFile); } catch (e) { url = null; }
+      }
+      if (!url) { status("error", "no-rom"); setBootText("No game data was provided."); return; }
+      boot({ romUrl: url, name: payload.name, numericId: payload.numericId });
+      return;
+    }
+    if (data.type === "cmd") handleCommand(data);
+  });
+
+  /* Standalone mode: /retro/player.html?game=<manifest id> is used by the
+     headless smoke test and by anyone opening the page directly. */
+  var standaloneId = params.get("game");
+  if (standaloneId) {
+    resolveCuratedGame(standaloneId).then(function (game) {
+      boot({
+        romUrl: game.rom,
+        name: game.title,
+        numericId: 0
+      });
+    }).catch(function () {
+      setBootText("That game is not in the library.");
+      status("error", "unknown-game");
+    });
+  } else {
+    setBootText("Waiting for the library…");
+  }
+})();
+</script>
+</body>
+</html>

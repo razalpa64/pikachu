@@ -71,6 +71,11 @@ export const Icon = ({ name, size = 18, className = '' }: { name: string; size?:
     book: <><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H19v15H6.5A2.5 2.5 0 0 0 4 20.5z" /><path d="M19 18v3H6.5A2.5 2.5 0 0 1 4 18.5" /></>,
     coffee: <><path d="M4 8.5h11.5v5.8a4.2 4.2 0 0 1-4.2 4.2H8.2A4.2 4.2 0 0 1 4 14.3z" /><path d="M15.5 10h1.6a2.4 2.4 0 0 1 0 4.8h-1.6" /><path d="M7.2 2.4c-.9.9-.9 1.7 0 2.6M11 2.4c-.9.9-.9 1.7 0 2.6" /><path d="M3 21.5h14" /></>,
     external: <><path d="M14.5 4H20v5.5" /><path d="M20 4 11 13" /><path d="M18 14.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4.5" /></>,
+    save: <><path d="M5 3.5h11l3 3V20a.5.5 0 0 1-.5.5h-13A.5.5 0 0 1 5 20z" /><path d="M8 3.5v6h7v-6M8 16h8" /></>,
+    load: <><path d="M5 20.5V9l4-5h10v16.5z" /><path d="M9 4v5h10M12 12.5v5M9.8 15l2.2 2.5 2.2-2.5" /></>,
+    expand: <><path d="M4 9V4h5M20 15v5h-5M20 9V4h-5M4 15v5h5" /></>,
+    camera: <><path d="M3 8.5h3.4L8 6h8l1.6 2.5H21V19a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19z" /><circle cx="12" cy="13.5" r="3.4" /></>,
+    gamepad: <><rect x="2.5" y="7" width="19" height="11" rx="4.5" /><path d="M7 10.5v4M5 12.5h4M16 11.5h.01M18.5 13.5h.01" /></>,
   };
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"

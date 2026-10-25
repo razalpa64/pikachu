@@ -49,6 +49,7 @@ ${items}
           <a href="/library">Game library</a> ·
           <a href="/together">Play together</a> ·
           <a href="/solo">Single player</a> ·
+          <a href="/retro">Retro Arcade (Game Boy Advance)</a> ·
           <a href="/challenges">Daily challenges</a> ·
           <a href="/feedback">Suggest a game</a>
         </p>

@@ -133,6 +133,37 @@ export default function Home() {
           note="Five AI levels, from forgiving to merciless." games={solo}
           action={<Button variant="ghost" size="sm" onClick={() => nav('/solo')}>See all</Button>} />
 
+        {/* ================================ RETRO ================================ */}
+        {/* One wide band instead of a whole shelf: the Game Boy Advance section is a
+            different kind of thing (real cartridges, real emulator) and it deserves a
+            doorway, not a sixth row of the same card. */}
+        <section aria-labelledby="retro-h" className="mb-7">
+          <SectionTitle id="retro-h" eyebrow="Game Boy Advance · homebrew only"
+            title="The retro shelf"
+            action={<Button variant="ghost" size="sm" onClick={() => { sfx('select'); nav('/retro'); }} icon={<Icon name="gamepad" size={14} />}>Open the arcade</Button>} />
+          <Panel className="overflow-hidden">
+            <div className="flex flex-col sm:flex-row items-stretch">
+              <div className="relative shrink-0 sm:w-[300px] bg-[#2b1f19] p-3 flex items-center justify-center">
+                <div className="w-full max-w-[260px] rounded-[12px] border-4 border-[#14100d] bg-[#0b0d12] overflow-hidden">
+                  <img src="/retro/covers/alien-invasion.png" alt="Alien Invasion running on a Game Boy Advance" width={240} height={160} className="w-full pixelated" loading="lazy" />
+                </div>
+              </div>
+              <div className="p-4 sm:p-5 flex-1 min-w-0">
+                <h3 className="display text-[19px] text-cream-100 leading-tight">Three cartridges, one emulator, zero downloads</h3>
+                <p className="text-[12.5px] text-cream-400 mt-1.5 max-w-[54ch]">
+                  Alien Invasion, Cyber Citadel and Simple Frogger — open-source GBA builds that run in the browser
+                  with sound, save states and fullscreen. The emulator itself only loads when you insert a cartridge,
+                  so the rest of the arcade stays fast.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  <Button size="sm" onClick={() => { sfx('select'); nav('/retro'); }} icon={<Icon name="play" size={12} />}>Insert a cartridge</Button>
+                  <span className="text-[11px] text-cream-500">Bring your own ROM too — it never leaves your device.</span>
+                </div>
+              </div>
+            </div>
+          </Panel>
+        </section>
+
         {/* ================================ DAILY ================================ */}
         <section aria-labelledby="daily-h">
           <SectionTitle id="daily-h" eyebrow="Resets at midnight" title="Daily challenges"

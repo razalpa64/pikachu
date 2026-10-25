@@ -20,7 +20,8 @@
     "smoke:newest": "tsx scripts/smoke-wyr-wordbomb.ts",
     "typecheck": "tsc -b",
     "seo": "tsx scripts/seo.ts",
-    "prebuild": "npm run seo"
+    "prebuild": "npm run seo",
+    "e2e:retro": "node scripts/e2e/retro.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

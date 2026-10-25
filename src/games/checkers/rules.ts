@@ -110,7 +110,9 @@ export const checkersRules: TurnGameRules<CKState, CKMove> = {
     const oppHasPieces = next.board.some((b) => b?.p === next.turn);
     const oppHasMoves = checkersRules.legalMoves(next, next.turn).length > 0;
     if (!oppHasPieces || !oppHasMoves) return { ...next, over: true, winner: p, reason: oppHasPieces ? 'opponent has no legal moves' : 'all pieces captured' };
-    if (next.noCaptureCount >= 80) return { ...next, over: true, winner: null, reason: '40-move no-capture draw' };
+    /* The counter is in plies, so 80 plies is forty moves for each side — the
+       number the reason quotes, and the number the rules panel promises. */
+    if (next.noCaptureCount >= 80) return { ...next, over: true, winner: null, reason: '40 moves each without a capture' };
     return next;
   },
   result: (s): Outcome => (s.over ? { over: true, winner: s.winner, reason: s.reason } : { over: false }),

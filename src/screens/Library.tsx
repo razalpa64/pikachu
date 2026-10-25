@@ -170,17 +170,18 @@ export default function Library() {
             action={<Button variant="primary" size="sm" onClick={() => { setQuery(''); setFilter('all'); }}>Show all games</Button>} />
         </Panel>
       ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {results.map((g) => <GameCard key={g.id} game={g} />)}
-          </div>
-          <BoltRule className="mt-9" />
-          <p className="text-center text-[11.5px] text-cream-400 mt-4">
-            Showing {results.length} of {GAMES.length} games
-          </p>
-          <AdSlot placement="library-foot" className="mt-8 max-w-[860px] mx-auto" />
-        </>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {results.map((g) => <GameCard key={g.id} game={g} />)}
+        </div>
       )}
+
+      {/* The count stays on screen in both branches: "Showing 0 of 20" answers
+          "did my search work?" better than a lone empty state can. */}
+      {results.length > 0 && <BoltRule className="mt-9" />}
+      <p className="text-center text-[11.5px] text-cream-400 mt-4" aria-live="polite">
+        Showing {results.length} of {GAMES.length} games
+      </p>
+      <AdSlot placement="library-foot" className="mt-8 max-w-[860px] mx-auto" />
 
       {/* The library is the page people land on from a search, so it answers the
           things a stranger actually wants to know: no account, free, works on a

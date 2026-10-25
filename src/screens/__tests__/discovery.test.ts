@@ -88,9 +88,9 @@ describe('the front page', () => {
   it('builds the shelves out of live games, without repeating a cover in a row', async () => {
     await mount(createElement(Home));
     const rails = [...host.querySelectorAll<HTMLElement>('section')]
-      .filter((s) => /Short sessions|Two devices, one board|Just you/.test(s.querySelector('.eyebrow')?.textContent ?? ''));
+      .filter((s) => /Short sessions|Two devices, one board|Same table, one phone|Just you/.test(s.querySelector('.eyebrow')?.textContent ?? ''));
 
-    expect(rails.length, 'three shelves').toBe(3);
+    expect(rails.length, 'four shelves').toBe(4);
     for (const rail of rails) {
       const links = [...rail.querySelectorAll<HTMLButtonElement>('button[aria-label^="Play "]')];
       expect(links.length).toBeGreaterThan(2);
@@ -100,6 +100,19 @@ describe('the front page', () => {
         const title = name!.replace(/^Play /, '').split(' — ')[0];
         expect(liveGames().some((g) => g.title === title), `${title} is a live game`).toBe(true);
       }
+    }
+  });
+
+  it('fills the party shelf with party and pass-and-play games only', async () => {
+    await mount(createElement(Home));
+    const shelf = [...host.querySelectorAll<HTMLElement>('section')]
+      .find((s) => /Same table, one phone/.test(s.querySelector('.eyebrow')?.textContent ?? ''));
+    const links = [...shelf!.querySelectorAll<HTMLButtonElement>('button[aria-label^="Play "]')];
+    expect(links.length).toBeGreaterThan(2);
+    for (const b of links) {
+      const title = b.getAttribute('aria-label')!.replace(/^Play /, '').split(' — ')[0];
+      const game = liveGames().find((g) => g.title === title)!;
+      expect(game.genre === 'party' || game.modes.includes('local'), `${title} belongs on the party shelf`).toBe(true);
     }
   });
 

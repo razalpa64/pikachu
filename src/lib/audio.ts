@@ -16,7 +16,7 @@ export type Cue =
   | 'boot' | 'countdown' | 'go' | 'move' | 'place' | 'drop' | 'flip'
   | 'hit' | 'miss' | 'sunk' | 'capture' | 'check' | 'error'
   | 'win' | 'lose' | 'draw' | 'achievement' | 'coin' | 'zap' | 'spark'
-  | 'join' | 'notify'
+  | 'join' | 'notify' | 'open'
   /* arcade + snake + puzzle */
   | 'pickup' | 'power' | 'swipe' | 'jump' | 'block'
   | 'tone0' | 'tone1' | 'tone2' | 'tone3' | 'tone4';
@@ -51,6 +51,32 @@ export function unlockAudio() {
   if (c.state === 'suspended') void c.resume();
   unlocked = true;
   preloadCries();
+  fireOpeningCry();
+}
+
+/* ------------------------------------------------------------ opening cry
+   The intro asks for Pikachu's voice at the moment the wordmark lands, which on
+   a cold load is usually *before* the visitor has touched anything — and a
+   browser will not let the context speak until they do. So the ask is held: the
+   first gesture unlocks the audio and the cry goes out then, on the same tick as
+   the decode finishing. Without this the opening was silent for most visitors,
+   because the title beat had already passed by the time they clicked. */
+let openingWanted = false;
+let openingFired = false;
+
+export function wantOpeningCry() {
+  if (!openingFired) openingWanted = true;
+}
+
+function fireOpeningCry() {
+  if (!openingWanted || openingFired || !unlocked) return;
+  openingFired = true;
+  const spec = CRIES.boot;
+  if (!spec) { play('boot'); return; }
+  /* decode first: playCry() falls back to the synth on a buffer it has not got
+     yet, so firing immediately would ship a silent opening on a fast connection
+     and a voiced one on a slow one */
+  void loadCry(spec.src).then(() => { openingFired = true; play('boot'); });
 }
 export function isUnlocked() { return unlocked; }
 
@@ -96,6 +122,13 @@ const CRIES: Partial<Record<Cue, CrySpec>> = {
   draw:        { src: '/audio/clefairy.ogg',   gain: 0.55, gap: 600 },
   achievement: { src: '/audio/pika-joy.mp3',   gain: 0.6,  gap: 500 },
   go:          { src: '/audio/pika-pika.mp3',  gain: 0.6,  gap: 400 },
+  /* The arcade opening. The classic rising "pi-ka-chuuu", a little under the
+     synth swell rather than over it — this is the one cry that has to work on a
+     phone speaker at arm's length without being a jump-scare. */
+  boot:        { src: CHU,  gain: 0.52, gap: 2000 },
+  /* Entering a game: a bright "pika-chu" that answers the tap. Sliced short so
+     it is a greeting, not an announcement over the ambience. */
+  open:        { src: YAY,  gain: 0.4,  gap: 1200, dur: 0.5 },
   /* Three beats in a row, so the retro Gen-1 cry is clipped to a single chirp
      and kept quiet — a full voice per beat turns a 3-2-1 into a racket. */
   countdown:   { src: '/audio/pika-cry-retro.ogg', gain: 0.3, gap: 120, dur: 0.18 },
@@ -239,7 +272,7 @@ function noise(dur: number, opts: { gain?: number; delay?: number; hp?: number; 
 /* ------------------------------------------------------------ cues */
 /** Cues where the real cry replaces the synth entirely rather than layering under it. */
 const CRY_ONLY: ReadonlySet<Cue> = new Set<Cue>([
-  'flip', 'join', 'notify', 'error', 'move', 'place', 'drop', 'pickup', 'spark',
+  'flip', 'join', 'notify', 'error', 'move', 'place', 'drop', 'pickup', 'spark', 'open',
 ]);
 
 export function play(cue: Cue) {

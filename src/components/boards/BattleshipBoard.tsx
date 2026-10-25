@@ -70,15 +70,15 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
   if (state.phase === 'placement') {
     const ready = state.ready[youSlot] || committed;
     return (
-      <div className="w-full flex flex-col lg:flex-row gap-5 items-start">
-        <div className="w-full min-w-0 lg:flex-1">
+      <div className="w-full flex flex-col xl:flex-row gap-5 items-start">
+        <div className="w-full min-w-0 xl:flex-1">
           <p className="eyebrow mb-2">Deploy your fleet</p>
           <Grid size={size} label="Your waters" cellRender={(cell) => {
             const id = draftCells.get(cell);
             return id ? <span className="absolute inset-[8%] rounded-[5px]" style={SHIP} /> : null;
           }} onCell={ready ? undefined : placeAt} />
         </div>
-        <div className="panel notch-sm p-4 w-full lg:w-[290px] lg:shrink-0">
+        <div className="panel notch-sm p-4 w-full xl:w-[290px] xl:shrink-0">
           <p className="eyebrow mb-2">Fleet manifest</p>
           <div className="flex flex-col gap-1.5 mb-3">
             {FLEET.map((f, i) => {

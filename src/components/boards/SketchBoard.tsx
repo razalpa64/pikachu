@@ -193,7 +193,9 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
   const pct = state.phase === 'draw' ? Math.max(0, Math.min(1, left / DRAW_MS)) : 0;
 
   return (
-    <div className="w-full max-w-[1020px] mx-auto grid lg:grid-cols-[1fr_300px] gap-3 items-start">
+    /* the split waits for `xl`: below that the room already has a 324 px chat rail
+       beside this board, and a second rail would leave the canvas phone-sized */
+    <div className="w-full max-w-[1020px] mx-auto grid xl:grid-cols-[1fr_300px] gap-3 items-start">
       {/* ---------------- canvas ---------------- */}
       <div className="space-y-2">
         <Panel className="p-3">

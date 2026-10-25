@@ -42,7 +42,7 @@ export default function WildEightsBoard({ state, youSlot, onMove, interactive, n
       </div>
 
       {/* table */}
-      <div className="panel panel-notch p-5">
+      <div className="panel panel-notch p-3.5 sm:p-5">
         <div className="flex items-center justify-center gap-7 sm:gap-12 flex-wrap">
           <div className="text-center">
             <p className="eyebrow mb-1.5">Stock</p>

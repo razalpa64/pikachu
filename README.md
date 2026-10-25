@@ -280,12 +280,16 @@ then alpha hardening) and the covers by `scripts/art.py` (crop, composite, WebP 
 - **No hidden-info leaks**: `redact(state, slot)` runs before every broadcast — a Paper Fleet client is never sent the enemy fleet, a Memory client is never sent the face-down deck, a Wild Eights client is sent `-1` placeholders for the opponent's hand and the whole stock, a Guess & Draw client is sent a row of underscores instead of the word (and never the bank the rest of the match is drawn from), and a Spark Quiz client is told only *that* the other player has locked in, never *what* they picked — plus the unasked questions are withheld so nobody can read ahead. `scripts/smoke-cards.ts` asserts this on the wire, and `scripts/e2e/online-cards.mjs` asserts the other player's cards appear nowhere in your tab's DOM.
 
 **The rest**
-- **Cold open** (plays once per session, ~3.7 s, 1.2 s with reduced motion): paper light that
-  follows the pointer, a hairline electric sweep, the mascot rising as a silhouette, a strike,
-  the wordmark one letter at a time, and three covers fanning out to say what is inside. There
-  is no skip button on purpose — a skip button on a four-second splash is an admission that it
-  is too long, so the sequence was tightened instead. Nothing in it is interactive, so reduced
-  motion changes only the animation, never the flow.
+- **Cold open** (plays once per session, 3.2 s, 1 s with reduced motion): a lit room rather than a
+  gradient — warm paper, house lights coming up, out-of-focus game covers drifting at the back of
+  shot, and a floor whose top edge is the horizon. **Pikachu runs in from the left along that
+  horizon** (the pixel-art `run` clip, upscaled no further than its native 300 px so `image-rendering:
+  pixelated` keeps the edges crisp), skids to a stop as the strike lands, and then runs on the spot
+  while the ground streams backwards under him — his clip has no idle, so the ground moves instead
+  of the character. Then the wordmark, one letter at a time, and the opening cry. There is no skip
+  button on purpose — a skip button on a three-second splash is an admission that it is too long,
+  so the sequence was tightened instead. Nothing in it is interactive, so reduced motion changes
+  only the animation, never the flow.
 - Home hub: a hero that puts the wordmark, one clear primary action, the private-arena ticket and the trainer
   stub above an unframed, full-bleed picnic horizon with Pikachu standing on it; then quick-continue, daily
   challenges, the four rotating game rails, the invite banner and the library strip. `src/components/HomeHero.tsx`

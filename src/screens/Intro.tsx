@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { PikachuMascot } from '../mascot';
 import { useStore } from '../lib/store';
 import { wantOpeningCry } from '../lib/audio';
 
@@ -19,9 +18,9 @@ import { wantOpeningCry } from '../lib/audio';
  *
  *   0.00  the room, lights down, grain and vignette only
  *   0.25  the house lights come up, the covers drift into the back of shot
- *   0.60  the mascot rises, still a silhouette
- *   1.10  the strike — flash, bolt, a ring of static, the zap
- *   1.45  colour, and it lands on the floor
+ *   0.60  Pikachu runs in from the left, still a silhouette
+ *   1.10  the strike — flash, bolt, a ring of static, the zap, and he lands
+ *   1.45  colour, the grit settles, the floor starts moving under him
  *   1.90  the wordmark, letter by letter, and the opening cry
  *   2.20  the rule, the tagline, and what is inside
  *   2.95  fade out, hand over to the app
@@ -148,14 +147,6 @@ export default function Intro({ onDone }: { onDone: () => void }) {
   const anim = (on: boolean, css: string) => (on && !reduce ? css : undefined);
   const leaving = beat === 'leaving';
 
-  /* One clip for the whole sequence. Swapping `run` for `hello` halfway through
-     changed the character under the audience — the two cuts are not the same
-     drawing — which read as a glitch rather than as a reveal. */
-  const mascot = Math.round(Math.min(
-    360,
-    typeof window !== 'undefined' ? Math.min(window.innerWidth * 0.7, window.innerHeight * 0.34) : 300,
-  ));
-
   return (
     <div
       className={`fixed inset-0 z-[200] overflow-hidden select-none transition-opacity duration-300 ${leaving ? 'opacity-0' : 'opacity-100'}`}
@@ -235,22 +226,70 @@ export default function Intro({ onDone }: { onDone: () => void }) {
                 animation: 'inRing .85s cubic-bezier(.2,.7,.3,1) forwards',
               }} />
           )}
+          {/* --------------------------------------------------------- the run
+              He sprints in from the left along the floor and skids to a stop on
+              the horizon exactly as the wordmark lands.
+              The raw clip is used rather than <PikachuMascot>: every mascot look
+              adds a rotation and a breathing scale, and rotating pixel art puts its
+              stair-stepped edges on a diagonal where they should be on the grid. */}
           <div
-            style={{
-              opacity: show('silhouette') ? 1 : 0,
-              filter: show('reveal') ? 'none' : 'brightness(.34) saturate(.2)',
-              transition: 'filter .5s ease-out',
-              animation: anim(show('silhouette'), show('reveal')
-                ? 'inLand .7s cubic-bezier(.2,.85,.3,1.25) both'
-                : 'inRise .7s cubic-bezier(.2,.8,.3,1) both'),
-            }}
+            className={`relative ${!reduce && show('reveal') ? 'is-moving' : ''}`}
+            role="img"
+            aria-label="Pikachu sprinting in, then running on the spot"
+            style={{ opacity: show('silhouette') ? 1 : 0 }}
           >
-            <PikachuMascot
-              state="excited"
-              size={mascot}
-              priority
-              label="Pikachu, cheering, welcoming you to the arcade"
-            />
+            {/* the ground rushing under him, on the horizon line itself */}
+            <span aria-hidden className="intro-ground" />
+            {show('silhouette') && (
+              <div
+                className="relative"
+                style={{
+                  filter: show('reveal') ? 'none' : 'brightness(.32) saturate(.18)',
+                  transition: 'filter .35s ease-out',
+                  animation: anim(!reduce, 'inRun .92s cubic-bezier(.16,.74,.2,1) both'),
+                  // only while it is actually animating: a permanent will-change
+                  // keeps a compositor layer alive for the whole session
+                  willChange: show('reveal') ? undefined : 'transform',
+                }}
+              >
+                {/* No added bounce: the clip's own four frames already carry a ~6px
+                    vertical shift at 110ms a frame, so a second bob on a different
+                    period would beat against it and read as a stutter. */}
+                <div>
+                  <img
+                    src="/art/pika/run.webp"
+                    alt=""
+                    width={300}
+                    height={199}
+                    draggable={false}
+                    decoding="async"
+                    fetchPriority="high"
+                    /* the clip's legs are cut at the frame bottom, so the cut edge is
+                       dropped a few px under the floor's own opaque top edge: the
+                       horizon crops him, instead of a straight line through his shins */
+                    className="pixelated block h-auto w-[clamp(196px,29vw,320px)] -mb-[6px]"
+                  />
+                </div>
+
+                {/* grit thrown up behind his feet while he is still running in —
+                    it travels with him, so the puff never detaches from the step */}
+                {!reduce && !show('reveal') && (
+                  <span aria-hidden className="absolute bottom-1 left-1 block">
+                    {[0, 1, 2].map((i) => (
+                      <span
+                        key={i}
+                        className="absolute block rounded-full"
+                        style={{
+                          width: 9 + i * 3, height: 7 + i * 2,
+                          background: 'rgba(196,155,118,.55)',
+                          animation: `inDust .52s linear ${i * 0.17}s infinite`,
+                        }}
+                      />
+                    ))}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -313,6 +352,27 @@ export default function Intro({ onDone }: { onDone: () => void }) {
           border-top: 1px solid rgba(190,146,110,.3);
           box-shadow: 0 -2px 0 rgba(255,252,244,.7), 0 26px 40px -30px rgba(140,94,70,.5) inset;
         }
+        /* The ground moves, not the character.
+           His clip has no idle, so a runner who arrives and keeps cycling on the
+           spot has to be given somewhere to run. The ground streams backwards under
+           him instead — the trick every side-scroller uses — which is what turns a
+           four-frame loop into "he is running".
+           It sits on the horizon line itself and fades out horizontally well before
+           it reaches the wordmark: the first attempt ran the dashes across the whole
+           floor and straight through the lettering, which read as damage. */
+        .intro-ground {
+          position: absolute; left: -170%; right: -170%; bottom: -1px; height: 5px;
+          pointer-events: none; opacity: 0; transition: opacity .6s ease-out;
+          border-radius: 99px;
+          /* the dashes are the mask and the fade is the paint: one mask layer, so
+             there is no mask-composite to be supported (or not) — on engines
+             without it, two layers would union and run the dashes right through
+             the wordmark */
+          background: linear-gradient(90deg, transparent 32%, #b98a63 47%, #b98a63 53%, transparent 68%);
+          -webkit-mask-image: repeating-linear-gradient(90deg, #000 0 22px, transparent 22px 56px);
+          mask-image: repeating-linear-gradient(90deg, #000 0 22px, transparent 22px 56px);
+        }
+        .is-moving .intro-ground { opacity: .85; animation: inTreadmill .92s linear infinite; }
         .intro-vignette {
           background: radial-gradient(120% 104% at 50% 46%, transparent 48%, rgba(120,84,60,.16) 100%);
         }
@@ -327,11 +387,25 @@ export default function Intro({ onDone }: { onDone: () => void }) {
 
         @keyframes inBokeh { from { opacity: 0 } to { opacity: .62 } }
         @keyframes inDrift { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
-        @keyframes inRise { from { transform: translateY(44px) scale(.9); opacity: 0 } to { transform: none; opacity: 1 } }
-        @keyframes inLand {
-          0%   { transform: translateY(38px) scale(.94); opacity: 0 }
-          62%  { transform: translateY(-5px) scale(1.015); opacity: 1 }
-          100% { transform: none; opacity: 1 }
+        /* The run-in. He starts well off the left edge and decelerates into the
+           mark, so the last third is a skid rather than a sudden stop; the body
+           lean on the way in is what sells speed at this size. */
+        @keyframes inRun {
+          0%   { transform: translateX(-188%) skewX(-5deg) }
+          58%  { transform: translateX(0) skewX(0deg) }
+          70%  { transform: translateX(-3%) }
+          84%  { transform: translateX(1.2%) }
+          100% { transform: translateX(0) }
+        }
+        @keyframes inDust {
+          0%   { transform: translate(0, 0) scale(.5); opacity: .55 }
+          70%  { opacity: .3 }
+          100% { transform: translate(-26px, -11px) scale(1.5); opacity: 0 }
+        }
+        /* the dashes are the mask, so the mask is what slides */
+        @keyframes inTreadmill {
+          from { -webkit-mask-position: 0 0; mask-position: 0 0 }
+          to   { -webkit-mask-position: -56px 0; mask-position: -56px 0 }
         }
         @keyframes inLetter { from { transform: translateY(.42em) scale(.96); opacity: 0 } to { transform: none; opacity: 1 } }
         @keyframes inRule { from { transform: scaleX(.05); opacity: 0 } to { transform: none; opacity: 1 } }

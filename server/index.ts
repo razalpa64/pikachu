@@ -41,8 +41,12 @@ const RULES = REFEREES;
  * Rather reveals and moves on when its window closes; Word Bomb strikes the
  * player who lets the fuse reach zero. If the relay does not tick them, a
  * silent opponent stalls the match forever and the clock is decoration.
+ *
+ * `bluff` is on the list for the same reason: writing and voting each have a
+ * deadline, and a table where one player walks away has to reach its reveal
+ * without anybody nudging the server.
  */
-const TICKING = new Set(['reaction', 'chess', 'trivia', 'sketch', 'wyr', 'wordbomb']);
+const TICKING = new Set(['reaction', 'chess', 'trivia', 'sketch', 'wyr', 'wordbomb', 'bluff']);
 
 /* ------------------------------------------------------------------ model */
 interface Member {

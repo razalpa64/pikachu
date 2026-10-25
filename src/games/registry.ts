@@ -227,6 +227,45 @@ export const GAMES: GameMeta[] = [
     ],
   },
   {
+    id: 'spyfall', slug: 'spyfall', title: 'Spyfall',
+    tagline: 'One of you is lying',
+    description: 'Everyone is handed a role at the same secret location — except one player, who has no card at all. Ask, answer, and try to work out who is bluffing before the vote. Three to eight players on one phone, cards passed round in private.',
+    genre: 'party', modes: ['local'], players: [3, 8], duration: 10,
+    accent: '#1d5f70', artKey: 'spyfall', status: 'live', serverRefereed: false,
+    difficulties: ['casual'],
+    settings: [
+      { key: 'rounds', label: 'Rounds', type: 'select', default: 3, options: [
+        { value: 1, label: 'One round' }, { value: 3, label: 'Three rounds' }, { value: 5, label: 'Five rounds' },
+      ] },
+    ],
+  },
+  {
+    id: 'bluff', slug: 'bluff-trivia', title: 'Bluff Trivia',
+    tagline: 'Lie convincingly, guess better',
+    description: 'Everyone invents a wrong answer to a real question, then everybody votes on which one is true. Two points for finding the truth, one for every vote your own lie steals.',
+    genre: 'party', modes: ['ai', 'online'], players: [1, 2], duration: 7,
+    accent: '#7b3f5e', artKey: 'bluff', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'rounds', label: 'Rounds', type: 'select', default: 5, options: [
+        { value: 3, label: 'Three questions' }, { value: 5, label: 'Five questions' }, { value: 8, label: 'Eight questions' },
+      ] },
+    ],
+  },
+  {
+    id: 'berry', slug: 'berry-catch', title: 'Berry Catch',
+    tagline: 'Keep the basket moving',
+    description: 'Ripe berries are falling and the basket does not move itself. Catch the good ones, let the rotten ones drop, and hold a streak for a multiplier that caps at five.',
+    genre: 'arcade', modes: ['solo'], players: [1, 1], duration: 3,
+    accent: '#8a4b1f', artKey: 'berry', status: 'live', serverRefereed: false,
+    difficulties: ['beginner'],
+    settings: [
+      { key: 'durationMs', label: 'Run', type: 'select', default: 60000, options: [
+        { value: 30000, label: '30 seconds' }, { value: 60000, label: '60 seconds' }, { value: 90000, label: '90 seconds' },
+      ] },
+    ],
+  },
+  {
     id: 'daily', slug: 'daily-puzzle', title: 'Daily Puzzle',
     tagline: 'One warm-up a day',
     description: 'A 5×5 nonogram, the same grid for everyone, generated from the date — no server, no cache, no peeking. Solve it, keep the streak alive, and share a result that spoils nothing.',

@@ -9,7 +9,7 @@ export type ArtKey =
   | 'chess' | 'ttt' | 'c4' | 'memory' | 'reaction'
   | 'checkers' | 'battleship' | 'snake' | 'puzzle' | 'arcade'
   | 'trivia' | 'dare' | 'imposter' | 'detective' | 'cards' | 'sketch'
-  | 'reversi' | 'gomoku' | 'dots' | 'mancala' | 'wyr' | 'wordbomb' | 'daily';
+  | 'reversi' | 'gomoku' | 'dots' | 'mancala' | 'wyr' | 'wordbomb' | 'daily' | 'berry' | 'bluff' | 'spyfall';
 
 export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   chess:      { src: '/art/game/chess.webp',      alt: 'A pastel chess set on a honey chequerboard' },
@@ -35,6 +35,9 @@ export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   wyr:        { src: '/art/game/wyr.webp',        alt: 'Two illustrated cards side by side on a picnic cloth, one golden and one rose' },
   wordbomb:   { src: '/art/game/wordbomb.webp',   alt: 'A round gold-fused bomb resting on a pile of letter tiles' },
   daily:      { src: '/art/game/daily.webp',      alt: 'A small pencil-marked grid on cream paper beside a cup of tea' },
+  berry:      { src: '/art/game/berry.webp',      alt: 'A woven picnic basket overflowing with ripe golden berries' },
+  spyfall:    { src: '/art/game/spyfall.webp',    alt: 'A row of blank name cards on a table, one turned face down' },
+  bluff:      { src: '/art/game/bluff.webp',      alt: 'Two teacups and a folded card on a wooden table, one cup suspiciously swapped' },
 };
 
 

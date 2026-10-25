@@ -103,11 +103,12 @@ export default function Home() {
 
         <div className="relative mx-auto max-w-[1340px] px-[var(--shell-pad)] pt-9 pb-8 lg:pt-12 lg:pb-10">
           {/* --------------------------- words first ---------------------------
-              Copy on top, the painted scene beneath it: this is the composition
-              the page had before, and it earns its keep. The headline, the promise
-              and both primary buttons are visible without scrolling on a phone,
-              and the picture arrives as a wide band rather than competing with the
-              type for the same row. */}
+              Copy on top, the painted scene beneath it — the arrangement this page
+              had before the postcard experiment, restored: no frame, no tilt, no
+              border around the picture. The headline, the promise and both primary
+              buttons are readable without scrolling on a phone, and the painting
+              arrives underneath as a clean full-width band rather than competing
+              with the type for the same row. */}
           <div className="max-w-[820px]">
             <p className="eyebrow text-volt-700 mb-3 flex items-center gap-2">
               <span aria-hidden className="w-7 h-[3px] rounded-full bg-blush-300" />{greet}
@@ -159,48 +160,47 @@ export default function Home() {
             )}
           </div>
 
-          {/* ------------------------------ the scene ------------------------------ */}
-          <div className="relative mt-9 lg:mt-11">
-            <div className="relative rounded-[26px] p-2.5 border-[3px] border-[#d8b18d] bg-[#fffaf1] rotate-[-.5deg]"
-              style={{ boxShadow: '0 30px 64px -38px rgba(120,80,55,.8), inset 0 2px 0 rgba(255,255,255,.9)' }}>
-              <div className="relative overflow-hidden rounded-[18px] border-2 border-[#e9c7a6]">
-                <img
-                  src="/art/scene/hero.webp"
-                  alt="A picnic laid out on a sunny hillside: a strawberry milkshake, a basket of berries, two cushions and a lantern"
-                  width={1568} height={652}
-                  fetchPriority="high" decoding="async"
-                  className="block w-full h-[214px] sm:h-[300px] lg:h-[396px] object-cover object-[center_58%] select-none"
-                />
-                <div aria-hidden className="absolute inset-0 ring-1 ring-inset ring-white/40 rounded-[18px]" />
+          {/* ------------------------------ the scene ------------------------------
+              The painting, unframed. It used to sit inside a tilted cream mount with
+              a heavy border and an inner ring; at a glance that reads as a postcard
+              stuck onto the page rather than the arcade's own horizon. It is now
+              simply the picture, edge to edge under the copy. */}
+          <div className="relative mt-8 lg:mt-10">
+            <img
+              src="/art/scene/hero.webp"
+              alt="A picnic laid out on a sunny hillside: a strawberry milkshake, a basket of berries, two cushions and a lantern"
+              width={1568} height={652}
+              fetchPriority="high" decoding="async"
+              className="block w-full h-[214px] sm:h-[300px] lg:h-[396px] object-cover object-[center_58%] select-none rounded-[16px]"
+            />
 
-                {/* trainer strip, sitting on the picture rather than under it, so the
-                    hero costs one block of height instead of three */}
-                <div className="absolute bottom-2.5 left-2.5 sm:right-auto right-2.5 flex items-center gap-2.5 px-2.5 py-1.5 rounded-2xl bg-[#fffaf1]/95 border-2 border-[#d8b18d] max-w-[340px]">
-                  <img src={MASCOT_ART[identity.mascot] ?? MASCOT_ART.classic} alt="" width={26} height={26} className="w-[26px] h-[26px] object-contain shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[11.5px] font-extrabold text-cream-100 truncate leading-tight">
-                      {name || 'Set your trainer name'}
-                      <span className="ml-1.5 font-bold text-cream-400 text-[10px] uppercase tracking-wider">LV {lvl.level}</span>
-                    </p>
-                    <div className="h-[5px] rounded-full bg-blush-100 border border-ink-400 mt-1 overflow-hidden" role="progressbar"
-                      aria-valuenow={Math.round(lvl.pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Level progress">
-                      <div className="h-full rounded-full bg-gradient-to-r from-volt-400 to-blush-300" style={{ width: `${lvl.pct * 100}%` }} />
-                    </div>
-                  </div>
-                  <button onClick={() => { sfx('click'); nav('/profile'); }}
-                    className="text-[10px] font-extrabold uppercase tracking-wider text-blush-600 hover:text-[#8f1740] hover:underline shrink-0">
-                    Edit
-                  </button>
+            {/* trainer strip, on the picture so the hero costs one block of height
+                instead of three; the chip carries its own ground purely so the text
+                stays readable over grass */}
+            <div className="absolute bottom-2.5 left-2.5 right-2.5 sm:right-auto flex items-center gap-2.5 px-2.5 py-1.5 rounded-2xl bg-[#fffaf1]/95 border-2 border-[#d8b18d] max-w-[340px]">
+              <img src={MASCOT_ART[identity.mascot] ?? MASCOT_ART.classic} alt="" width={26} height={26} className="w-[26px] h-[26px] object-contain shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[11.5px] font-extrabold text-cream-100 truncate leading-tight">
+                  {name || 'Set your trainer name'}
+                  <span className="ml-1.5 font-bold text-cream-400 text-[10px] uppercase tracking-wider">LV {lvl.level}</span>
+                </p>
+                <div className="h-[5px] rounded-full bg-blush-100 border border-ink-400 mt-1 overflow-hidden" role="progressbar"
+                  aria-valuenow={Math.round(lvl.pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Level progress">
+                  <div className="h-full rounded-full bg-gradient-to-r from-volt-400 to-blush-300" style={{ width: `${lvl.pct * 100}%` }} />
                 </div>
-
-                <span className="absolute bottom-2.5 right-2.5 hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fffaf1]/94 border-2 border-[#d8b18d] text-[9.5px] font-extrabold uppercase tracking-[.14em] text-cream-300">
-                  <span aria-hidden className="text-blush-600">♥</span> Made for two
-                </span>
               </div>
+              <button onClick={() => { sfx('click'); nav('/profile'); }}
+                className="text-[10px] font-extrabold uppercase tracking-wider text-blush-600 hover:text-[#8f1740] hover:underline shrink-0">
+                Edit
+              </button>
             </div>
 
-            {/* The mascot stands on the top edge of the print. */}
-            <div className="absolute -top-9 right-4 sm:-top-[74px] sm:right-10 pointer-events-none origin-bottom-right scale-[.66] sm:scale-100">
+            <span className="absolute bottom-2.5 right-2.5 hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#fffaf1]/94 border-2 border-[#d8b18d] text-[9.5px] font-extrabold uppercase tracking-[.14em] text-cream-300">
+              <span aria-hidden className="text-blush-600">♥</span> Made for two
+            </span>
+
+            {/* The mascot stands at the top right of the picture. */}
+            <div className="absolute -top-9 right-4 sm:-top-[70px] sm:right-10 pointer-events-none origin-bottom-right scale-[.66] sm:scale-100">
               <PikachuMascot state={room ? 'excited' : 'idle'} size={140} priority />
             </div>
           </div>

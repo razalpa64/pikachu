@@ -141,6 +141,21 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://pikachu.invytra.in/solo/spyfall</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://pikachu.invytra.in/solo/bluff-trivia</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://pikachu.invytra.in/solo/berry-catch</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://pikachu.invytra.in/solo/daily-puzzle</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

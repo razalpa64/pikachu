@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PikachuMascot } from '../mascot';
 import { useStore } from '../lib/store';
 
@@ -45,11 +45,12 @@ export default function Intro({ onDone }: { onDone: () => void }) {
   const reduce = typeof window !== 'undefined'
     && (window.matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.dataset.motion === 'off');
 
-  /* the halo drifts toward the pointer so the light feels like it is in the room */
-  const [glow, setGlow] = useState({ x: 50, y: 22 });
-  const onMove = useMemo(() => (e: PointerEvent) => {
-    setGlow({ x: (e.clientX / window.innerWidth) * 100, y: (e.clientY / window.innerHeight) * 100 });
-  }, []);
+  /* The halo drifts toward the pointer so the light feels like it is in the room.
+     It is written straight onto the element as CSS custom properties inside a
+     requestAnimationFrame, NOT held in React state: a re-render per mousemove
+     during a three-second animation is exactly how a splash starts to feel cheap
+     on a phone. One frame, one style write, zero renders. */
+  const backdrop = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (reduce) {
@@ -63,13 +64,25 @@ export default function Intro({ onDone }: { onDone: () => void }) {
         else setBeat(b.name);
       }, b.at));
     }
-    window.addEventListener('pointermove', onMove);
+    let raf = 0;
+    const onMove = (e: PointerEvent) => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = backdrop.current;
+        if (!el) return;
+        el.style.setProperty('--gx', `${((e.clientX / window.innerWidth) * 100).toFixed(1)}%`);
+        el.style.setProperty('--gy', `${((e.clientY / window.innerHeight) * 100).toFixed(1)}%`);
+      });
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
     return () => {
       timers.current.forEach(clearTimeout);
       timers.current = [];
+      if (raf) cancelAnimationFrame(raf);
       window.removeEventListener('pointermove', onMove);
     };
-  }, [onDone, reduce, onMove]);
+  }, [onDone, reduce]);
 
   useEffect(() => {
     if (!audioReady) return;
@@ -88,10 +101,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
       <p className="sr-only">Welcome to Pikachu — a little arcade for two. The arcade is opening.</p>
 
       {/* warm paper, with the light following the pointer */}
-      <div aria-hidden className="absolute inset-0" style={{
-        background: `radial-gradient(90% 70% at ${glow.x}% ${glow.y}%, #fffaf0 0%, #fff2dd 38%, #ffe3d9 72%, #ffd3e2 100%)`,
-        transition: 'background 600ms ease-out',
-      }} />
+      <div ref={backdrop} aria-hidden className="absolute inset-0 intro-glow" />
       <div aria-hidden className="absolute inset-0" style={{
         background: 'radial-gradient(120% 100% at 50% 50%, transparent 42%, rgba(90,63,52,.16) 100%)',
       }} />
@@ -185,6 +195,11 @@ export default function Intro({ onDone }: { onDone: () => void }) {
       )}
 
       <style>{`
+        .intro-glow {
+          --gx: 50%; --gy: 22%;
+          background: radial-gradient(90% 70% at var(--gx) var(--gy), #fffaf0 0%, #fff2dd 38%, #ffe3d9 72%, #ffd3e2 100%);
+          transition: background 700ms ease-out;
+        }
         @keyframes introSweep { from { transform: translateX(-120%) } to { transform: translateX(300%) } }
         @keyframes introRise { from { transform: translateY(46px) scale(.9); opacity: 0 } to { transform: none; opacity: 1 } }
         @keyframes introLand { 0% { transform: translateY(-26px) scale(1.07) } 60% { transform: translateY(6px) scale(.97,1.03) } 100% { transform: none } }

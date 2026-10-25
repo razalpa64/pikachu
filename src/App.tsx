@@ -24,6 +24,9 @@ const Feedback = lazy(() => import('./screens/Feedback'));
 const Privacy = lazy(() => import('./screens/Privacy'));
 const Retro = lazy(() => import('./screens/Retro'));
 const RetroPlayer = lazy(() => import('./screens/RetroPlayer'));
+/* Not in the nav, not in the sitemap, noindex — and empty until the server says
+   the signed-in account is on the admin roster. */
+const Admin = lazy(() => import('./screens/Admin'));
 
 function RouteFallback() {
   return <div className="min-h-[58vh] grid place-items-center"><ElectricLoader status="Just a moment" detail="Loading this part of the arcade for the first time." /></div>;
@@ -73,6 +76,7 @@ function Shell() {
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<Navigate to="/" replace />} />

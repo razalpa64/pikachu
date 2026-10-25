@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { DEFAULT_SETTINGS, suggestQuality, type Quality, type MusicMode } from '../lib/settings';
 import {
   signInWithEmail, signUpWithPassword, signInWithPassword, signOut,
   fetchRemoteUserData, supabase, supabaseEnabled,
 } from '../lib/supabase';
+import { amIAdmin, resetRetroLibrary } from '../lib/admin';
+import { resetSiteContent } from '../lib/content';
 import { Button, ConfirmDialog, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
 import { PikachuMascot } from '../mascot';
 import * as jukebox from '../lib/jukebox';
@@ -17,6 +20,7 @@ const QUALITY_COPY: Record<Quality, string> = {
 
 export default function Settings() {
   const { settings, setSettings, sfx, toast, cloud, identity, setIdentity, syncStats } = useStore();
+  const nav = useNavigate();
   const [authMode, setAuthMode] = useState<'signup' | 'signin' | 'magic'>('signup');
   const [username, setUsername] = useState(identity.name || '');
   const [password, setPassword] = useState('');
@@ -103,6 +107,15 @@ export default function Settings() {
       setSession(displayName);
       setPassword('');
       sfx('win');
+      /* A maintainer's account lands on the desk; everybody else stays here and
+         sees no trace of it. The answer comes from Postgres, not the client. */
+      if (await amIAdmin()) {
+        resetRetroLibrary();
+        resetSiteContent();
+        toast({ kind: 'success', title: `Signed in as ${displayName}`, body: 'Opening the maintainer desk.' });
+        nav('/admin');
+        return;
+      }
       toast({ kind: 'success', title: 'Signed in!', body: `Welcome back, ${displayName}!` });
     } catch (err: any) {
       toast({ kind: 'error', title: 'Sign-in failed', body: err?.message || 'Incorrect username or password.' });

@@ -214,8 +214,12 @@
     document.head.appendChild(script);
   }
 
+  /* Only an absolute https cartridge URL may arrive as a string. Uploaded
+     cartridges live in the project's storage bucket; anything else — a relative
+     path, a data: blob, another scheme — is refused rather than handed to the
+     emulator, so this message cannot become a way to load arbitrary files. */
   function bytesToUrl(value) {
-    if (typeof value === "string" && value) return value;
+    if (typeof value === "string" && /^https:\/\/[^\s"'<>]+\.gba$/i.test(value)) return value;
     return null;
   }
 

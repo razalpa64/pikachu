@@ -7,6 +7,8 @@ import { PikaScene } from '../mascot';
 import { Button, EmptyState, Icon, Panel, Segmented } from '../components/ui';
 import { AdSlot } from '../components/AdSlot';
 import { useStore, useAmbience } from '../lib/store';
+import { useSiteContent } from '../lib/content';
+import { LIBRARY_HEADING } from '../lib/copy';
 import { LIBRARY_FAQ } from '../lib/seo';
 import { BoltRule } from '../mascot';
 
@@ -47,6 +49,7 @@ const FILTERS: { id: Filter; label: string; icon?: string }[] = [
 export default function Library() {
   const [params, setParams] = useSearchParams();
   const { progress, sfx } = useStore();
+  const copy = useSiteContent();
   useAmbience('hub');
   const [query, setQuery] = useState('');
   const deferred = useDeferredValue(query);
@@ -109,7 +112,7 @@ export default function Library() {
       <header className="mb-6 flex items-start justify-between gap-6">
         <div className="min-w-0">
           <p className="eyebrow text-volt-700 mb-1.5">Everything here is playable today</p>
-          <h1 className="display text-[30px] sm:text-[38px] text-cream-100">Game Library</h1>
+          <h1 className="display text-[30px] sm:text-[38px] text-cream-100">{copy('library.title', LIBRARY_HEADING)}</h1>
           <p className="text-[13.5px] text-cream-500 mt-1.5 max-w-[62ch]">
             {GAMES.length} finished games with real engines behind them. No placeholders, no “coming soon” tiles —
             search, filter, and start one in a click.

@@ -12,7 +12,8 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
 2. Open **SQL Editor** and run the migrations **in order**:
    [`0001_init.sql`](migrations/0001_init.sql) →
    [`0002_accounts_and_chat.sql`](migrations/0002_accounts_and_chat.sql) →
-   [`0003_feedback.sql`](migrations/0003_feedback.sql). Each one is idempotent (`create … if not
+   [`0003_feedback.sql`](migrations/0003_feedback.sql) →
+   [`0004_admin.sql`](migrations/0004_admin.sql). Each one is idempotent (`create … if not
    exists`, `drop policy if exists`), so re-running the whole set is safe.
 3. Copy `.env.example` to `.env` in the project root and fill in:
 
@@ -35,6 +36,10 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
 | `player_stats` | rolled-up per-game totals, upserted on `(user_id, game_id)` | only the owner |
 | `feedback` | reviews, game ideas, improvements, bug reports | the published columns of published rows — for anyone |
 | `room_messages` | optional mirror of in-room chat | nobody: insert-only, read it in the SQL editor |
+| `retro_games` | cartridges an admin uploaded: metadata plus the storage paths | published rows, for anyone; drafts only for admins |
+| `site_content` | the handful of headings an admin can rewrite | anyone (it is public copy) |
+| `admin_users` | who is allowed to open `/admin` | **nobody** — no grants, no policies, SQL editor only |
+| `admin_audit` | one row per admin action | admins |
 
 Row Level Security is enabled on every table, and `match_results` deliberately has **no update or
 delete policy** — a results log you can edit is not a results log.
@@ -72,11 +77,12 @@ delete from public.room_messages where created_at < now() - interval '30 days';
 
 ## The migrations are tested, not just written
 
-`npm test` includes `src/lib/__tests__/supabase-schema.test.ts`, which runs all three migration files
-against a real PostgreSQL (PGlite, in memory) with the Supabase roles and `auth.uid()` stubbed in, and
-then connects as `anon` to attempt everything the public must not be able to do. If a migration ever
-widens a grant, drops a policy or loses the rate-limit trigger, that suite fails in CI instead of in
-production.
+`npm test` includes `src/lib/__tests__/supabase-schema.test.ts`, which runs all four migration files
+against a real PostgreSQL (PGlite, in memory) with the Supabase roles, `auth.uid()` and the storage
+schema stubbed in, and then connects as `anon`, as an ordinary signed-in member and as the
+allowlisted admin to attempt everything each of them must and must not be able to do. If a migration
+ever widens a grant, drops a policy, loses the rate-limit trigger or lets a non-admin write a
+cartridge, that suite fails in CI instead of in production.
 
 ## What changed in 0003
 
@@ -102,3 +108,60 @@ relay is still the authoritative copy of chat — this table is only a mirror.
 This build does **not** subscribe to Supabase Realtime by default: room traffic goes over the
 local relay WebSocket (`/rt`), which is cheaper and authoritative. `VITE_REALTIME_TRANSPORT`
 is reserved for swapping that transport later; leave it as `relay`.
+
+## The admin desk (`/admin`)
+
+There is a hidden back office at `/admin`. Nothing links to it, it is `noindex`, it is not in the
+sitemap, and — this is the part that matters — **the page decides nothing**. Authority is a row in
+`public.admin_users`, and every write goes through RLS on the table and on the `retro` storage
+bucket. Deleting the page from the bundle would not grant anybody a single extra byte.
+
+### Turning it on, once
+
+1. **Create the auth user** in *Authentication → Users → Add user* with the maintainer's email and a
+   password. Confirm the address if your project requires it.
+2. **Allowlist it** in the SQL editor:
+
+   ```sql
+   insert into public.admin_users (user_id, note)
+   select id, 'owner' from auth.users where lower(email) = 'you@example.com'
+   on conflict (user_id) do nothing;
+   ```
+
+3. **Run `0004_admin.sql`** if you have not already. It creates the roster, `public.is_admin()`,
+   `retro_games`, `site_content`, `admin_audit` and the public `retro` bucket (32 MB cap,
+   `application/octet-stream` and `image/png`, public read, admin-only write).
+4. Sign in at **Settings → Cloud sync** with that account. If `public.is_admin()` says yes, the app
+   opens `/admin`; for every other account the site behaves exactly as before and shows no trace.
+
+### The password is not in this repository
+
+This repo is public. No password, token or service key belongs in a migration, a component or an
+`.env` file — anything committed is published and stays in the git history afterwards. The
+maintainer's password lives only in the Supabase dashboard (and a password manager). If a password
+has ever been pasted into a chat, a ticket or a commit, rotate it in *Authentication → Users*.
+
+### What the desk can do
+
+| Tab | Actions |
+|---|---|
+| **Retro shelf** | upload a `.gba` (header-checked, ≤ 32 MB), with title, author, tagline, description, tags, licence + licence URL, source URL and a rights note; delete a cartridge (row **and** the stored ROM and cover); unpublish/republish; edit a description |
+| **Site copy** | rewrite the Retro Arcade heading and intro, and the Library heading |
+
+Uploads are gated by the same licence rule the importer uses: an SPDX id that does not permit
+redistribution (NC, ND, unknown) is refused in the form *and* cannot be published afterwards. No
+commercial ROMs — Pokémon, Mario, Contra or anything else all-rights-reserved — belong on this
+shelf; players can still run their own dumps through “your own cartridge”, where the file never
+leaves their browser.
+
+Every action appends to `admin_audit`, with the actor filled in by the database (`default auth.uid()`
+— the client cannot choose it).
+
+### Revoking access
+
+```sql
+delete from public.admin_users where user_id = (select id from auth.users where lower(email) = 'you@example.com');
+```
+
+The next request that calls `public.is_admin()` answers `false`, and `/admin` goes dark for that
+session. Revoke the storage policies' effect the same way — there is exactly one place that decides.

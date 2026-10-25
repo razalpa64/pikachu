@@ -275,11 +275,28 @@ export default function RetroPlayer() {
     return () => { alive = false; };
   }, [boot?.file, isLocal]);
 
+  /* An uploaded cartridge is not in the committed manifest, so `?game=<id>`
+     would come back "unknown game". The shelf already has the URL, so hand it
+     over directly — the player accepts an https `.gba` and nothing else. */
+  const remoteRom = game && /^https:\/\//i.test(game.rom) ? game.rom : null;
+
   const onFrameLoad = useCallback(() => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    if (remoteRom) {
+      win.postMessage(
+        {
+          channel: RETRO_CHANNEL,
+          type: 'boot',
+          game: { name: game?.title, romUrl: remoteRom, numericId: 0, kind: 'gba' },
+        },
+        window.location.origin,
+      );
+      return;
+    }
     if (!isLocal) return;
     const file = cartridge?.file;
-    const win = iframeRef.current?.contentWindow;
-    if (!file || !win) return;
+    if (!file) return;
     win.postMessage(
       {
         channel: RETRO_CHANNEL,
@@ -288,7 +305,7 @@ export default function RetroPlayer() {
       },
       window.location.origin,
     );
-  }, [cartridge?.file, cartridge?.kind, cartridge?.name, isLocal]);
+  }, [cartridge?.file, cartridge?.kind, cartridge?.name, game?.title, isLocal, remoteRom]);
 
   /* Fullscreen is requested on the *stage*, which is also where our own
      full-bleed mode lives. */
@@ -377,7 +394,7 @@ export default function RetroPlayer() {
 
   const title = game?.title ?? cartridge?.name ?? 'Your cartridge';
   const statusCopy = STATUS_COPY[status];
-  const src = isLocal ? RETRO_PLAYER_URL : `${RETRO_PLAYER_URL}?game=${encodeURIComponent(id)}`;
+  const src = isLocal || remoteRom ? RETRO_PLAYER_URL : `${RETRO_PLAYER_URL}?game=${encodeURIComponent(id)}`;
   const lampState = status === 'running' ? 'on' : status === 'paused' ? 'paused' : status === 'error' ? 'off' : 'waiting';
 
   return (

@@ -22,6 +22,8 @@ import {
 } from '../lib/localCartridge';
 import { Button, ErrorState, Icon, Panel, Segmented } from '../components/ui';
 import { useStore } from '../lib/store';
+import { useSiteContent } from '../lib/content';
+import { RETRO_HEADING, RETRO_LEDE } from '../lib/copy';
 
 /**
  * `/retro` — the Game Boy Advance shelf.
@@ -53,6 +55,10 @@ const LENSES: { value: Lens; label: string }[] = [
 
 function CartridgeCard({ game, onPlay }: { game: RetroGame; onPlay: (g: RetroGame) => void }) {
   const [hovered, setHovered] = useState(false);
+  /* An uploaded cartridge has its cover in storage. If that one request fails —
+     a deleted object, a blocked host — the card still has to look deliberate
+     rather than like a hole in the shelf. */
+  const [coverBroken, setCoverBroken] = useState(false);
   const marquee = marqueeUrlFor(game);
   const showMarquee = hovered && !!marquee;
 
@@ -71,16 +77,28 @@ function CartridgeCard({ game, onPlay }: { game: RetroGame; onPlay: (g: RetroGam
         style={{ background: '#221a15' }}
       >
         <span className="relative block w-full overflow-hidden" style={{ aspectRatio: '3 / 2' }}>
-          <img
-            src={coverUrlFor(game)}
-            alt={`${game.title} gameplay screen`}
-            width={240}
-            height={160}
-            loading="lazy"
-            decoding="async"
-            className="absolute inset-0 h-full w-full object-cover pixelated transition-opacity duration-300"
-            style={{ opacity: showMarquee ? 0 : 1 }}
-          />
+          {!coverBroken && (
+            <img
+              src={coverUrlFor(game)}
+              alt={`${game.title} gameplay screen`}
+              width={240}
+              height={160}
+              loading="lazy"
+              decoding="async"
+              onError={() => setCoverBroken(true)}
+              className="absolute inset-0 h-full w-full object-cover pixelated transition-opacity duration-300"
+              style={{ opacity: showMarquee ? 0 : 1 }}
+            />
+          )}
+          {coverBroken && (
+            <span
+              aria-hidden
+              className="absolute inset-0 grid place-items-center px-3 text-center"
+              style={{ background: `linear-gradient(140deg, #161310 0%, ${game.accent} 100%)` }}
+            >
+              <span className="display text-[15px] leading-tight text-white/90">{game.title}</span>
+            </span>
+          )}
           {marquee && (
             <img
               src={marquee}
@@ -164,6 +182,7 @@ function HandheldFrame({ children }: { children: React.ReactNode }) {
 export default function Retro() {
   const nav = useNavigate();
   const { sfx } = useStore();
+  const copy = useSiteContent();
   const [library, setLibrary] = useState<RetroLibrary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -262,12 +281,10 @@ export default function Retro() {
           <div className="min-w-0">
             <p className="eyebrow text-blush-600 mb-1.5">Game Boy Advance · 240 × 160</p>
             <h1 className="display text-[32px] sm:text-[42px] leading-[1.02] text-cream-100">
-              Retro <span className="text-blush-600">Arcade</span>
+              {copy('retro.title', RETRO_HEADING)} <span className="text-blush-600">Arcade</span>
             </h1>
             <p className="text-[13.5px] text-cream-500 mt-2 max-w-[64ch]">
-              A shelf of real Game Boy Advance cartridges, running on the original hardware timings inside your
-              browser. Every title here is freely redistributable homebrew — nothing commercial, nothing borrowed
-              from a ROM site — and the emulator is only downloaded the moment you insert a cartridge.
+              {copy('retro.lede', RETRO_LEDE)}
             </p>
           </div>
           <div className="hidden lg:block shrink-0 w-[248px]">

@@ -110,7 +110,7 @@ export default function BattleshipBoard({ state, youSlot, onMove, interactive, n
             </div>
           ) : (
             <div className="text-center py-2">
-              <p className="text-[12.5px] font-extrabold text-[#2f9c71]">Fleet locked</p>
+              <p className="text-[12.5px] font-extrabold text-leaf-700">Fleet locked</p>
               <p className="text-[11.5px] text-cream-500 mt-1">
                 {state.ready[opp] ? 'Both fleets ready — battle starting.' : `Waiting for ${names[opp]} to deploy…`}
               </p>
@@ -190,11 +190,11 @@ function Grid({
       <div className="relative grid" style={{ gridTemplateColumns: `${small ? '14px' : '18px'} repeat(${size}, ${cw})` }} role="grid" aria-label={label}>
         <span />
         {Array.from({ length: size }).map((_, c) => (
-          <span key={c} className="grid place-items-center text-[8.5px] font-extrabold text-[#5f87a3]">{LETTERS[c]}</span>
+          <span key={c} className="grid place-items-center text-[8.5px] font-extrabold text-[#416a83]">{LETTERS[c]}</span>
         ))}
         {Array.from({ length: size }).map((_, r) => (
           <Fragment key={`row-${r}`}>
-            <span className="grid place-items-center text-[8.5px] font-extrabold text-[#5f87a3]">{r + 1}</span>
+            <span className="grid place-items-center text-[8.5px] font-extrabold text-[#416a83]">{r + 1}</span>
             {Array.from({ length: size }).map((__, c) => {
               const cell = r * size + c;
               const dis = disabledCell?.(cell);

@@ -85,12 +85,15 @@ export function Panel({ children, className = '', notch = true, as: As = 'div', 
   return <As className={`panel ${notch ? 'panel-notch' : ''} ${className}`} {...rest}>{children}</As>;
 }
 
-export function SectionTitle({ eyebrow, title, action }: { eyebrow?: string; title: string; action?: ReactNode }) {
+/* `id` belongs on the heading, not on the grid below it: sections are
+   aria-labelledby their title, and pointing that at a wrapper made a screen
+   reader announce every card in the grid as the section's name. */
+export function SectionTitle({ eyebrow, title, action, id }: { eyebrow?: string; title: string; action?: ReactNode; id?: string }) {
   return (
     <div className="flex items-end justify-between gap-4 mb-3.5">
       <div>
         {eyebrow && <p className="eyebrow mb-1">{eyebrow}</p>}
-        <h2 className="display text-[22px] sm:text-[26px] text-cream-100">{title}</h2>
+        <h2 id={id} className="display text-[22px] sm:text-[26px] text-cream-100">{title}</h2>
       </div>
       {action}
     </div>
@@ -197,7 +200,7 @@ export function ToastStack() {
             ${t.kind === 'achievement' ? 'border-volt-400' : t.kind === 'error' ? 'border-ember-400' : ''}`}>
           {t.kind === 'achievement'
             ? <PikachuMascot state="excited" size={62} shadow={false} />
-            : <span className={`mt-0.5 ${t.kind === 'error' ? 'text-ember-600' : t.kind === 'success' ? 'text-[#2f9c71]' : 'text-volt-700'}`}>
+            : <span className={`mt-0.5 ${t.kind === 'error' ? 'text-ember-600' : t.kind === 'success' ? 'text-leaf-700' : 'text-volt-700'}`}>
                 <Icon name={t.kind === 'error' ? 'x' : t.kind === 'success' ? 'check' : 'bolt'} size={18} />
               </span>}
           <div className="min-w-0 flex-1">
@@ -217,7 +220,7 @@ export function ToastStack() {
 export function Stat({ label, value, accent }: { label: string; value: ReactNode; accent?: string }) {
   return (
     <div className="px-2.5 py-1.5 sm:px-3.5 sm:py-2 bg-white/80 border-2 border-ink-500 rounded-xl sm:rounded-2xl min-w-[62px] sm:min-w-[76px] text-center">
-      <p className="eyebrow text-[9px] sm:text-[9.5px] mb-0 sm:mb-0.5">{label}</p>
+      <p className="eyebrow text-[10px] sm:text-[10.5px] mb-0 sm:mb-0.5">{label}</p>
       <p className="display text-[15px] sm:text-[18px] tabnum leading-none" style={{ color: accent ?? 'var(--color-cream-100)' }}>{value}</p>
     </div>
   );
@@ -280,7 +283,7 @@ export function CopyField({ value, label, onCopied }: { value: string; label: st
         <p className="font-mono text-[12.5px] text-cream-100 truncate">{value}</p>
       </div>
       <button onClick={copy} aria-label={`Copy ${label}`}
-        className={`px-4 font-extrabold text-[11px] uppercase tracking-wider transition-colors no-tap ${done ? 'bg-leaf-400 text-white' : 'bg-blush-100 text-cream-300 hover:bg-volt-400 hover:text-[#5a3a12]'}`}>
+        className={`px-4 font-extrabold text-[11px] uppercase tracking-wider transition-colors no-tap ${done ? 'bg-leaf-400 text-[#12503a]' : 'bg-blush-100 text-cream-300 hover:bg-volt-400 hover:text-[#5a3a12]'}`}>
         <Icon name={done ? 'check' : 'copy'} size={15} />
       </button>
     </div>

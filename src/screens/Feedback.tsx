@@ -162,7 +162,7 @@ export default function Feedback() {
                     <p id="fb-message-help" className="text-[11.5px] text-cream-500 leading-snug">
                       At least {MIN_MESSAGE} characters. No account needed, and nothing here is posted anywhere but this site.
                     </p>
-                    <span className={`text-[11px] tabnum shrink-0 ${draft.message.length > MAX_MESSAGE ? 'text-[#d9456f] font-bold' : 'text-cream-500'}`}>
+                    <span className={`text-[11px] tabnum shrink-0 ${draft.message.length > MAX_MESSAGE ? 'text-blush-600 font-bold' : 'text-cream-500'}`}>
                       {draft.message.trim().length}/{MAX_MESSAGE}
                     </span>
                   </div>
@@ -291,7 +291,7 @@ export default function Feedback() {
 /* ------------------------------------------------------------------ pieces */
 
 function FieldError({ children, id }: { children: ReactNode; id?: string }) {
-  return <p id={id} className="mt-1.5 text-[11.5px] font-bold text-[#d9456f] leading-snug">{children}</p>;
+  return <p id={id} className="mt-1.5 text-[11.5px] font-bold text-blush-600 leading-snug">{children}</p>;
 }
 
 /**
@@ -315,7 +315,7 @@ function Stars({
     return (
       <span className="inline-flex items-center gap-0.5" aria-label={value ? `${value} out of 5` : 'no rating'}>
         {[1, 2, 3, 4, 5].map((n) => (
-          <span key={n} aria-hidden className={n <= (value ?? 0) ? 'text-volt-600' : 'text-ink-400'}>
+          <span key={n} aria-hidden className={n <= (value ?? 0) ? 'text-volt-600' : 'text-cream-400'}>
             <Icon name="star" size={size} className={n <= (value ?? 0) ? 'fill-current' : ''} />
           </span>
         ))}
@@ -354,7 +354,7 @@ function Stars({
           className="p-1 rounded-lg no-tap focus:outline-none focus:ring-2 focus:ring-volt-400"
         >
           <Icon name="star" size={size}
-            className={`transition-transform duration-100 ${n <= shown ? 'text-volt-600 fill-current scale-105' : 'text-ink-400'} ${invalid ? 'opacity-80' : ''}`} />
+            className={`transition-transform duration-100 ${n <= shown ? 'text-volt-600 fill-current scale-105' : 'text-cream-400'} ${invalid ? 'opacity-80' : ''}`} />
         </button>
       ))}
       <span className="ml-1.5 text-[12px] font-bold text-cream-500 tabnum" aria-hidden>{shown || '—'}/5</span>

@@ -54,7 +54,7 @@ export const GameCard = memo(function GameCard({ game, size = 'md' }: { game: Ga
             {GENRE_LABEL[game.genre]}
           </span>
           {canOnline && (
-            <span className="px-2 py-[3px] rounded-full bg-blush-300 border-2 border-blush-600 text-white text-[9px] font-extrabold uppercase tracking-wider">
+            <span className="px-2 py-[3px] rounded-full bg-blush-300 border-2 border-blush-600 text-[#7a2440] text-[9px] font-extrabold uppercase tracking-wider">
               Together
             </span>
           )}

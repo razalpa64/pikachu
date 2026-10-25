@@ -55,13 +55,13 @@ export default function Profile() {
             </h1>
             {identity.greeting
               ? <p className="text-[12.5px] text-cream-400 mt-1.5 italic">“{identity.greeting}”</p>
-              : <p className="text-[12.5px] text-ink-400 mt-1.5">Add a name and a lobby tagline on the right — they are what your rival sees.</p>}
+              : <p className="text-[12.5px] text-cream-400 mt-1.5">Add a name and a lobby tagline on the right — they are what your rival sees.</p>}
             <div className="mt-3 max-w-[420px]">
-              <div className="flex justify-between text-[10px] uppercase tracking-wider font-bold text-ink-400 mb-1">
+              <div className="flex justify-between text-[10px] uppercase tracking-wider font-bold text-cream-400 mb-1">
                 <span>Level {lvl.level}</span><span className="tabnum">{progress.xp - lvl.floor} / {lvl.ceil - lvl.floor}</span>
               </div>
               <div className="h-2 bg-blush-100 overflow-hidden">
-                <div className="h-full rounded-full bg-gradient-to-r from-butter-300 via-volt-400 to-blush-300 transition-[width] duration-700" style={{ width: `${lvl.pct * 100}%` }} />
+                <div className="h-full rounded-full bg-gradient-to-r from-volt-300 via-volt-400 to-blush-300 transition-[width] duration-700" style={{ width: `${lvl.pct * 100}%` }} />
               </div>
             </div>
           </div>
@@ -116,8 +116,8 @@ export default function Profile() {
                   <Link key={i} to={`/solo/${g.slug}`} className="flex items-center gap-3 p-3 hover:bg-ink-800/60">
                     <span className="w-1.5 h-7" style={{ background: g.accent }} />
                     <span className="text-[13px] text-cream-100 font-semibold flex-1 truncate">{g.title}</span>
-                    <span className="text-[11px] text-ink-400 uppercase tracking-wider">{r.mode}</span>
-                    <span className="text-[11px] text-ink-400 tabnum">{rel(r.at)}</span>
+                    <span className="text-[11px] text-cream-400 uppercase tracking-wider">{r.mode}</span>
+                    <span className="text-[11px] text-cream-400 tabnum">{rel(r.at)}</span>
                   </Link>
                 );
               })}
@@ -156,7 +156,7 @@ export default function Profile() {
               <Button className="w-full" onClick={save} disabled={!dirty} icon={<Icon name="check" size={14} />}>
                 {dirty ? 'Save profile' : 'Saved'}
               </Button>
-              <p className="text-[11px] text-ink-400">
+              <p className="text-[11px] text-cream-400">
                 Player ID <span className="font-mono text-cream-500">{identity.playerId.slice(0, 8)}</span> — generated on this device, used to hold your seat if you reconnect.
               </p>
             </Panel>
@@ -172,9 +172,9 @@ export default function Profile() {
                   <ul className="space-y-2.5">
                     {unlocked.sort((a, b) => progress.achievements[b.slug] - progress.achievements[a.slug]).slice(0, 5).map((a) => (
                       <li key={a.slug} className="flex items-center gap-2.5">
-                        <span className="w-7 h-7 grid place-items-center rounded-full border-2 border-ink-500 bg-gradient-to-br from-butter-200 to-volt-400 text-[#5a3a12] shrink-0"><Icon name="bolt" size={14} /></span>
+                        <span className="w-7 h-7 grid place-items-center rounded-full border-2 border-ink-500 bg-gradient-to-br from-volt-200 to-volt-400 text-[#5a3a12] shrink-0"><Icon name="bolt" size={14} /></span>
                         <span className="text-[13px] text-cream-100 font-semibold flex-1 truncate">{a.name}</span>
-                        <span className="text-[10.5px] text-ink-400 tabnum">{new Date(progress.achievements[a.slug]).toLocaleDateString()}</span>
+                        <span className="text-[10.5px] text-cream-400 tabnum">{new Date(progress.achievements[a.slug]).toLocaleDateString()}</span>
                       </li>
                     ))}
                   </ul>

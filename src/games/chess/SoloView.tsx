@@ -102,7 +102,7 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
           {state.clock && <Stat label="White" value={clock(state.clock[0])} accent={turn === 0 ? '#f0b429' : undefined} />}
           {state.clock && <Stat label="Black" value={clock(state.clock[1])} accent={turn === 1 ? '#f0b429' : undefined} />}
           <Stat label="Move" value={Math.ceil(state.pgnMoves.length / 2) + 1} />
-          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${inCheck ? 'bg-ember-400 text-cream-100' : turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-100 text-cream-300'}`}>
+          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${inCheck ? 'bg-ember-400 text-[#4a0a1e]' : turn === 0 ? 'bg-volt-400 text-[#5a3a12]' : 'bg-blush-100 text-cream-300'}`}>
             {state.over ? 'Game over' : inCheck ? 'Check' : turn === 0 ? 'White to move' : thinking ? 'Engine thinking' : 'Black to move'}
           </span>
           {engineInfo && settings.showHints && (
@@ -126,10 +126,10 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
         <Panel className="p-3.5 w-full xl:w-[250px] shrink-0">
           <p className="eyebrow mb-2">Move history</p>
           <div className="max-h-[230px] overflow-y-auto pr-1 font-mono text-[12px] leading-relaxed">
-            {state.pgnMoves.length === 0 && <p className="text-ink-400 text-[11.5px] font-sans">No moves yet.</p>}
+            {state.pgnMoves.length === 0 && <p className="text-cream-400 text-[11.5px] font-sans">No moves yet.</p>}
             {Array.from({ length: Math.ceil(state.pgnMoves.length / 2) }).map((_, i) => (
               <div key={i} className="grid grid-cols-[26px_1fr_1fr] gap-1">
-                <span className="text-ink-400">{i + 1}.</span>
+                <span className="text-cream-400">{i + 1}.</span>
                 <span className="text-cream-100">{state.pgnMoves[i * 2]}</span>
                 <span className="text-cream-300">{state.pgnMoves[i * 2 + 1] ?? ''}</span>
               </div>

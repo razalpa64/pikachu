@@ -174,7 +174,7 @@ export default function Music() {
                       <button
                         onClick={async () => { await jukebox.removeTrack(t.id); await jukebox.refreshLibrary(); }}
                         aria-label={`Remove ${t.name}`}
-                        className="shrink-0 p-2 min-h-[34px] text-cream-500 hover:text-[#e05a74]"
+                        className="shrink-0 p-2 min-h-[34px] text-cream-500 hover:text-blush-600"
                       >
                         <Icon name="x" size={14} />
                       </button>

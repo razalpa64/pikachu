@@ -89,11 +89,11 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              <Stat label="Level" value={lvl.level} accent="#c07f0f" />
+              <Stat label="Level" value={lvl.level} accent="var(--color-volt-700)" />
               <Stat label="Matches" value={totals.played} />
-              <Stat label="Wins" value={totals.wins} accent="#2f9c71" />
+              <Stat label="Wins" value={totals.wins} accent="var(--color-leaf-700)" />
               <Stat label="Trophies" value={totals.ach} accent="#2f7fc4" />
-              <Stat label="vs Rival" value={`${progress.versus.wins}–${progress.versus.losses}`} accent="#d9456f" />
+              <Stat label="vs Rival" value={`${progress.versus.wins}–${progress.versus.losses}`} accent="var(--color-blush-600)" />
             </div>
           </div>
 
@@ -105,7 +105,7 @@ export default function Home() {
             <Panel className="relative p-4 mt-24 lg:mt-[120px]">
               <div className="flex items-center justify-between mb-3">
                 <p className="eyebrow">Private arena</p>
-                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${conn === 'online' ? 'text-[#2f9c71]' : 'text-cream-500'}`}>
+                <span className={`text-[10px] font-extrabold uppercase tracking-wider ${conn === 'online' ? 'text-leaf-700' : 'text-cream-500'}`}>
                   {conn === 'online' ? '● Relay live' : '○ Relay idle'}
                 </span>
               </div>
@@ -138,7 +138,7 @@ export default function Home() {
                     <div className="h-full rounded-full bg-gradient-to-r from-volt-400 to-blush-300" style={{ width: `${lvl.pct * 100}%` }} />
                   </div>
                 </div>
-                <button onClick={() => { sfx('click'); nav('/profile'); }} className="text-[10.5px] font-extrabold uppercase tracking-wider text-blush-600 hover:text-blush-400 shrink-0">Edit</button>
+                <button onClick={() => { sfx('click'); nav('/profile'); }} className="text-[10.5px] font-extrabold uppercase tracking-wider text-blush-600 hover:text-[#8f1740] hover:underline shrink-0">Edit</button>
               </div>
             </Panel>
           </div>
@@ -149,9 +149,9 @@ export default function Home() {
         {/* ============================ CONTINUE ============================ */}
         {recents.length > 0 && (
           <section aria-labelledby="continue-h">
-            <SectionTitle eyebrow="Jump back in" title="Continue playing"
+            <SectionTitle id="continue-h" eyebrow="Jump back in" title="Continue playing"
               action={<Button variant="ghost" size="sm" onClick={() => nav('/library')}>All games</Button>} />
-            <div id="continue-h" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {recents.map((r) => (
                 <button key={r.gameId} onClick={() => { sfx('select'); nav(`/solo/${r.game!.slug}`); }}
                   className="group relative h-[104px] panel notch-sm overflow-hidden text-left no-tap hover:border-volt-600/70 transition-colors">
@@ -172,9 +172,9 @@ export default function Home() {
 
         {/* ============================ DAILY ============================ */}
         <section aria-labelledby="daily-h">
-          <SectionTitle eyebrow="Resets at midnight" title="Daily challenges"
+          <SectionTitle id="daily-h" eyebrow="Resets at midnight" title="Daily challenges"
             action={<Button variant="ghost" size="sm" onClick={() => nav('/challenges')}>View all</Button>} />
-          <div id="daily-h" className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             {challenges.map((c) => {
               const done = (progress.dailyProgress[c.id] ?? 0) >= c.goal;
               const pct = Math.min(1, (progress.dailyProgress[c.id] ?? 0) / c.goal);
@@ -227,9 +227,9 @@ export default function Home() {
 
         {/* ============================ LIBRARY PREVIEW ============================ */}
         <section aria-labelledby="games-h">
-          <SectionTitle eyebrow={`${GAMES.length} complete games`} title="The game library"
+          <SectionTitle id="games-h" eyebrow={`${GAMES.length} complete games`} title="The game library"
             action={<Button variant="ghost" size="sm" onClick={() => nav('/library')} icon={<Icon name="grid" size={14} />}>Browse all</Button>} />
-          <div id="games-h" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {featured.map((g) => <GameCard key={g.id} game={g} />)}
           </div>
         </section>

@@ -89,7 +89,7 @@ export default function Library() {
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-500"><Icon name="search" size={16} /></span>
           <input value={query} onChange={(e) => setQuery(e.target.value)} type="search" placeholder="Search games, genres, mechanics…"
             aria-label="Search games"
-            className="w-full bg-ink-800 border border-ink-500 pl-9 pr-3 py-2.5 text-[13.5px] text-cream-100 placeholder:text-ink-400 notch-sm focus:border-volt-500 outline-none" />
+            className="w-full bg-ink-800 border border-ink-500 pl-9 pr-3 py-2.5 text-[13.5px] text-cream-100 placeholder:text-cream-400 notch-sm focus:border-volt-500 outline-none" />
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="eyebrow hidden sm:inline">Sort</span>
@@ -126,7 +126,7 @@ export default function Library() {
             {results.map((g) => <GameCard key={g.id} game={g} />)}
           </div>
           <BoltRule className="mt-9" />
-          <p className="text-center text-[11.5px] text-ink-400 mt-4">
+          <p className="text-center text-[11.5px] text-cream-400 mt-4">
             Showing {results.length} of {GAMES.length} games
           </p>
         </>

@@ -89,7 +89,7 @@ export function ResultOverlay({
               <p className="eyebrow text-[9px] mb-1 truncate">{playerA.name}{playerA.you ? ' (you)' : ''}</p>
               <p className="display text-[28px] tabnum text-volt-700">{playerA.score ?? '—'}</p>
             </div>
-            <span className="display text-[14px] text-ink-400">VS</span>
+            <span className="display text-[14px] text-cream-400">VS</span>
             <div className="panel notch-sm p-3">
               <p className="eyebrow text-[9px] mb-1 truncate">{playerB.name}{playerB.you ? ' (you)' : ''}</p>
               <p className="display text-[28px] tabnum text-blush-600">{playerB.score ?? '—'}</p>
@@ -158,7 +158,7 @@ export function MatchCountdown({ startsAt, names, onDone }: { startsAt: number; 
             <PikachuMascot state="competitive" size={120} />
             <p className="display text-[15px] text-volt-700 mt-1 max-w-[14ch] truncate">{names[0]}</p>
           </div>
-          <span className="display text-[20px] text-ink-400 mb-10">VS</span>
+          <span className="display text-[20px] text-cream-400 mb-10">VS</span>
           <div className="text-left">
             <PikachuMascot state="competitive" size={120} flip />
             <p className="display text-[15px] text-blush-600 mt-1 max-w-[14ch] truncate">{names[1]}</p>

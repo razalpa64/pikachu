@@ -85,7 +85,7 @@ export default function BattleshipSolo({ game }: { game: GameMeta }) {
           <Stat label="Accuracy" value={shots ? `${Math.round((hits / shots) * 100)}%` : '—'} accent="#4a9fd8" />
           <Stat label="Sunk" value={`${state.sunk[0].length}/5`} accent="#3fae82" />
           <Stat label="Lost" value={`${state.sunk[1].length}/5`} />
-          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.phase === 'placement' ? 'bg-blush-100 text-cream-300' : state.turn === 0 ? 'bg-spark-400 text-[#5a3a12]' : 'bg-ember-400 text-cream-100'}`}>
+          <span className={`px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm ${state.phase === 'placement' ? 'bg-blush-100 text-cream-300' : state.turn === 0 ? 'bg-spark-400 text-[#5a3a12]' : 'bg-ember-400 text-[#4a0a1e]'}`}>
             {state.over ? 'Battle over' : state.phase === 'placement' ? 'Deployment' : state.turn === 0 ? 'Your salvo' : 'Incoming fire'}
           </span>
         </Panel>

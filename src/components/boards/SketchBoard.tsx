@@ -209,7 +209,7 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
             </div>
             <div className="text-right shrink-0">
               <p className="eyebrow">{state.phase === 'draw' ? 'Time' : 'Next round'}</p>
-              <p className={`font-display text-[22px] font-extrabold tabular-nums ${urgent ? 'text-[#e05a74]' : 'text-cream-100'}`}>
+              <p className={`font-display text-[22px] font-extrabold tabular-nums ${urgent ? 'text-blush-600' : 'text-cream-100'}`}>
                 {secs}s
               </p>
             </div>
@@ -352,7 +352,7 @@ export default function SketchBoard({ state, youSlot, onMove, interactive, names
             <ul className="space-y-1 max-h-[220px] overflow-y-auto" aria-live="polite">
               {state.guesses.slice().reverse().map((g, i) => (
                 <li key={state.guesses.length - i}
-                  className={`text-[13px] px-2 py-1 notch-sm ${g.hit ? 'bg-[#2f9c71]/15 text-[#2f9c71] font-bold' : 'text-cream-300'}`}>
+                  className={`text-[13px] px-2 py-1 notch-sm ${g.hit ? 'bg-[#2f9c71]/15 text-leaf-700 font-bold' : 'text-cream-300'}`}>
                   {g.hit ? '✓ ' : ''}{g.text}
                 </li>
               ))}

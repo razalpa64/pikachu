@@ -166,7 +166,7 @@ function Lights({ p, onMove, onWin, locked, sfx }: { p: LightsP; onMove: () => v
       <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${p.n}, minmax(0,1fr))`, width: `min(84vw, ${p.n * 68}px)` }}>
         {cells.map((on, i) => (
           <button key={i} onClick={() => tap(i)} disabled={locked} aria-pressed={on} aria-label={`Node ${i + 1} ${on ? 'live' : 'down'}`}
-            className={`aspect-square notch-sm no-tap grid place-items-center transition-colors ${on ? 'bg-volt-400 text-[#5a3a12] shadow-[0_0_16px_rgba(255,203,5,.45)]' : 'bg-ink-800 text-ink-500 border border-ink-600'}`}>
+            className={`aspect-square notch-sm no-tap grid place-items-center transition-colors ${on ? 'bg-volt-400 text-[#5a3a12] shadow-[0_0_16px_rgba(255,203,5,.45)]' : 'bg-ink-800 text-cream-400 border border-ink-600'}`}>
             <svg width="40%" height="40%" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4 14h6l-1 8 9-12h-6z" /></svg>
           </button>
         ))}
@@ -211,7 +211,7 @@ function Lock({ p, onMove, onWin, onFail, locked, sfx }: { p: LockP; onMove: () 
             <span className="flex-1" />
             {Array.from({ length: r.exact }).map((_, k) => <span key={`e${k}`} className="w-2.5 h-2.5 bg-volt-400 rounded-full" title="Right digit, right slot" />)}
             {Array.from({ length: r.partial }).map((_, k) => <span key={`p${k}`} className="w-2.5 h-2.5 bg-spark-400 rounded-full" title="Right digit, wrong slot" />)}
-            {r.exact + r.partial === 0 && <span className="text-ink-400 text-[11px]">no match</span>}
+            {r.exact + r.partial === 0 && <span className="text-cream-400 text-[11px]">no match</span>}
           </div>
         ))}
       </div>
@@ -301,11 +301,11 @@ function Sum({ p, onMove, onWin, locked, sfx }: { p: SumP; onMove: () => void; o
     <div className="panel panel-notch p-3 overflow-x-auto">
       <div className="grid gap-1" style={{ gridTemplateColumns: `28px repeat(${p.n}, minmax(0,1fr)) 40px`, width: `min(90vw, ${p.n * 56 + 80}px)` }}>
         <span />
-        {Array.from({ length: p.n }).map((_, c) => <span key={`h${c}`} className="text-center text-[10px] font-bold text-ink-400 tabnum">{c + 1}</span>)}
+        {Array.from({ length: p.n }).map((_, c) => <span key={`h${c}`} className="text-center text-[10px] font-bold text-cream-400 tabnum">{c + 1}</span>)}
         <span />
         {Array.from({ length: p.n }).map((_, r) => (
           <Fragment key={`r${r}`}>
-            <span className="grid place-items-center text-[10px] font-bold text-ink-400 tabnum">{r + 1}</span>
+            <span className="grid place-items-center text-[10px] font-bold text-cream-400 tabnum">{r + 1}</span>
             {Array.from({ length: p.n }).map((_, c) => {
               const i = r * p.n + c;
               return (
@@ -313,14 +313,14 @@ function Sum({ p, onMove, onWin, locked, sfx }: { p: SumP; onMove: () => void; o
                   className={`aspect-square notch-sm no-tap border transition-colors ${picked[i] ? 'bg-volt-400 border-volt-300' : 'bg-ink-800 border-ink-600 hover:border-ink-500'}`} />
               );
             })}
-            <span className={`grid place-items-center text-[12px] font-extrabold tabnum ${rowSum(r) === p.rowTargets[r] ? 'text-[#2f9c71]' : rowSum(r) > p.rowTargets[r] ? 'text-ember-600' : 'text-cream-300'}`}>
+            <span className={`grid place-items-center text-[12px] font-extrabold tabnum ${rowSum(r) === p.rowTargets[r] ? 'text-leaf-700' : rowSum(r) > p.rowTargets[r] ? 'text-ember-600' : 'text-cream-300'}`}>
               {p.rowTargets[r]}
             </span>
           </Fragment>
         ))}
         <span />
         {Array.from({ length: p.n }).map((_, c) => (
-          <span key={`f${c}`} className={`text-center text-[12px] font-extrabold tabnum ${colSum(c) === p.colTargets[c] ? 'text-[#2f9c71]' : colSum(c) > p.colTargets[c] ? 'text-ember-600' : 'text-cream-300'}`}>
+          <span key={`f${c}`} className={`text-center text-[12px] font-extrabold tabnum ${colSum(c) === p.colTargets[c] ? 'text-leaf-700' : colSum(c) > p.colTargets[c] ? 'text-ember-600' : 'text-cream-300'}`}>
             {p.colTargets[c]}
           </span>
         ))}

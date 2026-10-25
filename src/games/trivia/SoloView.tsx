@@ -233,10 +233,10 @@ export default function TriviaSolo({ game }: { game: GameMeta }) {
               <div className="mt-4 flex flex-wrap items-center gap-3 border-t-2 border-dashed border-ink-500 pt-3.5">
                 <p className="flex-1 min-w-[220px] text-[13px] text-cream-300">
                   {picked === correctSlot
-                    ? <><strong className="text-[#2f9c71]">Correct.</strong> {question.note ?? ''}</>
+                    ? <><strong className="text-leaf-700">Correct.</strong> {question.note ?? ''}</>
                     : picked === null
-                      ? <><strong className="text-[#e05a74]">Out of time.</strong> The answer was {question.a[0]}. {question.note ?? ''}</>
-                      : <><strong className="text-[#e05a74]">Not quite.</strong> The answer was {question.a[0]}. {question.note ?? ''}</>}
+                      ? <><strong className="text-blush-600">Out of time.</strong> The answer was {question.a[0]}. {question.note ?? ''}</>
+                      : <><strong className="text-blush-600">Not quite.</strong> The answer was {question.a[0]}. {question.note ?? ''}</>}
                 </p>
                 <Button onClick={advance} icon={<Icon name="play" size={14} />}>
                   {state.index + 1 >= state.queue.length ? 'See the result' : 'Next question'}

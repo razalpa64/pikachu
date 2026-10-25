@@ -50,7 +50,7 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
       {/* series tally */}
       <div className="flex items-center justify-between mb-3 gap-3">
         <Tally name={names[0]} wins={state.wins[0]} need={need} colour="#f0b429" me={youSlot === 0} />
-        <span className="display text-[13px] text-ink-400 shrink-0">ROUND {Math.min(state.rounds.length + 1, state.bestOf)}/{state.bestOf}</span>
+        <span className="display text-[13px] text-cream-400 shrink-0">ROUND {Math.min(state.rounds.length + 1, state.bestOf)}/{state.bestOf}</span>
         <Tally name={names[1]} wins={state.wins[1]} need={need} colour="#4a9fd8" me={youSlot === 1} align="right" />
       </div>
 
@@ -116,9 +116,9 @@ export default function ReactionBoard({ state, youSlot, onMove, interactive, nam
           <div className="flex flex-col gap-1">
             {state.rounds.map((r) => (
               <div key={r.index} className="grid grid-cols-[auto_1fr_auto_1fr] gap-2 items-center text-[11.5px] tabnum">
-                <span className="text-ink-400 w-6">#{r.index + 1}</span>
+                <span className="text-cream-400 w-6">#{r.index + 1}</span>
                 <span className={`text-right ${r.winner === 0 ? 'text-volt-700 font-extrabold' : 'text-cream-500'}`}>{fmt(r.responses[0], r.falseStart[0])}</span>
-                <span className="text-ink-400">·</span>
+                <span className="text-cream-400">·</span>
                 <span className={`${r.winner === 1 ? 'text-blush-600 font-extrabold' : 'text-cream-500'}`}>{fmt(r.responses[1], r.falseStart[1])}</span>
               </div>
             ))}

@@ -94,7 +94,7 @@ export default function DareSolo({ game }: { game: GameMeta }) {
                 aria-pressed={on}
                 title={locked ? 'Switch on the spicy deck below first' : HEAT_BLURB[h]}
                 className={`px-3 py-1.5 text-[12px] font-extrabold notch-sm border-2 transition-colors ${
-                  locked ? 'bg-ink-850 text-cream-500 border-ink-500 cursor-not-allowed'
+                  locked ? 'bg-ink-850 text-cream-400 border-ink-500 cursor-not-allowed'
                     : on ? 'bg-blush-300 text-[#6d2038] border-ink-400'
                     : 'bg-ink-800 text-cream-300 border-ink-500 hover:border-ink-400'
                 }`}
@@ -216,7 +216,7 @@ export default function DareSolo({ game }: { game: GameMeta }) {
             <ul className="space-y-1.5 max-h-[150px] overflow-y-auto">
               {state.history.slice().reverse().slice(0, 12).map((h, i) => (
                 <li key={state.history.length - i} className="text-[12.5px] flex gap-2">
-                  <span className={`shrink-0 font-extrabold ${h.outcome === 'done' ? 'text-[#2f9c71]' : 'text-cream-500'}`}>
+                  <span className={`shrink-0 font-extrabold ${h.outcome === 'done' ? 'text-leaf-700' : 'text-cream-500'}`}>
                     {h.outcome === 'done' ? '✓' : '↷'}
                   </span>
                   <span className="shrink-0 font-bold text-cream-100">{state.players[h.player].name}</span>

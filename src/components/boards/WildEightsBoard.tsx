@@ -67,7 +67,7 @@ export default function WildEightsBoard({ state, youSlot, onMove, interactive, n
             {suitChanged && (
               <p className="mt-1.5 text-[11px] font-extrabold uppercase tracking-wide">
                 <span className="text-cream-500">called </span>
-                <span className={SUIT_RED[state.suit] ? 'text-[#d6436a]' : 'text-cream-100'}>
+                <span className={SUIT_RED[state.suit] ? 'text-ember-600' : 'text-cream-100'}>
                   {SUIT_SYMBOL[state.suit]} {state.suit}
                 </span>
               </p>
@@ -95,7 +95,7 @@ export default function WildEightsBoard({ state, youSlot, onMove, interactive, n
                   onClick={() => onMove({ type: 'suit', suit: s })}
                   aria-label={`Call ${s}`}
                   className={`px-4 py-2.5 border-2 border-ink-400 notch-sm bg-ink-800 hover:bg-volt-200 font-extrabold text-[15px] transition-colors ${
-                    SUIT_RED[s] ? 'text-[#d6436a]' : 'text-cream-100'
+                    SUIT_RED[s] ? 'text-ember-600' : 'text-cream-100'
                   }`}
                 >
                   <span className="text-[20px] mr-1.5">{SUIT_SYMBOL[s]}</span>{s}
@@ -140,7 +140,7 @@ export default function WildEightsBoard({ state, youSlot, onMove, interactive, n
           <span className="eyebrow">Your hand</span>
           <span className="text-[11px] font-bold text-cream-500">{myHand.length} cards · {handValue(myHand)} pts</span>
           {myTurn && !state.awaitingSuit && mine.length > 0 && (
-            <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#2f9c71]">{mine.length} playable</span>
+            <span className="text-[11px] font-extrabold uppercase tracking-wide text-leaf-700">{mine.length} playable</span>
           )}
           {!myTurn && !state.over && (
             <span className="text-[11px] font-extrabold uppercase tracking-wide text-cream-500">waiting</span>

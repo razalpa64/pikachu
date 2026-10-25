@@ -29,16 +29,16 @@ export function CardFace({
         ${disabled ? 'cursor-default' : ''} ${dim ? 'opacity-45 saturate-50' : ''}`}
       style={{ boxShadow: '0 3px 0 rgba(140,94,70,.35), inset 0 2px 0 rgba(255,255,255,.8)' }}
     >
-      <span className={`relative z-10 font-display text-[15px] font-extrabold leading-none ${red ? 'text-[#d6436a]' : 'text-cream-100'}`}>
+      <span className={`relative z-10 font-display text-[15px] font-extrabold leading-none ${red ? 'text-ember-600' : 'text-cream-100'}`}>
         {rank}<span className="block text-[10px] leading-none">{SUIT_SYMBOL[suit]}</span>
       </span>
       <span
-        className={`absolute inset-0 grid place-items-center ${small ? 'text-[30px]' : 'text-[40px]'} leading-none ${red ? 'text-[#e8718f]' : 'text-[#8a6a58]'}`}
+        className={`absolute inset-0 grid place-items-center ${small ? 'text-[30px]' : 'text-[40px]'} leading-none ${red ? 'text-[#e0567a]' : 'text-[#8a6a58]'}`}
         aria-hidden
       >
         {SUIT_SYMBOL[suit]}
       </span>
-      <span className={`relative z-10 self-end font-display text-[15px] font-extrabold leading-none rotate-180 ${red ? 'text-[#d6436a]' : 'text-cream-100'}`}>
+      <span className={`relative z-10 self-end font-display text-[15px] font-extrabold leading-none rotate-180 ${red ? 'text-ember-600' : 'text-cream-100'}`}>
         {rank}<span className="block text-[10px] leading-none">{SUIT_SYMBOL[suit]}</span>
       </span>
       {wild && (

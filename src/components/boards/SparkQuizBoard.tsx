@@ -52,7 +52,7 @@ export default function SparkQuizBoard({ state, youSlot, onMove, interactive, na
             <p className="eyebrow">{i === 0 ? `${names[seat]} (you)` : names[seat]}</p>
             <p className="font-display text-[22px] font-extrabold leading-tight text-cream-100">{state.score[seat]}</p>
             {open && (
-              <p className={`text-[10.5px] font-extrabold uppercase tracking-wide ${answered[seat] ? 'text-[#2f9c71]' : 'text-cream-500'}`}>
+              <p className={`text-[10.5px] font-extrabold uppercase tracking-wide ${answered[seat] ? 'text-leaf-700' : 'text-cream-500'}`}>
                 {answered[seat] ? 'locked in' : 'thinking…'}
               </p>
             )}
@@ -115,7 +115,7 @@ export default function SparkQuizBoard({ state, youSlot, onMove, interactive, na
                   {LETTERS[slot]}
                 </span>
                 <span className="text-[14px] font-semibold text-cream-100 leading-snug">{q.a[answerIdx]}</span>
-                {show && correct && <span className="ml-auto text-[11px] font-extrabold uppercase text-[#2f9c71]">correct</span>}
+                {show && correct && <span className="ml-auto text-[11px] font-extrabold uppercase text-leaf-700">correct</span>}
                 {theyPicked && !correct && (
                   <span className="ml-auto text-[10.5px] font-bold text-cream-500">{names[them]}</span>
                 )}
@@ -129,7 +129,7 @@ export default function SparkQuizBoard({ state, youSlot, onMove, interactive, na
             {([youSlot, them] as const).map((seat, i) => (
               <span key={seat} className="font-semibold text-cream-300">
                 {i === 0 ? 'You' : names[seat]}:{' '}
-                <span className={last.points[seat] > 0 ? 'text-[#2f9c71] font-extrabold' : 'text-cream-500'}>
+                <span className={last.points[seat] > 0 ? 'text-leaf-700 font-extrabold' : 'text-cream-500'}>
                   {last.points[seat] > 0 ? `+${last.points[seat]}` : 'no points'}
                 </span>
                 {last.picked[seat] === null && <span className="text-cream-500"> (ran out of time)</span>}

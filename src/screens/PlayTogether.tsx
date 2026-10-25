@@ -72,7 +72,7 @@ export default function PlayTogether() {
         {(['create', 'join'] as const).map((t) => (
           <button key={t} onClick={() => { sfx('toggle'); setTab(t); clearError(); }} aria-pressed={tab === t}
             className={`px-5 py-2.5 rounded-full text-[12.5px] font-extrabold uppercase tracking-wider border-2 transition-colors no-tap
-              ${tab === t ? 'bg-butter-300 text-[#5a3a12] border-ink-500' : 'bg-white text-cream-500 border-ink-500 hover:bg-blush-100 hover:text-cream-100'}`}>
+              ${tab === t ? 'bg-volt-300 text-[#5a3a12] border-ink-500' : 'bg-white text-cream-500 border-ink-500 hover:bg-blush-100 hover:text-cream-100'}`}>
             {t === 'create' ? 'Create a room' : 'Join with a code'}
           </button>
         ))}
@@ -83,7 +83,7 @@ export default function PlayTogether() {
         <span className="eyebrow">Your trainer name</span>
         <input value={name} onChange={(e) => setName(e.target.value)} onBlur={commitName} maxLength={20}
           placeholder="Trainer" aria-label="Trainer name"
-          className="bg-white border-2 border-ink-500 rounded-full px-4 py-2 text-[13.5px] text-cream-100 placeholder:text-ink-400 focus:border-blush-300 outline-none w-[200px]" />
+          className="bg-white border-2 border-ink-500 rounded-full px-4 py-2 text-[13.5px] text-cream-100 placeholder:text-cream-400 focus:border-blush-300 outline-none w-[200px]" />
         <span className="text-[11.5px] text-cream-500">Shown to your opponent in the lobby.</span>
       </Panel>
 
@@ -129,7 +129,7 @@ export default function PlayTogether() {
                 <label htmlFor="roomname" className="eyebrow block mb-1.5">Room name</label>
                 <input id="roomname" value={roomName} onChange={(e) => setRoomName(e.target.value)} maxLength={34}
                   placeholder={`${identity.name || 'Trainer'}’s Arena`}
-                  className="w-full bg-ink-800 border border-ink-500 px-3 py-2 text-[13.5px] text-cream-100 placeholder:text-ink-400 notch-sm focus:border-volt-500 outline-none" />
+                  className="w-full bg-ink-800 border border-ink-500 px-3 py-2 text-[13.5px] text-cream-100 placeholder:text-cream-400 notch-sm focus:border-volt-500 outline-none" />
               </div>
 
               {(picked.settings ?? []).map((s) => (
@@ -184,7 +184,7 @@ export default function PlayTogether() {
             <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5))}
               onKeyDown={(e) => { if (e.key === 'Enter') doJoin(); }}
               placeholder="ABCDE" aria-label="Room code" autoComplete="off" spellCheck={false}
-              className="w-full bg-ink-800 border-2 border-ink-500 px-4 py-4 font-mono text-[34px] sm:text-[42px] tracking-[.34em] text-center text-volt-700 placeholder:text-ink-500 notch-sm focus:border-volt-400 outline-none uppercase" />
+              className="w-full bg-ink-800 border-2 border-ink-500 px-4 py-4 font-mono text-[34px] sm:text-[42px] tracking-[.34em] text-center text-volt-700 placeholder:text-cream-500 notch-sm focus:border-volt-400 outline-none uppercase" />
             <Button variant="primary" size="lg" className="w-full mt-4" onClick={doJoin}
               disabled={code.length !== 5 || pending === 'join'} icon={<Icon name="link" size={16} />}>
               {pending === 'join' ? 'Knocking…' : 'Join room'}

@@ -28,7 +28,7 @@
   --color-volt-400: #ffd24d;
   --color-volt-500: #fbc02d;
   --color-volt-600: #e8a21c;
-  --color-volt-700: #c07f0f;
+  --color-volt-700: #8d5a05;   /* accent *text* — 5.5:1 on paper, 5.1:1 on volt-200 chips */
 
   --color-gold-400: #f2b23c;
   --color-gold-600: #c98a16;
@@ -44,9 +44,9 @@
 
   /* --- cocoa ink (was "cream" text) --- */
   --color-cream-100: #5c4035;  /* primary text */
-  --color-cream-300: #87675a;  /* secondary */
-  --color-cream-400: #987869;  /* medium secondary */
-  --color-cream-500: #a98a79;  /* muted */
+  --color-cream-300: #74564a;  /* secondary — 6.3:1 on paper, 5.0:1 on blush-200 */
+  --color-cream-400: #83655a;  /* medium secondary — 5.0:1 on paper, 4.8:1 on blush-100 */
+  --color-cream-500: #8a6b5d;  /* muted — 4.6:1 on paper: the AA floor for 11px labels */
 
   /* --- blush pink (was "spark" blue) --- */
   --color-spark-400: #f2779a;
@@ -55,12 +55,13 @@
   --color-blush-200: #ffd6e2;
   --color-blush-300: #ffadc6;
   --color-blush-400: #f2779a;
-  --color-blush-600: #d9456f;
+  --color-blush-600: #bd2756;  /* 5.5:1 on paper, 5.9:1 under white; border + text */
 
   /* --- rose / mint --- */
   --color-ember-400: #ef6a7f;
   --color-ember-600: #c73f5c;
   --color-leaf-400:  #6fcfa6;
+  --color-leaf-700:  #17795a;  /* success *text* — 5.1:1 on paper, 4.9:1 on a leaf tint */
   --color-mint-200:  #d6f3e7;
   --color-mint-400:  #8fdcbb;
   --color-sky-200:   #d8ecff;
@@ -121,11 +122,18 @@ button { font-family: inherit; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
 /* --------- focus --------- */
+/* Keyboard focus uses blush-600, not blush-400: the lighter pink measured
+   2.5:1 on the paper background, under the 3:1 WCAG 2.2 asks of a focus
+   indicator; the deeper rose measures 5.5:1 and still reads pink. */
 :where(a, button, input, select, textarea, [tabindex]):focus-visible {
-  outline: 3px solid var(--color-blush-400);
+  outline: 3px solid var(--color-blush-600);
   outline-offset: 2px;
   border-radius: 12px;
 }
+
+/* The header is sticky, so an in-page jump (#main, game anchors) would park the
+   target underneath it. */
+[id] { scroll-margin-top: calc(var(--hud-h) + 8px); }
 
 /* ============================================================
    Surfaces — soft paper cards with a drawn outline
@@ -240,7 +248,10 @@ p, li, dd { text-wrap: pretty; }
   --btn-fg: #7a2440; --btn-br: #e07b9c;
   background: linear-gradient(180deg, #ffd3e0, var(--color-blush-300) 60%, #ff9ab8);
 }
-.btn-danger { --btn-fg: #fff3f5; --btn-br: #c73f5c; background: linear-gradient(180deg, #f6869a, #de5273); }
+/* Destructive actions keep the rose language but drop to a deeper crimson:
+   white type on the old #f6869a→#de5273 gradient measured 2.4:1 at the light
+   end. Across this ramp it measures 4.6:1–7.1:1, so "Resign" stays legible. */
+.btn-danger { --btn-fg: #fff5f7; --btn-br: #8f1740; background: linear-gradient(180deg, #d43a64, #b82352 60%, #a81f47); }
 .btn-mint { --btn-fg: #175c45; --btn-br: #5fbf96; background: linear-gradient(180deg, #d6f3e7, var(--color-mint-400) 65%, #74cfa9); }
 .btn-sm { padding: .4rem .85rem; font-size: 12.5px; border-width: 2px; box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 3px 0 0 var(--btn-br); }
 .btn-sm:hover:not(:disabled) { box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 4.5px 0 0 var(--btn-br); }

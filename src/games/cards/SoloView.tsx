@@ -155,7 +155,7 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
             <Stat label="Your cards" value={state.hands[you].length} />
             <Stat label={mode === 'ai' ? 'Theirs' : 'Player 2'} value={state.hands[rival].length} />
             <Stat label="Stock" value={state.stock.length} />
-            <Stat label="In play" value={<span className={SUIT_RED[state.suit] ? 'text-[#d6436a]' : 'text-cream-100'}>{SUIT_SYMBOL[state.suit]}</span>} />
+            <Stat label="In play" value={<span className={SUIT_RED[state.suit] ? 'text-ember-600' : 'text-cream-100'}>{SUIT_SYMBOL[state.suit]}</span>} />
         </Panel>
       }
     >
@@ -214,7 +214,7 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
               {suitChanged && (
                 <p className="mt-1.5 text-[11px] font-extrabold uppercase tracking-wide">
                   <span className="text-cream-500">called </span>
-                  <span className={SUIT_RED[state.suit] ? 'text-[#d6436a]' : 'text-cream-100'}>
+                  <span className={SUIT_RED[state.suit] ? 'text-ember-600' : 'text-cream-100'}>
                     {SUIT_SYMBOL[state.suit]} {state.suit}
                   </span>
                 </p>
@@ -242,7 +242,7 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
                     onClick={() => act.suit(s)}
                     aria-label={`Call ${s}`}
                     className={`px-4 py-2.5 border-2 border-ink-400 notch-sm bg-ink-800 hover:bg-volt-200 font-extrabold text-[15px] transition-colors ${
-                      SUIT_RED[s] ? 'text-[#d6436a]' : 'text-cream-100'
+                      SUIT_RED[s] ? 'text-ember-600' : 'text-cream-100'
                     }`}
                   >
                     <span className="text-[20px] mr-1.5">{SUIT_SYMBOL[s]}</span>{s}
@@ -273,7 +273,7 @@ export default function CardsSolo({ game }: { game: GameMeta }) {
             <span className="eyebrow">{mode === 'local' ? `Player ${seat + 1}` : 'Your hand'}</span>
             <span className="text-[11px] font-bold text-cream-500">{myHand.length} cards · {handValue(myHand)} pts</span>
             {canAct && myPlayable.length > 0 && !state.awaitingSuit && (
-              <span className="text-[11px] font-extrabold uppercase tracking-wide text-[#2f9c71]">{myPlayable.length} playable</span>
+              <span className="text-[11px] font-extrabold uppercase tracking-wide text-leaf-700">{myPlayable.length} playable</span>
             )}
           </div>
           <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Your hand">

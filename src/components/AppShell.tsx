@@ -75,7 +75,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {NAV.slice(0, 6).map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} onMouseEnter={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')} onFocus={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')}
                 className={({ isActive }) => `relative px-3 py-[7px] rounded-full text-[12px] font-extrabold uppercase tracking-wider transition-colors no-tap
-                  ${isActive ? 'text-[#5a3a12] bg-butter-200 border-2 border-ink-500' : 'border-2 border-transparent text-cream-500 hover:text-cream-100 hover:bg-blush-100'}`}>
+                  ${isActive ? 'text-[#5a3a12] bg-volt-200 border-2 border-ink-500' : 'border-2 border-transparent text-cream-500 hover:text-cream-100 hover:bg-blush-100'}`}>
                 {({ isActive }) => (
                   <span className="flex items-center gap-1.5">
                     <Icon name={n.icon} size={15} />{n.label}
@@ -89,7 +89,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
           {room && (
             <button onClick={() => nav(`/room/${room.code}`)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-blush-600 bg-blush-200 text-[11px] font-extrabold uppercase tracking-wider text-blush-600 hover:bg-blush-300 hover:text-white no-tap">
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 border-blush-600 bg-blush-600 text-[11px] font-extrabold uppercase tracking-wider text-white hover:bg-[#a81f47] hover:border-[#a81f47] no-tap">
               <Icon name="users" size={14} /> {room.code}
             </button>
           )}
@@ -97,7 +97,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
           <button onClick={() => { sfx('toggle'); setSettings({ muted: !settings.muted }); }}
             aria-label={settings.muted ? 'Unmute audio' : 'Mute audio'} aria-pressed={settings.muted}
-            className="p-2 rounded-full text-cream-500 hover:text-blush-600 hover:bg-blush-100 no-tap">
+            className="w-10 h-10 grid place-items-center rounded-full text-cream-500 hover:text-blush-600 hover:bg-blush-100 no-tap">
             <Icon name={settings.muted ? 'mute' : 'volume'} size={18} />
           </button>
 
@@ -110,12 +110,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <button onClick={() => { sfx('click'); setMenuOpen((v) => !v); }} aria-expanded={menuOpen} aria-label="Menu"
-            className="lg:hidden p-2 text-cream-100 no-tap"><Icon name={menuOpen ? 'x' : 'menu'} size={21} /></button>
+            className="lg:hidden w-10 h-10 grid place-items-center rounded-full text-cream-100 hover:bg-blush-100 no-tap"><Icon name={menuOpen ? 'x' : 'menu'} size={21} /></button>
         </div>
 
         {/* level bar */}
         <div className="h-[3px] bg-blush-100">
-          <div className="h-full bg-gradient-to-r from-butter-300 via-volt-400 to-blush-300 transition-[width] duration-700" style={{ width: `${lvl.pct * 100}%` }} />
+          <div className="h-full bg-gradient-to-r from-volt-300 via-volt-400 to-blush-300 transition-[width] duration-700" style={{ width: `${lvl.pct * 100}%` }} />
         </div>
       </header>
 
@@ -134,7 +134,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {NAV.map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end} onTouchStart={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')}
                 className={({ isActive }) => `flex items-center gap-3 px-3 py-3 rounded-2xl text-[13px] font-extrabold uppercase tracking-wider border-2 transition-colors
-                  ${isActive ? 'bg-butter-200 border-ink-500 text-[#5a3a12]' : 'border-transparent text-cream-300 hover:bg-blush-100'}`}>
+                  ${isActive ? 'bg-volt-200 border-ink-500 text-[#5a3a12]' : 'border-transparent text-cream-300 hover:bg-blush-100'}`}>
                 <Icon name={n.icon} size={17} />{n.label}
               </NavLink>
             ))}
@@ -144,7 +144,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       )}
 
       {/* ---------------- content ---------------- */}
-      <main id="main" className={`flex-1 ${immersive ? '' : 'pb-[76px] lg:pb-10'}`}>{children}</main>
+      <main id="main" tabIndex={-1} className={`flex-1 outline-none ${immersive ? '' : 'pb-[76px] lg:pb-10'}`}>{children}</main>
 
       {/* ---------------- bottom nav (mobile) ---------------- */}
       {!immersive && (
@@ -156,7 +156,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             {NAV.slice(0, BAR_COUNT).map((n) => (
               <NavLink key={n.to} to={n.to} end={n.end}
                 onTouchStart={() => prefetchRoute(n.to.replace(/^\//, '') || 'home')}
-                className={({ isActive }) => `relative flex flex-col items-center gap-0.5 pt-2.5 pb-3 px-0.5 text-[9px] font-extrabold uppercase tracking-tight no-tap
+                className={({ isActive }) => `relative flex flex-col items-center gap-0.5 pt-2.5 pb-3 px-0.5 text-[10px] font-extrabold uppercase tracking-tight no-tap
                   ${isActive ? 'text-blush-600' : 'text-cream-500'}`}>
                 {({ isActive }) => (<>
                   <Icon name={n.icon} size={19} />
@@ -179,7 +179,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                 <span className="wordmark text-[13px] mr-2">PIKACHU</span>
                 A little arcade built for two. Original artwork, original engines, made with love.
               </p>
-              <p className="text-[11px] text-ink-400 mt-0.5">
+              <p className="text-[11px] text-cream-400 mt-0.5">
                 Pikachu is a trademark of Nintendo / Creatures Inc. / GAME FREAK. This is a personal, non-commercial project.
               </p>
             </div>

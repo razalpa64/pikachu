@@ -143,7 +143,7 @@ export default function Settings() {
           onChange={(v) => setSettings({ music: v })} />
         <Slider label="Effects" value={settings.sfx} disabled={settings.muted}
           onChange={(v) => setSettings({ sfx: v })} onCommit={() => sfx('place')} />
-        <p className="text-[11.5px] text-ink-400">
+        <p className="text-[11.5px] text-cream-400">
           Interface sounds are synthesised live in the browser; the big moments use seven real Pokémon cries (about 43 KB in total), loaded the first time you need them. Nothing plays until your first click or keypress, as browsers require.
         </p>
       </Panel>
@@ -165,7 +165,7 @@ export default function Settings() {
         </div>
         <div className="pt-3 border-t border-ink-600 space-y-3">
           <Toggle checked={settings.motion === 'auto'} onChange={(v) => setSettings({ motion: v ? 'auto' : 'off' })} label="Animations" />
-          <p className="text-[11.5px] text-ink-400">
+          <p className="text-[11.5px] text-cream-400">
             {reduced
               ? 'Your system requests reduced motion — large animations are already suppressed automatically.'
               : 'Turning this off removes transitions, idle loops and the mascot animation cycles.'}
@@ -177,7 +177,7 @@ export default function Settings() {
       <SectionTitle eyebrow="Gameplay" title="Assistance" />
       <Panel className="p-4 mt-3.5 space-y-3.5">
         <Toggle checked={settings.showHints} onChange={(v) => setSettings({ showHints: v })} label="Show hints and legal-move markers" />
-        <p className="text-[11.5px] text-ink-400">Affects move dots in Chess and Checkers, the drop preview in Drop Four, and engine depth readouts.</p>
+        <p className="text-[11.5px] text-cream-400">Affects move dots in Chess and Checkers, the drop preview in Drop Four, and engine depth readouts.</p>
         <div className="pt-3 border-t border-ink-600">
           <span className="eyebrow block mb-2">Board theme</span>
           <Segmented value={settings.boardTheme} onChange={(v) => setSettings({ boardTheme: String(v) })} label="Board theme"
@@ -266,7 +266,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Email <span className="text-ink-400 font-normal lowercase">(optional, for account recovery)</span></label>
+                  <label className="text-[11px] font-bold text-cream-400 uppercase tracking-wider block mb-1">Email <span className="text-cream-400 font-normal lowercase">(optional, for account recovery)</span></label>
                   <input
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -277,7 +277,7 @@ export default function Settings() {
                   />
                 </div>
                 <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                  <p className="text-[11px] text-ink-400">Creates your profile with username & password in Supabase.</p>
+                  <p className="text-[11px] text-cream-400">Creates your profile with username & password in Supabase.</p>
                   <Button type="submit" variant="primary" disabled={submitting} icon={<Icon name="bolt" size={14} />}>
                     {submitting ? 'Creating…' : 'Create Account'}
                   </Button>
@@ -323,7 +323,7 @@ export default function Settings() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
-                  <p className="text-[11px] text-ink-400">Sign in to restore your remote stats and career history.</p>
+                  <p className="text-[11px] text-cream-400">Sign in to restore your remote stats and career history.</p>
                   <Button type="submit" variant="primary" disabled={submitting} icon={<Icon name="user" size={14} />}>
                     {submitting ? 'Signing in…' : 'Sign In'}
                   </Button>
@@ -346,7 +346,7 @@ export default function Settings() {
                     {sending ? 'Sending…' : 'Email magic link'}
                   </Button>
                 </div>
-                <p className="text-[11.5px] text-ink-400">A passwordless login link is sent to your inbox.</p>
+                <p className="text-[11.5px] text-cream-400">A passwordless login link is sent to your inbox.</p>
               </div>
             )}
           </div>
@@ -380,7 +380,7 @@ export default function Settings() {
 function Row({ k, v }: { k: string; v: string }) {
   return (
     <div className="flex justify-between gap-3 text-[12.5px]">
-      <span className="text-ink-400">{k}</span>
+      <span className="text-cream-400">{k}</span>
       <span className="text-cream-200 font-semibold text-right truncate">{v}</span>
     </div>
   );
@@ -477,11 +477,11 @@ function Jukebox() {
       {notice && <p className="text-[12px] text-blush-600 font-semibold">{notice}</p>}
       {st.error && <p className="text-[12px] text-ember-600 font-semibold" role="status">{st.error}</p>}
       {!audioReady && st.tracks.length > 0 && (
-        <p className="text-[11.5px] text-ink-400">Click anywhere on the page once — browsers block audio until you do.</p>
+        <p className="text-[11.5px] text-cream-400">Click anywhere on the page once — browsers block audio until you do.</p>
       )}
 
       {st.tracks.length === 0 ? (
-        <p className="text-[11.5px] text-ink-400">
+        <p className="text-[11.5px] text-cream-400">
           MP3, M4A, OGG, WAV or FLAC, up to 40&nbsp;MB each. Songs are saved on this device only —
           nothing is uploaded to any server.
         </p>
@@ -494,12 +494,12 @@ function Jukebox() {
                 <li key={t.id} className={`flex items-center gap-2.5 px-3 py-2 ${isCurrent ? 'bg-blush-100' : ''}`}>
                   <button onClick={() => { sfx('click'); void jukebox.playTrack(t.id); }}
                     aria-label={`Play ${t.name}`}
-                    className="w-7 h-7 shrink-0 grid place-items-center rounded-full border-2 border-ink-500 bg-butter-200 hover:bg-volt-400 no-tap">
+                    className="w-7 h-7 shrink-0 grid place-items-center rounded-full border-2 border-ink-500 bg-volt-200 hover:bg-volt-400 no-tap">
                     <Icon name={isCurrent && st.playing ? 'pause' : 'play'} size={12} />
                   </button>
                   <span className="min-w-0 flex-1">
                     <span className="block text-[12.5px] font-bold text-cream-100 truncate">{t.name}</span>
-                    <span className="block text-[10.5px] text-ink-400">{jukebox.humanSize(t.size)}</span>
+                    <span className="block text-[10.5px] text-cream-400">{jukebox.humanSize(t.size)}</span>
                   </span>
                   {isCurrent && st.playing && (
                     <span className="text-[10px] font-extrabold uppercase tracking-wider text-blush-600 shrink-0">Playing</span>
@@ -514,7 +514,7 @@ function Jukebox() {
             })}
           </ul>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[11.5px] text-ink-400">
+            <p className="text-[11.5px] text-cream-400">
               {st.tracks.length} {st.tracks.length === 1 ? 'song' : 'songs'} · {jukebox.humanSize(total)} on this device
               {current && st.playing ? ` · now playing “${current.name}”` : ''}
             </p>

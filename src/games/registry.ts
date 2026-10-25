@@ -10,7 +10,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Slow games, long evenings',
     description: 'Full-rules chess on a warm little board. Castling, en passant, promotion, every draw rule, optional clocks, and a search engine with five moods — from gentle to merciless.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 14,
-    accent: '#c07f0f', artKey: 'chess', status: 'live', serverRefereed: true,
+    accent: '#96630c', artKey: 'chess', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'timeControl', label: 'Time control', type: 'select', default: 'rapid', options: [
@@ -25,7 +25,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Best of three, loser makes tea',
     description: 'The one everyone knows, rebuilt as a best-of series with drawn win lines, a running tally, and a minimax opponent that genuinely cannot be beaten on 3×3.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 3,
-    accent: '#d9456f', artKey: 'ttt', status: 'live', serverRefereed: true,
+    accent: '#c13d63', artKey: 'ttt', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'size', label: 'Board', type: 'select', default: 3, options: [
@@ -41,7 +41,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Drop, stack, sneak a win',
     description: 'Four in a row with satisfying, weighty falling discs. Every win direction is checked properly, and the alpha-beta engine reads nine moves ahead when you ask it to.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 6,
-    accent: '#c73f5c', artKey: 'c4', status: 'live', serverRefereed: true,
+    accent: '#c23d5a', artKey: 'c4', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
@@ -49,7 +49,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Who remembers better?',
     description: 'Eighteen hand-drawn cards to turn over. Flip, remember, chain a streak. Play alone against the clock, race each other, or clear the whole board together as a team.',
     genre: 'puzzle', modes: ['solo', 'ai', 'online', 'coop'], players: [1, 2], duration: 5,
-    accent: '#2f9c71', artKey: 'memory', status: 'live', serverRefereed: true,
+    accent: '#257c5a', artKey: 'memory', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'size', label: 'Board', type: 'select', default: '4x4', options: [
@@ -64,7 +64,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Blink and you lose',
     description: 'A server-timed reflex duel. The panel hums, waits a random moment, then lights up — first honest press takes the round. Jump the gun and it is a false start.',
     genre: 'party', modes: ['online', 'ai', 'local'], players: [1, 2], duration: 2,
-    accent: '#c07f0f', artKey: 'reaction', status: 'live', serverRefereed: true,
+    accent: '#96630c', artKey: 'reaction', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'bestOf', label: 'Rounds', type: 'select', default: 5, options: [
@@ -77,7 +77,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Jump, chain, get crowned',
     description: 'English draughts done properly: captures are compulsory, multi-jumps chain, and kings earn their crown. Legal moves light up softly so nobody argues about the rules.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 10,
-    accent: '#a9680d', artKey: 'checkers', status: 'live', serverRefereed: true,
+    accent: '#9c600c', artKey: 'checkers', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'mandatoryCapture', label: 'Mandatory capture', type: 'toggle', default: true },
@@ -88,7 +88,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Hide your little fleet',
     description: 'Place five ships, then go hunting. Your opponent never receives your coordinates — the server keeps them — and the AI hunts with real probability maths, not x-ray vision.',
     genre: 'strategy', modes: ['ai', 'online'], players: [1, 2], duration: 9,
-    accent: '#2f7fc4', artKey: 'battleship', status: 'live', serverRefereed: true,
+    accent: '#2a72af', artKey: 'battleship', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
@@ -96,7 +96,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Turn one coin, flip a whole row',
     description: 'Reversi with warm wooden coins. Every placement must bracket a line of your opponent’s coins, and everything bracketed turns over. Corners can never be taken back — and if you cannot move, you pass.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 10,
-    accent: '#2f9c71', artKey: 'reversi', status: 'live', serverRefereed: true,
+    accent: '#257c5a', artKey: 'reversi', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'size', label: 'Board', type: 'select', default: 8, options: [
@@ -109,7 +109,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Five stones in a line',
     description: 'Gomoku on a wooden board: place a stone, and the first player to line up five — across, down or diagonally — takes it. Simple enough to teach in a sentence, deep enough to lose an evening to.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 8,
-    accent: '#a9680d', artKey: 'gomoku', status: 'live', serverRefereed: true,
+    accent: '#9c600c', artKey: 'gomoku', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'size', label: 'Board', type: 'select', default: 15, options: [
@@ -122,7 +122,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Close the box and keep the turn',
     description: 'The pencil-and-paper classic, drawn properly. Join two dots, and any box you finish is yours — with another turn straight after. Hand over the third side of a box and you have just given your opponent a present.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 7,
-    accent: '#2f7fc4', artKey: 'dots', status: 'live', serverRefereed: true,
+    accent: '#2a72af', artKey: 'dots', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'size', label: 'Grid', type: 'select', default: 5, options: [
@@ -135,7 +135,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Sow the seeds, steal the store',
     description: 'The oldest board game there is, on a carved wooden tray. Lift a pit, sow the seeds one by one, and watch the two rules that matter: land in your own store and you go again; land in an empty pit and you capture everything opposite.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [2, 2], duration: 6,
-    accent: '#c07f0f', artKey: 'mancala', status: 'live', serverRefereed: true,
+    accent: '#96630c', artKey: 'mancala', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'seeds', label: 'Seeds per pit', type: 'select', default: 4, options: [
@@ -148,7 +148,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'One more go, promise',
     description: 'Grid-perfect snake in a pastel garden: four skins, speeds that climb until you panic, berries and charges to chase, and a pathfinding rival snake if you want company.',
     genre: 'arcade', modes: ['solo', 'ai', 'local'], players: [1, 2], duration: 4,
-    accent: '#2f9c71', artKey: 'snake', status: 'live', serverRefereed: false,
+    accent: '#257c5a', artKey: 'snake', status: 'live', serverRefereed: false,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
@@ -156,21 +156,21 @@ export const GAMES: GameMeta[] = [
     tagline: 'Five little brain teasers',
     description: 'Five quiet puzzle types — slide, lights, lock, echo and sum. Each one is built backwards from a solution that definitely exists, so you are never stuck on a broken board.',
     genre: 'puzzle', modes: ['solo'], players: [1, 1], duration: 7,
-    accent: '#8b5fd6', artKey: 'puzzle', status: 'live', serverRefereed: false,
+    accent: '#8057c5', artKey: 'puzzle', status: 'live', serverRefereed: false,
   },
   {
     id: 'arcade', slug: 'electric-arcade', title: 'Volt Runner',
     tagline: 'A run through the meadow',
     description: 'A sunset dash down a country lane: gather charge, duck under hay bales, dodge the birds and grab shields as the waves get faster. Smooth canvas, no stutter.',
     genre: 'arcade', modes: ['solo'], players: [1, 1], duration: 4,
-    accent: '#d9456f', artKey: 'arcade', status: 'live', serverRefereed: false,
+    accent: '#c13d63', artKey: 'arcade', status: 'live', serverRefereed: false,
   },
   {
     id: 'trivia', slug: 'spark-quiz', title: 'Spark Quiz',
     tagline: 'Settle it with facts',
     description: 'Science, history, general knowledge and mental maths, with a rival who actually gets better as you raise the level. Maths questions are generated fresh every round, so that category never runs out.',
     genre: 'party', modes: ['solo', 'ai', 'online', 'local'], players: [1, 2], duration: 6,
-    accent: '#c07f0f', artKey: 'trivia', status: 'live', serverRefereed: true,
+    accent: '#96630c', artKey: 'trivia', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'rounds', label: 'Rounds', type: 'select', default: 10, options: [
@@ -184,7 +184,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Shed your hand first',
     description: 'Crazy Eights with a real deck: follow the suit or the rank, play an eight to rename the suit, stack a two to make them pick up. The opponent saves its eights and times its skips properly.',
     genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 8,
-    accent: '#c73f5c', artKey: 'cards', status: 'live', serverRefereed: true,
+    accent: '#c23d5a', artKey: 'cards', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'handSize', label: 'Cards dealt', type: 'select', default: 7, options: [
@@ -198,7 +198,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Who, where, and what was left behind',
     description: 'A fresh mystery every time, generated and then checked: the clues on the board always narrow to exactly one answer, and none of them is filler. Rule names out, then make your accusation.',
     genre: 'puzzle', modes: ['solo'], players: [1, 1], duration: 9,
-    accent: '#2f9c71', artKey: 'detective', status: 'live', serverRefereed: false,
+    accent: '#257c5a', artKey: 'detective', status: 'live', serverRefereed: false,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
@@ -206,7 +206,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'One of you draws, the other shouts',
     description: 'You get a word, ninety seconds and a brush; they get the canvas and a text box. Wrong guesses cost nothing, a fast one is worth more, and you swap roles every round. The word never leaves the server until the round is over.',
     genre: 'party', modes: ['online'], players: [2, 2], duration: 10,
-    accent: '#37a0d6', artKey: 'sketch', status: 'live', serverRefereed: true,
+    accent: '#28759c', artKey: 'sketch', status: 'live', serverRefereed: true,
     settings: [
       { key: 'rounds', label: 'Rounds', type: 'select', default: 6, options: [
         { value: 4, label: 'Four' }, { value: 6, label: 'Six' }, { value: 8, label: 'Eight' },
@@ -218,7 +218,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'One of you is bluffing',
     description: 'Pass one phone around the table. Everybody sees the secret word except the imposter, who has to blend in on one-word clues alone. Vote, and if you catch them they still get one guess to steal it.',
     genre: 'party', modes: ['local'], players: [3, 8], duration: 7,
-    accent: '#9b7ad6', artKey: 'imposter', status: 'live', serverRefereed: false,
+    accent: '#7a60a9', artKey: 'imposter', status: 'live', serverRefereed: false,
     settings: [
       { key: 'decoy', label: 'Decoy word', type: 'toggle', default: false },
       { key: 'clueRounds', label: 'Clue rounds', type: 'select', default: 1, options: [
@@ -231,7 +231,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Sweet, flirty, or neither',
     description: 'A deck written for two people who already like each other, at three heat levels. The spicy deck is behind its own switch, and every single card can be passed on with no penalty.',
     genre: 'party', modes: ['local'], players: [2, 2], duration: 12,
-    accent: '#e05a74', artKey: 'dare', status: 'live', serverRefereed: false,
+    accent: '#b5495e', artKey: 'dare', status: 'live', serverRefereed: false,
     settings: [
       { key: 'spicy', label: 'Unlock the spicy deck', type: 'toggle', default: false },
     ],

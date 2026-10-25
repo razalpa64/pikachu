@@ -397,7 +397,7 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpen
             <div className="grid sm:grid-cols-[1fr_auto_1fr] gap-4 items-center">
               <PlayerSeat member={members[0]} you={slot === 0} colour="#f0b429" />
               <div className="hidden sm:flex flex-col items-center gap-1">
-                <span className="display text-[18px] text-ink-400">VS</span>
+                <span className="display text-[18px] text-cream-400">VS</span>
                 <span className="w-px h-10 bg-ink-600" />
               </div>
               <PlayerSeat member={members[1]} you={slot === 1} colour="#4a9fd8" />
@@ -444,11 +444,11 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpen
             <div className="flex flex-col gap-1.5">
               {room.history.slice().reverse().map((h: any) => (
                 <div key={h.matchId} className="flex items-center justify-between gap-3 text-[12px] py-1 border-b border-ink-700 last:border-0">
-                  <span className={`font-extrabold ${h.winnerSlot === null ? 'text-cream-500' : h.winnerSlot === slot ? 'text-[#2f9c71]' : 'text-ember-600'}`}>
+                  <span className={`font-extrabold ${h.winnerSlot === null ? 'text-cream-500' : h.winnerSlot === slot ? 'text-leaf-700' : 'text-ember-600'}`}>
                     {h.winnerSlot === null ? 'Draw' : h.winnerSlot === slot ? 'You won' : 'You lost'}
                   </span>
                   <span className="text-cream-500 flex-1 truncate">{h.reason}</span>
-                  <span className="text-ink-400 tabnum">{new Date(h.finishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="text-cream-400 tabnum">{new Date(h.finishedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
               ))}
             </div>
@@ -492,7 +492,7 @@ function PlayerSeat({ member, you, colour }: { member: any; you: boolean; colour
       <div className="panel notch-sm p-4 flex flex-col items-center gap-2 border-dashed opacity-80">
         <PikachuMascot state="sleeping" size={78} />
         <p className="text-[12.5px] font-extrabold text-cream-500">Open seat</p>
-        <p className="text-[10.5px] text-ink-400">Share the room code</p>
+        <p className="text-[10.5px] text-cream-400">Share the room code</p>
       </div>
     );
   }
@@ -619,7 +619,7 @@ function TurnPill({ active, label }: { active: boolean; label: string }) {
     <span role="status" aria-live="polite"
       className={`inline-flex items-center gap-2 px-3 py-1.5 border text-[11.5px] font-extrabold uppercase tracking-wider notch-sm
       ${active ? 'bg-volt-400 text-[#5a3a12] border-volt-200' : 'bg-ink-800 text-cream-500 border-ink-600'}`}>
-      <span className={`w-2 h-2 rounded-full ${active ? 'bg-ink-900 animate-pulse' : 'bg-cream-500'}`} aria-hidden />{label}
+      <span className={`w-2 h-2 rounded-full ${active ? 'bg-[#5a3a12] animate-pulse' : 'bg-cream-500'}`} aria-hidden />{label}
     </span>
   );
 }

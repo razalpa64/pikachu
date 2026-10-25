@@ -418,7 +418,7 @@ function ChatSurface({
           <button
             type="button"
             onClick={() => { setPinned(true); toBottom(true); }}
-            className="text-[10.5px] font-extrabold text-volt-700 hover:text-volt-600 shrink-0 no-tap cursor-pointer"
+            className="text-[10.5px] font-extrabold text-volt-700 hover:text-[#6f4804] shrink-0 no-tap cursor-pointer"
           >
             Newest ↓
           </button>

@@ -162,7 +162,7 @@ export function CapturedRow({ fen, colour }: { fen: string; colour: 'w' | 'b' })
     for (const [t, n] of Object.entries(start)) for (let i = 0; i < n - (have[t] ?? 0); i++) out.push(t);
     return out;
   }, [fen, colour]);
-  if (!missing.length) return <span className="text-[10px] text-ink-400">—</span>;
+  if (!missing.length) return <span className="text-[10px] text-cream-400">—</span>;
   return (
     <span className="flex flex-wrap gap-[1px] items-center" aria-label={`Captured ${colour === 'w' ? 'white' : 'black'} pieces`}>
       {missing.map((t, i) => <ChessPiece key={i} type={t} colour={colour} size={18} />)}

@@ -71,7 +71,7 @@ export default function Challenges() {
               </div>
 
               <div className="mt-3.5">
-                <div className="flex justify-between text-[10.5px] font-bold uppercase tracking-wider text-ink-400 mb-1">
+                <div className="flex justify-between text-[10.5px] font-bold uppercase tracking-wider text-cream-400 mb-1">
                   <span>{complete ? 'Complete' : 'Progress'}</span>
                   <span className="tabnum">{Math.min(have, c.goal)} / {c.goal}</span>
                 </div>
@@ -102,7 +102,7 @@ export default function Challenges() {
       <Panel className="mt-3.5 overflow-x-auto">
         <table className="w-full text-[12.5px]">
           <thead>
-            <tr className="text-left text-ink-400 uppercase text-[10px] tracking-wider border-b border-ink-600">
+            <tr className="text-left text-cream-400 uppercase text-[10px] tracking-wider border-b border-ink-600">
               <th className="p-2.5 font-bold">Game</th>
               <th className="p-2.5 font-bold text-right">Played</th>
               <th className="p-2.5 font-bold text-right">W</th>
@@ -124,7 +124,7 @@ export default function Challenges() {
                     </Link>
                   </td>
                   <td className="p-2.5 text-right tabnum text-cream-300">{s.played}</td>
-                  <td className="p-2.5 text-right tabnum text-[#2f9c71]">{s.wins}</td>
+                  <td className="p-2.5 text-right tabnum text-leaf-700">{s.wins}</td>
                   <td className="p-2.5 text-right tabnum text-cream-400">{s.draws}</td>
                   <td className="p-2.5 text-right tabnum text-ember-600">{s.losses}</td>
                   <td className="p-2.5 text-right tabnum text-cream-300">{s.best || '—'}</td>

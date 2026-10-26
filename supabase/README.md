@@ -240,18 +240,32 @@ bucket. Deleting the page from the bundle would not grant anybody a single extra
 The same four are checked, in order, by a script that can see the server side too:
 
 ```bash
-npm run admin:doctor                 # diagnose (reads .env / .env.local)
-npm run admin:doctor -- --fix        # confirm the email and write the roster row
+npm run admin:doctor                  # diagnose (reads .env / .env.local)
+npm run admin:doctor -- --users        # list every account on the project
+npm run admin:doctor -- --fix          # confirm the email + write the roster row
+npm run admin:doctor -- --setup you@example.com --generate
+                                       # create-or-repair the account, mint a password, allowlist it
 npm run admin:doctor -- you@example.com --password   # also test the password (prompts, TTY only)
 ```
+
+`--setup` prints the new password once and stores it nowhere; `--password` (or `ADMIN_PASSWORD`)
+checks an existing one. Both need `SUPABASE_SERVICE_ROLE_KEY` in `.env` — server-side only, never
+prefixed `VITE_`, never committed. Without it the doctor still names the cause and prints the SQL or
+the dashboard step, because that list (*Authentication → Users*) is where the answer actually lives.
 
 | What the page says | What is actually wrong | Fix |
 | --- | --- | --- |
 | “This build has no Supabase project… missing `VITE_SUPABASE_URL`” | the deployed build has no project URL or key; nothing can be signed into | set both in the host's environment (they are `VITE_` vars, baked in at build time — redeploy afterwards) |
-| “That address and password do not match an account” | the credential is wrong, *or* a bare username was read as `name@pikachu.arcade` while the account lives at a real address | type the full email, or check the account in *Authentication → Users* |
+| “That address and password do not match an account” | Supabase found **no user with that address and that password** on this project: the account does not exist, exists at a slightly different address, or has a different password | `npm run admin:doctor -- --users` lists what is really there (and nearest matches for a typo); `-- --setup … --generate` creates or repairs it. In a hurry: **“Email me a sign-in link instead”** on the desk signs you in with no password at all |
 | “This account has not confirmed its email” | the password was right; Supabase refuses a session until the address is confirmed | *Users → ⋯ → Confirm email*, or `admin:doctor -- --fix` |
 | “Signed in — but this account is not on the roster” | the session is real and `is_admin()` returned false: no `admin_users` row | paste the prefilled `insert … admin_users` from the page, or `-- --fix` |
 | “The admin schema is not installed” | `public.is_admin()` does not exist — `0004_admin.sql` was never run | run the migration in the SQL editor |
+
+The desk has a second way in for exactly this case. A password can be forgotten, mistyped, rotated
+in the dashboard or set on a *different* project; an emailed link only needs the inbox, and it
+produces the same session — after opening it, reload `/admin`. (Supabase's built-in mailer allows
+only a few messages an hour, and a project with no SMTP configured sends none; the link button says
+so rather than failing silently.)
 
 The doctor also checks the one thing neither screen can: whether the address is spelled the way you
 think it is. A `where lower(email) = '…'` that matches nothing inserts no row and reports no error,

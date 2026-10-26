@@ -124,10 +124,11 @@ export async function signInWithEmail(email: string) {
   if (error) throw error;
 }
 
-export function usernameToEmail(username: string): string {
-  const clean = username.trim().toLowerCase().replace(/[^a-z0-9_\-\.]/g, '');
-  return `${clean || 'trainer'}@pikachu.arcade`;
-}
+/* The address rule itself is in `authAddress.ts` so Node scripts and pure tests can
+   use it without pulling this module's `import.meta.env` in. Re-exported here so
+   every existing `import { usernameToEmail } from './supabase'` still works. */
+import { usernameToEmail } from './authAddress';
+export { usernameToEmail };
 
 export async function signUpWithPassword(username: string, password: string, email?: string) {
   const sb = await supabase();

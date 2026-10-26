@@ -78,18 +78,58 @@ export function find(table: QueueTable, playerId: string): { entry: QueueEntry; 
 }
 
 /**
- * The longest-waiting *other* player in the same game — never yourself, even if
- * a stale entry of yours is somehow still in the list.
+ * Who these two players may not be paired with.
+ *
+ * Passed in rather than stored here: the queue knows nothing about accounts, and
+ * a block is an account fact. Returning true means "skip this entry and look at
+ * the next one", so one blocked player in a queue of three does not stop the two
+ * others being paired.
  */
-export function partnerFor(table: QueueTable, gameId: string, playerId: string): QueueEntry | null {
+export type SkipPair = (a: string, b: string) => boolean;
+
+/**
+ * The longest-waiting *other* player in the same game — never yourself, even if
+ * a stale entry of yours is somehow still in the list. Entries you may not be
+ * matched with (a block in either direction) are passed over without losing
+ * your place, so blocking somebody never costs you your spot in the queue.
+ */
+export function partnerFor(
+  table: QueueTable,
+  gameId: string,
+  playerId: string,
+  skip?: SkipPair,
+): QueueEntry | null {
   const list = table.get(gameId);
   if (!list) return null;
   let best: QueueEntry | null = null;
   for (const entry of list) {
     if (entry.playerId === playerId) continue;
+    if (skip?.(playerId, entry.playerId)) continue;
     if (!best || entry.since < best.since) best = entry;
   }
   return best;
+}
+
+/**
+ * True when somebody else *is* waiting for this game but every one of them is
+ * blocked. The lobby says so rather than leaving the player staring at "looking
+ * for someone…" and wondering whether the button works.
+ */
+export function onlyBlockedWaiters(
+  table: QueueTable,
+  gameId: string,
+  playerId: string,
+  skip?: SkipPair,
+): boolean {
+  const list = table.get(gameId);
+  if (!list || !skip) return false;
+  let sawOther = false;
+  for (const entry of list) {
+    if (entry.playerId === playerId) continue;
+    sawOther = true;
+    if (!skip(playerId, entry.playerId)) return false;
+  }
+  return sawOther;
 }
 
 /**
@@ -100,8 +140,9 @@ export function takePair(
   table: QueueTable,
   gameId: string,
   playerId: string,
+  skip?: SkipPair,
 ): { first: QueueEntry; second: QueueEntry } | null {
-  const partner = partnerFor(table, gameId, playerId);
+  const partner = partnerFor(table, gameId, playerId, skip);
   if (!partner) return null;
   const mine = dequeue(table, playerId);
   if (!mine) return null;

@@ -13,8 +13,9 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
    [`0001_init.sql`](migrations/0001_init.sql) →
    [`0002_accounts_and_chat.sql`](migrations/0002_accounts_and_chat.sql) →
    [`0003_feedback.sql`](migrations/0003_feedback.sql) →
-   [`0004_admin.sql`](migrations/0004_admin.sql). Each one is idempotent (`create … if not
-   exists`, `drop policy if exists`), so re-running the whole set is safe.
+   [`0004_admin.sql`](migrations/0004_admin.sql) →
+   [`0005_friends_and_safety.sql`](migrations/0005_friends_and_safety.sql). Each one is idempotent
+   (`create … if not exists`, `drop policy if exists`), so re-running the whole set is safe.
 3. Copy `.env.example` to `.env` in the project root and fill in:
 
    ```
@@ -40,9 +41,107 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
 | `site_content` | the handful of headings an admin can rewrite | anyone (it is public copy) |
 | `admin_users` | who is allowed to open `/admin` | **nobody** — no grants, no policies, SQL editor only |
 | `admin_audit` | one row per admin action | admins |
+| `friendships` | one row per relationship, pending or accepted | the two people in it |
+| `blocks` | one row per block, with an optional private reason | **only the blocker** |
+| `reports` | a private note about another player | insert-only for the reporter; readable by admins |
 
 Row Level Security is enabled on every table, and `match_results` deliberately has **no update or
 delete policy** — a results log you can edit is not a results log.
+
+## Friends, blocks and reports (`0005`)
+
+Random opponents need no account. A friend list does, because a friend is a person on another
+device — so `0005` adds the three tables that make "play with them again" mean something, plus the
+two functions that keep other people's profiles closed.
+
+### Handles
+
+`profiles.handle` is the only thing another player may look for: lowercase, 3–20 characters,
+case-insensitively unique, and **optional**. The sign-up trigger fills it from the username if that
+handle is free and leaves it empty if it is not — it never invents `ash2`, because a handle nobody
+chose is a handle nobody will remember. A player who ends up without one picks it on Play Together.
+
+`public.find_player(handle)` is an **exact** match. There is no prefix search anywhere in the schema
+on purpose: a directory you can page through is a directory that can be scraped, and the whole
+point of a handle is that you only find somebody who told you theirs. It also excludes yourself and
+anyone on either side of a block.
+
+### Friendships
+
+One row per pair, pending or accepted, with `least/greatest` in a unique index so the same two
+people cannot each send a request and end up with two rows. The rules are policies, not client
+code:
+
+* **insert** — only as yourself (`requester = auth.uid()`), only `pending`, only if
+  `blocked_pair()` is false. `status` is not even an insertable column, so a request cannot be born
+  accepted.
+* **update** — only by the addressee, only from `pending`, only to `accepted`. That is the single
+  transition that exists.
+* **delete** — either side. Declining *is* deleting, which is why a rejection is never announced:
+  the asker's list simply stops showing the request.
+
+`public.my_friends()` resolves the list to names for the caller only. It is a function rather than a
+policy on `profiles` because the honest question is "which strangers may read my profile?" and the
+answer is "the ones I accepted" — expressing that as a policy on a self-only table would mean
+opening the whole table to anybody with a session.
+
+### Blocks
+
+`blocks` is readable **only by the blocker**. That asymmetry is the feature: "did they block me?" is
+not a question the browser can answer, which is what makes blocking safe to use. Inserting one
+triggers `blocks_prune_relationships`, which deletes any friendship or pending request between the
+two in either direction — in the database, so a client that only removed the friendship cannot leave
+the block half-applied.
+
+`public.blocked_pair(a, b)` is `security definer` because each side can only see their own half of
+the relationship, and a block has to count whichever way round it points. The relay asks the same
+question, but it cannot read the database (it has no service key), so each signed-in client sends
+its **own** block list on `hello` and the relay applies it in both directions. A modified client can
+only weaken its own protections.
+
+### Reports
+
+`reports` is separate from `feedback` on purpose: a report names another player, and the feedback
+wall's published columns are readable by anybody. The reporter column is `default auth.uid()` and is
+**not** insertable, so a report cannot be filed in somebody else's name; `reporter` is also not
+readable by the reporter, because there is nothing useful to do with your own report history and
+every column you can read is a column that can leak. Admins read and triage them at `/admin` (or in
+the SQL editor), and `reports_rate_limit` caps five per account per hour and 120 per ten minutes
+across the site.
+
+A report about a guest — no account to point at — still has to name somebody
+(`reports_have_a_subject`), because "somebody was mean" is not actionable.
+
+### What the relay needs
+
+The relay verifies a Supabase access token on `hello`, using the **same two environment variables
+the web build already needs**:
+
+```
+SUPABASE_URL=https://<project>.supabase.co        # or VITE_SUPABASE_URL
+SUPABASE_ANON_KEY=sb_publishable_…                # or VITE_SUPABASE_PUBLISHABLE_KEY
+```
+
+It calls `GET /auth/v1/user` with that token and caches the answer for five minutes (or until the
+token expires). No service key, no database access, and nothing at all about the games lives there.
+If the variables are absent — or the auth service is unreachable — the relay treats the connection as
+a guest rather than guessing: an *unreachable* auth server makes it refuse the handshake with
+`auth_unavailable` instead of silently downgrading a signed-in player, because a guest is outside
+every block list.
+
+### Moderation
+
+```sql
+-- everything open, newest first
+select created_at, category, reported_name, reported_handle, room_code, message, context
+  from public.reports where status = 'open' order by created_at desc;
+
+update public.reports set status = 'reviewed' where id = 42;
+
+-- who is blocked by whom, and how often (blocks are private to the blocker in the
+-- browser, but a maintainer can see rows in the table editor)
+select blocker, count(*) from public.blocks group by blocker order by 2 desc limit 20;
+```
 
 ## Feedback
 
@@ -77,7 +176,7 @@ delete from public.room_messages where created_at < now() - interval '30 days';
 
 ## The migrations are tested, not just written
 
-`npm test` includes `src/lib/__tests__/supabase-schema.test.ts`, which runs all four migration files
+`npm test` includes `src/lib/__tests__/supabase-schema.test.ts`, which runs all five migration files
 against a real PostgreSQL (PGlite, in memory) with the Supabase roles, `auth.uid()` and the storage
 schema stubbed in, and then connects as `anon`, as an ordinary signed-in member and as the
 allowlisted admin to attempt everything each of them must and must not be able to do. If a migration

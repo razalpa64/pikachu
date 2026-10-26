@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   QUEUE_NOTICE_MS, QUEUE_TTL_MS,
-  dequeue, dueForNotice, enqueue, find, partnerFor, sweepQueue, takePair, waitingCounts,
+  dequeue, dueForNotice, enqueue, find, onlyBlockedWaiters, partnerFor, sweepQueue, takePair,
+  waitingCounts,
   type QueueEntry, type QueueTable,
 } from '../../../server/queue';
 
@@ -102,5 +103,60 @@ describe('the matchmaking queue', () => {
     expect(dequeue(table, 'ash')).toBeNull();
     expect(sweepQueue(table, Date.now())).toEqual([]);
     expect(waitingCounts(table)).toEqual({});
+  });
+});
+
+describe('the queue around somebody you have blocked', () => {
+  it('passes over them without losing your place in line', () => {
+    const table: QueueTable = new Map();
+    enqueue(table, entry('harasser', 'chess', 1000));
+    enqueue(table, entry('me', 'chess', 2000));
+    enqueue(table, entry('friend', 'chess', 3000));
+
+    const skip = (a: string, b: string) =>
+      (a === 'me' && b === 'harasser') || (a === 'harasser' && b === 'me');
+
+    /* The blocked player is the *oldest* entry, which is precisely the case a
+       naive "take the front of the queue" would get wrong. */
+    expect(partnerFor(table, 'chess', 'me', skip)?.playerId).toBe('friend');
+    /* 'friend' has blocked nobody, so they may still be paired with the harasser;
+       what must not happen is *me* being handed to them. */
+    expect(partnerFor(table, 'chess', 'friend', skip)?.playerId).toBe('harasser');
+    const pair = takePair(table, 'chess', 'me', skip);
+    expect(pair?.first.playerId, 'the longer wait still wins between the two who may play')
+      .toBe('me');
+    expect(pair?.second.playerId).toBe('friend');
+    expect(find(table, 'harasser')?.entry.playerId, 'and the blocked player keeps waiting')
+      .toBe('harasser');
+  });
+
+  it('says so when everyone else waiting is somebody you blocked', () => {
+    const table: QueueTable = new Map();
+    enqueue(table, entry('them', 'chess', 1000));
+    enqueue(table, entry('me', 'chess', 2000));
+    const skip = () => true;
+    expect(onlyBlockedWaiters(table, 'chess', 'me', skip)).toBe(true);
+    /* One person you *can* play with, and it is business as usual. */
+    enqueue(table, entry('friend', 'chess', 3000));
+    expect(onlyBlockedWaiters(table, 'chess', 'me', (a, b) => b === 'them' && a === 'me')).toBe(false);
+  });
+
+  it('does not claim a block when there is simply nobody there', () => {
+    const table: QueueTable = new Map();
+    enqueue(table, entry('me', 'chess', 1000));
+    /* Alone in the queue: nobody to be blocked from. */
+    expect(onlyBlockedWaiters(table, 'chess', 'me', () => true)).toBe(false);
+    /* Wrong game, and an empty table, are both "nobody". */
+    expect(onlyBlockedWaiters(table, 'checkers', 'me', () => true)).toBe(false);
+    expect(onlyBlockedWaiters(new Map(), 'chess', 'me', () => true)).toBe(false);
+    /* A guest with no block data at all never sees the message. */
+    expect(onlyBlockedWaiters(table, 'chess', 'me', undefined)).toBe(false);
+  });
+
+  it('behaves exactly as before when no predicate is given', () => {
+    const table: QueueTable = new Map();
+    enqueue(table, entry('a', 'chess', 1000));
+    enqueue(table, entry('b', 'chess', 2000));
+    expect(takePair(table, 'chess', 'b')?.first.playerId).toBe('a');
   });
 });

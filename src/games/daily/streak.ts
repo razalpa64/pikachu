@@ -32,7 +32,7 @@ const yesterdayOf = (key: string): string => {
   return dateKey(dt);
 };
 
-export function readRecord(): DailyRecord {
+export function readRecord(today: string = dateKey()): DailyRecord {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return { ...EMPTY };
@@ -43,8 +43,11 @@ export function readRecord(): DailyRecord {
       best: Math.max(0, Number(parsed.best) || 0),
       solvedTodayOn: typeof parsed.solvedTodayOn === 'string' ? parsed.solvedTodayOn : null,
     };
-    // a streak only survives if its last solve was today or yesterday
-    const today = dateKey();
+    /* A streak only survives if its last solve was today or yesterday — measured
+       against the day being asked about, which is usually the wall clock but is
+       passed explicitly when recording a solve for a known date. Reading the
+       clock inside here made `recordSolve('2026-10-24')` zero a streak that the
+       same call had just written. */
     if (rec.lastSolved && rec.lastSolved !== today && rec.lastSolved !== yesterdayOf(today)) {
       return { ...rec, streak: 0 };
     }
@@ -56,7 +59,7 @@ export function readRecord(): DailyRecord {
 
 /** Record a solve. Idempotent within a day: finishing twice does not inflate it. */
 export function recordSolve(today: string = dateKey()): DailyRecord {
-  const rec = readRecord();
+  const rec = readRecord(today);
   if (rec.solvedTodayOn === today) return rec;
 
   const streak = rec.lastSolved === yesterdayOf(today) ? rec.streak + 1 : 1;

@@ -13,6 +13,8 @@ import { ChatRail, MobileChat } from '../components/RoomChat';
 import { HowToPlay } from '../components/HowToPlay';
 import { useRoomSystemLines, type SystemLine } from '../lib/useRoomLines';
 import { BOARDS } from '../components/boards/registry';
+import { PlayerSafety } from '../components/PlayerSafety';
+import { useMuted } from '../lib/mute';
 
 export default function Room() {
   const { code = '' } = useParams();
@@ -76,14 +78,28 @@ export default function Room() {
   const systemLines: SystemLine[] = useRoomSystemLines({
     room, finished, slot, matchId: match?.matchId ?? null,
   });
+
+  /* Muting is local: their messages and their typing indicator simply do not
+     render here. Nothing is sent, and they are never told. */
+  const muted = useMuted();
+  const oppMuted = muted(opp?.id);
+  const visibleMessages = useMemo(
+    () => (oppMuted ? messages.filter((m) => m.isSelf) : messages),
+    [messages, oppMuted],
+  );
+
   const chatProps = {
-    messages,
+    messages: visibleMessages,
     system: systemLines,
     sendChat,
     onTyping: sendTyping,
-    peerTyping,
+    peerTyping: oppMuted ? false : peerTyping,
     me: { name: me?.name ?? 'You', mascot: me?.mascot ?? 'classic' },
     opp: { name: opp?.name ?? '', mascot: opp?.mascot, connected: opp?.connected ?? false },
+    /* Two strangers get no chat until a board exists. The rule is the relay's;
+       this only stops the composer pretending otherwise. */
+    locked: !room?.chatOpen,
+    muted: oppMuted,
   };
 
   /* ------------------------------------------------ error / loading gates */
@@ -172,7 +188,7 @@ export default function Room() {
         )}
 
         {(room.status === 'WAITING' || room.status === 'READY_CHECK' || (room.status === 'COMPLETED' && !finished)) && (
-          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} chat={chatProps} />
+          <Lobby room={room} slot={slot} inviteLink={inviteLink} onReady={ready} onStart={start} onChangeGame={changeGame} onOpenPicker={() => setPickerOpen(true)} chat={chatProps} onLeave={doLeave} />
         )}
 
         {room.status === 'STARTING' && room.startsAt && (
@@ -195,6 +211,22 @@ export default function Room() {
                   <Board state={match.state} youSlot={slot} onMove={act} interactive={!!live && myTurn} names={names} hint />
                 </Suspense>
               </div>
+
+              {/* The same actions as in the lobby, because the moment you want
+                  to mute somebody is during the match, not before it. */}
+              {opp && (
+                <div className="max-w-[560px] mx-auto">
+                  <PlayerSafety
+                    playerId={opp.id}
+                    accountId={opp.accountId ?? null}
+                    name={opp.name}
+                    handle={opp.handle ?? null}
+                    roomCode={room.code}
+                    gameId={room.gameId}
+                    onBlocked={() => leave()}
+                  />
+                </div>
+              )}
 
               <div className="max-w-[560px] mx-auto">
                 <HowToPlay gameId={room.gameId} gameTitle={game?.title} compact />
@@ -374,7 +406,7 @@ function GamePickerModal({
 }
 
 /* ------------------------------------------------------------------ lobby */
-function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpenPicker, chat }: any) {
+function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpenPicker, chat, onLeave }: any) {
   const { sfx } = useStore();
   const members = [...room.members].sort((a: any, b: any) => a.slot - b.slot);
   const me = members.find((m: any) => m.slot === slot);
@@ -406,6 +438,18 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpen
               </div>
               <PlayerSeat member={members[1]} you={slot === 1} colour="#4a9fd8" />
             </div>
+
+            {opp && (
+              <PlayerSafety
+                playerId={opp.id}
+                accountId={opp.accountId ?? null}
+                name={opp.name}
+                handle={opp.handle ?? null}
+                roomCode={room.code}
+                gameId={room.gameId}
+                onBlocked={() => onLeave?.()}
+              />
+            )}
 
             <BoltRule className="my-6" />
 

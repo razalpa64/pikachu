@@ -543,7 +543,11 @@ public/
 supabase/migrations/  SQL with RLS for the optional cloud layer
 scripts/gifs.py       GIF → clean animated WebP   scripts/art.py  cover crop/composite/encode
 scripts/smoke.ts      end-to-end relay test (two WebSocket clients, no browser)
-scripts/e2e/          browser tests: routes.mjs, play.mjs, reconnect.mjs, matchmaking.mjs
+server/queue.ts        who plays whom: a pure structure, no sockets (matchmaking.test.ts)
+server/safety.ts       blocks and the chat gate: also pure (safety.test.ts)
+server/auth.ts         verifying a Supabase token on `hello` (relay-auth.test.ts)
+scripts/e2e/          browser tests: routes.mjs, play.mjs, reconnect.mjs,
+                      matchmaking.mjs, friends.mjs
 ```
 
 Two rules that keep the whole thing honest:
@@ -595,10 +599,43 @@ The lobby also shows **how many people are playing each game and how many are lo
 (`presence`, pushed over the socket and mirrored at `GET /api/presence`). It is a count and nothing
 else: no names, no ids, nothing that outlives a restart. The privacy page says so in as many words.
 
-What is deliberately **not** here yet: a friend list and random-player safety tools. Both need a
-durable identity (accounts) rather than the browser-local `playerId` the relay trusts today, and
-shipping "play a stranger" with a chat box and no way to block or report them would be worse than
-shipping the queue alone. That is the next piece of work, not a hidden limitation.
+### Playing with a friend, and the safety tools
+
+A queue gets you a stranger. Keeping them — playing them again next week from another device — needs
+an identity that survives a cleared browser, so a **friend list is an account feature** and the
+queue is not. Sign-in is optional and stays optional: nothing above this section needs it.
+
+The rules live in Postgres (`supabase/migrations/0005_friends_and_safety.sql`) and in the relay,
+never in the component that draws the buttons.
+
+| Thing | Where it lives | Who can see it | What it actually does |
+|---|---|---|---|
+| **Handle** | `profiles.handle` | anyone may look it up *exactly* | the only way a friend finds you; no prefix search, because a browsable directory is a scrapable one |
+| **Friend request** | `friendships` | the two people in it | insert-only as yourself and only `pending`; the addressee is the only one who can accept; declining deletes the row, so a rejection is never announced |
+| **Block** | `blocks` | **only the blocker** | never matched again, no request can exist, the relay is told before you press Find, and the person blocked cannot tell |
+| **Report** | `reports` | the reporter (insert) and admins (read) | a private note that names the other player — deliberately *not* the public feedback wall |
+| **Mute** | `localStorage` | nobody | hides one person's chat on this device, tells no one, needs no account, works mid-match |
+| **Chat before a round** | the relay | — | two matched strangers get no chat until the first board exists; a private room, whose code was the introduction, keeps its lobby chat |
+
+Three details are worth the reader's time, because each one is a place where the obvious
+implementation is the wrong one:
+
+1. **The relay verifies a token, it does not read one.** A JWT payload is base64 until somebody with
+   the key says otherwise. `server/auth.ts` asks the auth server (`GET /auth/v1/user`), uses the
+   resulting account id as the connection's identity, and caches the answer for five minutes. A
+   token it cannot check is refused with `auth_unavailable` rather than downgraded to a guest —
+   because a guest is outside every block list, and "signing in" must never be *worse*.
+2. **A block is enforced without the relay reading the database.** The relay has no service key and
+   never talks to Postgres. Each signed-in client sends its own block list on `hello`; the relay
+   applies it in both directions and skips those entries in the queue without losing your place.
+   A modified client can only weaken its own protections.
+3. **The "everyone waiting has blocked you" message is deliberately impossible.** The lobby may say
+   *your* blocks are why nobody available matches (`note: 'blocked'`), and only consults your own
+   list — the other direction would be a way to detect a block.
+
+`FriendsPanel` shows exactly one of three things and never pretends: cloud sync is off (and what to
+do about it), signed out (and why friends need an account), or your handle, requests, friends and
+block list.
 
 ### Difficulty is real
 
@@ -942,17 +979,23 @@ EmulatorJS is MIT — `public/retro/data/LICENSE-EmulatorJS.txt`.
 npm test
 ```
 
-696 tests across 47 files covering: legality and junk-payload rejection for all seventeen
+746 tests across 49 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake
 collision/growth/wrap, puzzle solvability (including 15-puzzle parity), and the XP /
-achievement / daily-challenge system, and the matchmaking queue's own rules (who is paired with
-whom, how a second click cannot jump the line, when a wait expires). The four Supabase migrations are executed against a real
-PostgreSQL (PGlite) with the Supabase roles stubbed in, then driven as `anon`, as an ordinary member
-and as the allowlisted admin — the admin tests assert that the first two cannot write a cartridge,
-read the roster, publish a draft or touch the site copy, which is the claim the hidden `/admin` desk
-rests on.
+achievement / daily-challenge system, the matchmaking queue's own rules (who is paired with whom,
+how a second click cannot jump the line, when a wait expires, and how a blocked player is passed
+over without costing you your place), the safety rules (which pairs may be matched, when a stranger
+may talk, how a friend invitation expires) and the relay's token verification (a good token, a stale
+one, an unreachable auth server, and a token that was never sent — with `fetch` stubbed, because the
+point is what the relay does with each answer). The five Supabase migrations are executed against a
+real PostgreSQL (PGlite) with the Supabase roles stubbed in, then driven as `anon`, as an ordinary
+member and as the allowlisted admin — the admin tests assert that the first two cannot write a
+cartridge, read the roster, publish a draft or touch the site copy, which is the claim the hidden
+`/admin` desk rests on, and the friends suite asserts that a handle collision does not mint a second
+`ash`, a prefix search finds nobody, a request cannot be born accepted, a blocked player cannot read
+or delete the block row, and a report is invisible even to the person who filed it.
 
 The party shelf carries its own suites, because those are the games where a bug is invisible until
 somebody at the table is embarrassed. Would You Rather and Word Bomb have rule tests plus a relay
@@ -1045,6 +1088,18 @@ checks the ways a queue must not misbehave — cancelling leaves nothing behind,
 a room is refused rather than duplicated, closing the tab drops the entry, and a matchmade pair
 whose countdown is interrupted by a refresh starts itself again instead of waiting for a host who
 does not exist.
+
+`scripts/smoke-friends.ts` (36 checks) starts its **own** relay with a stubbed auth server on a local
+port, so it needs no Supabase project and no network: it proves that a token the auth server rejects
+gets no identity at all, that a verified player's id comes from the account rather than the socket,
+that a block in either direction keeps two people out of the same room while a third party they have
+not blocked is paired normally, that a matchmade room refuses chat until the board exists, and that a
+friend invitation reaches the right person, can only be answered by them, once, and expires.
+
+`scripts/e2e/friends.mjs` (15 checks, two browsers) covers what a guest sees in a build with no cloud
+project at all: the friends panel says what it needs instead of spinning, nothing offers to block or
+report an account that does not exist, muting hides one player's messages on one device and nowhere
+else, and chat opens by itself when the first board arrives.
 
 `scripts/e2e/matchmaking.mjs` (22 checks, two browsers on a real relay) is the same story through
 the UI: one visitor presses **Find an opponent** and sees the searching state with a live count,

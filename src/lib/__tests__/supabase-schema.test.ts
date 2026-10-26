@@ -23,6 +23,7 @@ const MIGRATIONS = [
   '0002_accounts_and_chat.sql',
   '0003_feedback.sql',
   '0004_admin.sql',
+  '0005_friends_and_safety.sql',
 ];
 
 /** The parts of a Supabase project that the migrations assume already exist. */
@@ -102,9 +103,10 @@ describe('the migrations', () => {
          from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public' and c.relkind = 'r'
           and c.relname in ('profiles','match_results','player_stats','feedback','room_messages',
-                            'admin_users','retro_games','site_content','admin_audit')`,
+                            'admin_users','retro_games','site_content','admin_audit',
+                            'friendships','blocks','reports')`,
     );
-    expect(rows).toHaveLength(9);
+    expect(rows).toHaveLength(12);
     for (const r of rows) expect(r.relrowsecurity, `${r.relname} has RLS enabled`).toBe(true);
   });
 
@@ -453,5 +455,299 @@ describe('the storage bucket', () => {
     const pub = await asUser(null, () => db.query<{ name: string }>(
       `select name from storage.objects where bucket_id = 'retro'`), 'anon');
     expect(pub.rows.map((r) => r.name)).toEqual(['night-shift/rom.gba']);
+  });
+});
+
+/* ------------------------------------------------- friends, blocks, reports */
+
+const IDA = 'aaaaaaaa-1111-1111-1111-111111111111';
+const IDB = 'bbbbbbbb-2222-2222-2222-222222222222';
+const IDC = 'cccccccc-3333-3333-3333-333333333333';
+
+/** A report filed by whoever the session belongs to. */
+async function insertReport(over: Record<string, unknown> = {}) {
+  const row: Record<string, any> = {
+    reported: IDB, reported_handle: 'misty', reported_name: 'Misty',
+    room_code: 'ABCDE', game_id: 'chess', category: 'harassment',
+    message: 'They kept messaging after the match ended.', ...over,
+  };
+  return db.query(
+    `insert into public.reports (reported, reported_handle, reported_name, room_code, game_id, category, message)
+     values ($1, $2, $3, $4, $5, $6, $7)`,
+    [row.reported, row.reported_handle, row.reported_name, row.room_code, row.game_id, row.category, row.message],
+  );
+}
+
+const request = (from: string, to: string) => db.query(
+  `insert into public.friendships (requester, addressee) values ($1, $2)`, [from, to],
+);
+
+describe('a handle is how a friend finds you', () => {
+  beforeAll(async () => {
+    await db.exec(`insert into auth.users (id, email, raw_user_meta_data) values
+      ('${IDA}', 'ash@pallet.town',    '{"username":"Ash"}'),
+      ('${IDB}', 'misty@cerulean.gym', '{"username":"misty"}'),
+      ('${IDC}', 'brock@pewter.gym',   '{"username":"Ash"}')`);
+  });
+
+  it('is filled in from the username when it is free, and left empty when it is not', async () => {
+    const { rows } = await db.query<{ id: string; handle: string | null }>(
+      `select id, handle from public.profiles where id in ('${IDA}','${IDB}','${IDC}')`,
+    );
+    const byId = Object.fromEntries(rows.map((r) => [r.id, r.handle]));
+    expect(byId[IDA], 'Ash claimed ash').toBe('ash');
+    expect(byId[IDB]).toBe('misty');
+    /* Brock asked to be "Ash" too. Rather than inventing "ash2", which nobody
+       chose, the trigger leaves it empty and he picks one on /together. */
+    expect(byId[IDC]).toBeNull();
+    expect(rows.filter((r) => r.handle === 'ash')).toHaveLength(1);
+  });
+
+  it('can be chosen by its owner, and only in a usable shape', async () => {
+    const mine = await asUser(IDC, () => db.query(
+      `update public.profiles set handle = 'brock' where id = '${IDC}'`));
+    expect(mine.affectedRows).toBe(1);
+
+    for (const bad of ['Brock', 'ASH', 'ab', 'x'.repeat(21), 'brock!', 'with space']) {
+      await expect(
+        asUser(IDC, () => db.query(`update public.profiles set handle = $1 where id = '${IDC}'`, [bad])),
+        `${bad} is not a handle`,
+      ).rejects.toThrow(/check constraint|violates/i);
+    }
+
+    /* Uniqueness is case-insensitive: "ash" is taken even though it is spelled
+       differently from anything else, and upper case never gets that far. */
+    await expect(asUser(IDC, () => db.query(
+      `update public.profiles set handle = 'ash' where id = '${IDC}'`)))
+      .rejects.toThrow(/duplicate key|unique/i);
+
+    const other = await asUser(IDC, () => db.query(
+      `update public.profiles set handle = 'hijack' where id = '${IDA}'`));
+    expect(other.affectedRows, 'you cannot rename somebody else').toBe(0);
+  });
+
+  it('is searched for by exact match only, and never by a stranger', async () => {
+    const found = await asUser(IDA, () => db.query<{ handle: string }>(
+      `select * from public.find_player('  MISTY ')`));
+    expect(found.rows.map((r) => r.handle)).toEqual(['misty']);
+
+    /* A prefix is not a directory listing. */
+    for (const probe of ['mis', '', 'a']) {
+      const partial = await asUser(IDA, () => db.query(`select * from public.find_player($1)`, [probe]));
+      expect(partial.rows, `"${probe}" returns nobody`).toHaveLength(0);
+    }
+
+    const self = await asUser(IDA, () => db.query(`select * from public.find_player('ash')`));
+    expect(self.rows, 'you cannot find yourself').toHaveLength(0);
+
+    await expect(asUser(null, () => db.query(`select * from public.find_player('misty')`), 'anon'))
+      .rejects.toThrow(/permission denied/i);
+  });
+});
+
+describe('friend requests', () => {
+  it('are written by the asker and read by both sides', async () => {
+    await expect(asUser(IDA, () => request(IDA, IDB))).resolves.toBeTruthy();
+    const mine = await asUser(IDA, () => db.query<{ status: string; direction: string }>(
+      'select * from public.my_friends()'));
+    expect(mine.rows).toEqual([expect.objectContaining({ status: 'pending', direction: 'outgoing' })]);
+
+    const theirs = await asUser(IDB, () => db.query<{ direction: string; display_name: string }>(
+      'select * from public.my_friends()'));
+    expect(theirs.rows).toEqual([expect.objectContaining({ direction: 'incoming', display_name: 'Ash' })]);
+
+    const outsider = await asUser(IDC, () => db.query('select * from public.my_friends()'));
+    expect(outsider.rows, 'a third player sees nothing at all').toHaveLength(0);
+    const rawOutsider = await asUser(IDC, () => db.query('select * from public.friendships'));
+    expect(rawOutsider.rows).toHaveLength(0);
+  });
+
+  it('cannot be filed in somebody else’s name, or pre-accepted', async () => {
+    /* The cache of one pair is taken, so these use a fresh pair of ids. */
+    await expect(asUser(IDC, () => request(IDA, IDB)))
+      .rejects.toThrow(/row-level security|duplicate key|unique/i);
+    await expect(asUser(IDA, () => request(IDB, IDA)))
+      .rejects.toThrow(/row-level security|duplicate key|unique/i);
+
+    await db.exec(`insert into auth.users (id, email, raw_user_meta_data)
+      values ('dddddddd-4444-4444-4444-444444444444', 'gary@pallet.town', '{"username":"gary"}')`);
+    await expect(asUser(IDA, () => db.query(
+      `insert into public.friendships (requester, addressee) values ('dddddddd-4444-4444-4444-444444444444', '${IDA}')`)))
+      .rejects.toThrow(/row-level security/i);
+
+    /* `status` is not an insertable column: the grant does not include it, and the
+       policy demands 'pending' regardless. */
+    await expect(asUser(IDA, () => db.query(
+      `insert into public.friendships (requester, addressee, status)
+       values ('${IDA}', 'dddddddd-4444-4444-4444-444444444444', 'accepted')`)))
+      .rejects.toThrow(/permission denied/i);
+  });
+
+  it('are accepted by the person asked, and by nobody else', async () => {
+    const asAsker = await asUser(IDA, () => db.query(
+      `update public.friendships set status = 'accepted' where requester = '${IDA}'`));
+    expect(asAsker.affectedRows, 'the asker cannot accept their own request').toBe(0);
+
+    const asOutsider = await asUser(IDC, () => db.query(
+      `update public.friendships set status = 'accepted' where requester = '${IDA}'`));
+    expect(asOutsider.affectedRows).toBe(0);
+
+    const accepted = await asUser(IDB, () => db.query(
+      `update public.friendships set status = 'accepted', responded_at = now()
+        where requester = '${IDA}' and status = 'pending'`));
+    expect(accepted.affectedRows).toBe(1);
+
+    for (const who of [IDA, IDB]) {
+      const list = await asUser(who, () => db.query<{ status: string; direction: string }>(
+        'select * from public.my_friends()'));
+      expect(list.rows).toEqual([expect.objectContaining({ status: 'accepted', direction: 'mutual' })]);
+    }
+  });
+
+  it('cannot be re-opened, and can be ended by either side', async () => {
+    /* Accepting is the only transition. Flipping back to pending affects no row. */
+    const reopened = await asUser(IDB, () => db.query(
+      `update public.friendships set status = 'pending' where addressee = '${IDB}'`));
+    expect(reopened.affectedRows).toBe(0);
+
+    const wrongWay = await asUser(IDB, () => db.query(
+      `update public.friendships set status = 'accepted' where addressee = '${IDA}'`));
+    expect(wrongWay.affectedRows).toBe(0);
+
+    const ended = await asUser(IDA, () => db.query(
+      `delete from public.friendships where requester = '${IDA}' and addressee = '${IDB}'`));
+    expect(ended.affectedRows).toBe(1);
+    const gone = await asUser(IDB, () => db.query('select * from public.my_friends()'));
+    expect(gone.rows).toHaveLength(0);
+  });
+
+  it('a decline simply leaves nothing behind', async () => {
+    await asUser(IDB, () => request(IDB, IDC));
+    const declined = await asUser(IDC, () => db.query(
+      `delete from public.friendships where requester = '${IDB}' and addressee = '${IDC}'`));
+    expect(declined.affectedRows).toBe(1);
+    const asker = await asUser(IDB, () => db.query('select * from public.my_friends()'));
+    expect(asker.rows, 'the asker is not told they were turned down').toHaveLength(0);
+  });
+});
+
+describe('blocking', () => {
+  it('is invisible to the person blocked', async () => {
+    await asUser(IDA, () => db.query(
+      `insert into public.blocks (blocker, blocked, reason) values ('${IDA}', '${IDB}', 'spam')`));
+
+    const mine = await asUser(IDA, () => db.query<{ blocked: string }>(
+      'select blocker, blocked, reason, created_at from public.blocks'));
+    expect(mine.rows.map((r) => r.blocked)).toEqual([IDB]);
+
+    const theirs = await asUser(IDB, () => db.query('select * from public.blocks'));
+    expect(theirs.rows, 'the blocked player cannot see the row').toHaveLength(0);
+
+    const deleted = await asUser(IDB, () => db.query(
+      `delete from public.blocks where blocked = '${IDB}'`));
+    expect(deleted.affectedRows, 'and cannot delete it').toBe(0);
+  });
+
+  it('ends any friendship or request between the two, in either direction', async () => {
+    await asUser(IDB, () => request(IDB, IDC));
+    await asUser(IDC, () => db.query(
+      `update public.friendships set status = 'accepted' where requester = '${IDB}'`));
+    const before = await asUser(IDC, () => db.query('select * from public.my_friends()'));
+    expect(before.rows).toHaveLength(1);
+
+    await asUser(IDC, () => db.query(
+      `insert into public.blocks (blocker, blocked) values ('${IDC}', '${IDB}')`));
+    const after = await asUser(IDC, () => db.query('select * from public.my_friends()'));
+    expect(after.rows).toHaveLength(0);
+    const still = await db.query<{ n: number }>('select count(*)::int as n from public.friendships');
+    expect(still.rows[0].n, 'the row is gone, not just hidden').toBe(0);
+  });
+
+  it('stops new requests and hides the pair from search', async () => {
+    await expect(asUser(IDB, () => request(IDB, IDA)))
+      .rejects.toThrow(/row-level security/i);
+    await expect(asUser(IDB, () => request(IDB, IDC)))
+      .rejects.toThrow(/row-level security/i);
+
+    const found = await asUser(IDB, () => db.query(`select * from public.find_player('ash')`));
+    expect(found.rows, 'a blocked handle cannot be searched for').toHaveLength(0);
+    const reverse = await asUser(IDA, () => db.query(`select * from public.find_player('misty')`));
+    expect(reverse.rows).toHaveLength(0);
+
+    /* The relay asks the same question, but from a machine it can trust. */
+    const answer = await db.query<{ pair: boolean }>(
+      `select public.blocked_pair('${IDA}', '${IDB}') as pair`);
+    expect(answer.rows[0].pair).toBe(true);
+    const strangers = await db.query<{ pair: boolean }>(
+      `select public.blocked_pair('${IDA}', 'dddddddd-4444-4444-4444-444444444444') as pair`);
+    expect(strangers.rows[0].pair).toBe(false);
+  });
+
+  it('cannot be aimed at yourself, and nobody can block on your behalf', async () => {
+    await expect(asUser(IDA, () => db.query(
+      `insert into public.blocks (blocker, blocked) values ('${IDA}', '${IDA}')`)))
+      .rejects.toThrow(/row-level security|blocks_not_self|check constraint/i);
+    await expect(asUser(IDB, () => db.query(
+      `insert into public.blocks (blocker, blocked) values ('${IDA}', 'dddddddd-4444-4444-4444-444444444444')`)))
+      .rejects.toThrow(/row-level security/i);
+  });
+
+  it('is removable by the blocker, after which they can be friends again', async () => {
+    await asUser(IDA, () => db.query(
+      `delete from public.blocks where blocker = '${IDA}' and blocked = '${IDB}'`));
+    await expect(asUser(IDA, () => request(IDA, IDB))).resolves.toBeTruthy();
+    await asUser(IDA, () => db.query(
+      `delete from public.friendships where requester = '${IDA}' and addressee = '${IDB}'`));
+  });
+});
+
+describe('reporting a player', () => {
+  it('is written as yourself and read by admins alone', async () => {
+    await expect(asUser(IDA, () => insertReport())).resolves.toBeTruthy();
+
+    const mine = await asUser(IDA, () => db.query('select * from public.reports'));
+    expect(mine.rows, 'the reporter cannot read the reports either').toHaveLength(0);
+    /* The public has no grant at all here, so this is a refusal rather than an
+       empty list — reports are not a wall anybody browses. */
+    await expect(asUser(null, () => db.query('select * from public.reports'), 'anon'))
+      .rejects.toThrow(/permission denied/i);
+
+    const admin = await asUser(ADMIN_ID, () => db.query<{ reporter: string; category: string; status: string }>(
+      'select reporter, category, status from public.reports'));
+    expect(admin.rows).toEqual([expect.objectContaining({ reporter: IDA, category: 'harassment', status: 'open' })]);
+
+    const triaged = await asUser(ADMIN_ID, () => db.query(
+      `update public.reports set status = 'reviewed'`));
+    expect(triaged.affectedRows).toBe(1);
+  });
+
+  it('cannot be filed in somebody else’s name, or with no text, or about nobody', async () => {
+    await expect(asUser(IDB, () => db.query(
+      `insert into public.reports (reporter, category, message)
+       values ('${IDA}', 'spam', 'somebody else said this')`)))
+      .rejects.toThrow(/permission denied/i);
+
+    await expect(asUser(IDB, () => insertReport({ message: '   ' })))
+      .rejects.toThrow(/check constraint/i);
+    await expect(asUser(IDB, () => insertReport({ category: 'dislike' })))
+      .rejects.toThrow(/check constraint/i);
+    /* A report about a guest has no account to point at — that is allowed on
+       purpose, because a stranger you played before signing in is exactly the
+       person you might need to report. A report with nothing at all is not. */
+    await expect(asUser(IDB, () => db.query(
+      `insert into public.reports (category, message, reported_name) values ('spam', 'no subject', '')`)))
+      .rejects.toThrow(/reports_have_a_subject|check constraint/i);
+
+    await expect(asUser(null, () => insertReport(), 'anon'))
+      .rejects.toThrow(/permission denied|row-level security/i);
+  });
+
+  it('refuses the sixth report in an hour from one account', async () => {
+    for (let i = 0; i < 5; i++) {
+      await expect(asUser(IDC, () => insertReport({ message: `that is not acceptable, report ${i + 1}` })))
+        .resolves.toBeTruthy();
+    }
+    await expect(asUser(IDC, () => insertReport({ message: 'the sixth report in one hour' })))
+      .rejects.toThrow(/several reports in the last hour/i);
   });
 });

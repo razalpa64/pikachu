@@ -26,9 +26,15 @@ import {
   type PresenceView, type QueueView,
 } from './protocol';
 import {
-  QUEUE_NOTICE_MS, dueForNotice, dequeue, enqueue, find as findInQueue, sweepQueue, takePair,
-  waitingCounts, type QueueEntry, type QueueTable,
+  QUEUE_NOTICE_MS, dueForNotice, dequeue, enqueue, find as findInQueue, onlyBlockedWaiters,
+  sweepQueue, takePair, waitingCounts, type QueueEntry, type QueueTable,
 } from './queue';
+import { authConfigured, verifyAccessToken } from './auth';
+import {
+  INVITE_TTL_MS, blockedBetween, blocker, chatAllowed, forgetAccount, rememberBlocks,
+  sanitizeBlocks, sweepInvites, takeInvite,
+  type AccountIndex, type BlockIndex, type Invite,
+} from './safety';
 
 const PORT = Number(process.env.PORT ?? process.env.RELAY_PORT ?? 8787);
 const DATA_DIR = path.resolve(process.cwd(), '.pikachu-data');
@@ -58,6 +64,10 @@ interface Member {
   id: string; name: string; mascot: string; slot: Slot;
   ready: boolean; connected: boolean; lastSeen: number; rematchVote: boolean;
   sockets: Set<WebSocket>;
+  /** The verified account behind this seat, if the player signed in. */
+  accountId: string | null;
+  /** Their public handle, if the account has one. */
+  handle: string | null;
 }
 interface Match {
   id: string; gameId: string; seq: number; state: any;
@@ -87,7 +97,21 @@ interface Room {
 }
 
 const rooms = new Map<string, Room>();
-const socketMeta = new WeakMap<WebSocket, { playerId: string; name: string; mascot: string; code: string | null }>();
+interface SocketMeta {
+  playerId: string; name: string; mascot: string; code: string | null;
+  /** Set only after a token was verified by the auth server. */
+  accountId: string | null;
+  handle: string | null;
+  /** Account ids this player asked not to meet. */
+  blocks: string[];
+}
+const socketMeta = new WeakMap<WebSocket, SocketMeta>();
+/** playerId → verified account id, so the queue can ask "are these two blocked?" */
+const accounts: AccountIndex = new Map();
+/** account id → the accounts it will not play with */
+const blocksByAccount: BlockIndex = new Map();
+/** Friend invitations waiting for an answer. */
+const invites = new Map<string, Invite>();
 /** gameId → players waiting for a stranger. See ./queue.ts for the rules. */
 const queue: QueueTable = new Map();
 /** Last presence payload sent, so an unchanged lobby does not re-broadcast. */
@@ -115,13 +139,17 @@ function roomView(room: Room): RoomView {
     .sort((a, b) => a.slot - b.slot)
     .map((m) => ({
       id: m.id, name: m.name, mascot: m.mascot, slot: m.slot, ready: m.ready,
-      connected: m.connected, isHost: m.id === room.hostId, lastSeen: m.lastSeen, rematchVote: m.rematchVote,
+      connected: m.connected, isHost: m.id === room.hostId, lastSeen: m.lastSeen,
+      rematchVote: m.rematchVote, accountId: m.accountId, handle: m.handle,
     }));
   return {
     code: room.code, roomName: room.roomName, gameId: room.gameId, mode: room.mode,
     settings: room.settings, status: room.status, members, hostId: room.hostId,
     createdAt: room.createdAt, expiresAt: room.expiresAt, startsAt: room.startsAt,
     matchId: room.match?.id ?? null, series: room.series, history: room.history.slice(-12),
+    chatOpen: chatAllowed({
+      matchmade: room.matchmade, historyLength: room.history.length, status: room.status,
+    }),
   };
 }
 
@@ -169,17 +197,49 @@ function broadcastPresence() {
 
 function queueView(status: QueueView['status'], entry: QueueEntry | null, gameId: string | null): QueueView {
   const waiting = gameId ? (queue.get(gameId)?.length ?? 0) : 0;
-  return { status, gameId, waiting, since: entry?.since ?? null };
+  const view: QueueView = { status, gameId, waiting, since: entry?.since ?? null };
+  /* Honest, and carefully one-sided: the note appears only when everybody else
+     waiting is somebody *this* player blocked. Being told "everyone waiting has
+     blocked you" would be a way to detect a block, which is exactly what a block
+     must never reveal. So only their own list is consulted here. */
+  if (status === 'waiting' && entry && onlyBlockedWaiters(
+    queue, entry.gameId, entry.playerId, (mine, other) => blockedByMe(mine).has(other),
+  )) {
+    view.note = 'blocked';
+  }
+  return view;
+}
+
+/** "May these two be matched?" — a block in either direction says no. */
+function pairBlocked(a: string, b: string) {
+  return blockedBetween(accounts, blocksByAccount, a, b);
+}
+
+/** The player ids this player has blocked themselves — nobody else's list. */
+function blockedByMe(playerId: string): Set<string> {
+  const account = accounts.get(playerId);
+  if (!account) return new Set();
+  const mine = blocksByAccount.get(account);
+  if (!mine) return new Set();
+  /* Player ids are 'u:<account>' for anybody signed in, so the sets line up
+     without another lookup. */
+  return new Set([...mine].map((id) => `u:${id}`));
 }
 
 /* ------------------------------------------------------------ room building */
 
-function seat(room: Room, meta: { playerId: string; name: string; mascot: string }, ws: WebSocket): Member {
+function seat(
+  room: Room,
+  meta: { playerId: string; name: string; mascot: string; accountId?: string | null; handle?: string | null },
+  ws: WebSocket,
+): Member {
   const taken = new Set([...room.members.values()].map((m) => m.slot));
   const slot: Slot = taken.has(0) ? 1 : 0;      // never two players in one slot
   const member: Member = {
     id: meta.playerId, name: meta.name, mascot: meta.mascot, slot,
     ready: false, connected: true, lastSeen: Date.now(), rematchVote: false, sockets: new Set([ws]),
+    accountId: meta.accountId ?? null,
+    handle: meta.handle ?? null,
   };
   room.members.set(meta.playerId, member);
   socketMeta.get(ws)!.code = room.code;
@@ -187,7 +247,7 @@ function seat(room: Room, meta: { playerId: string; name: string; mascot: string
 }
 
 function openRoom(
-  meta: { playerId: string; name: string; mascot: string },
+  meta: { playerId: string; name: string; mascot: string; accountId?: string | null; handle?: string | null },
   ws: WebSocket,
   spec: { gameId: string; settings: Record<string, unknown>; roomName: string; mode: 'online' | 'coop'; matchmade?: boolean },
 ): Room {
@@ -238,7 +298,11 @@ function matchPair(gameId: string, first: QueueEntry, second: QueueEntry) {
   }
 
   const room = openRoom(
-    { playerId: first.playerId, name: first.name, mascot: first.mascot },
+    {
+      playerId: first.playerId, name: first.name, mascot: first.mascot,
+      accountId: accounts.get(first.playerId) ?? null,
+      handle: handleOf(first.playerId),
+    },
     firstSockets[0],
     {
       gameId,
@@ -254,7 +318,11 @@ function matchPair(gameId: string, first: QueueEntry, second: QueueEntry) {
     socketMeta.get(ws)!.code = room.code;
   }
 
-  const guest = seat(room, { playerId: second.playerId, name: second.name, mascot: second.mascot }, secondSockets[0]);
+  const guest = seat(room, {
+    playerId: second.playerId, name: second.name, mascot: second.mascot,
+    accountId: accounts.get(second.playerId) ?? null,
+    handle: handleOf(second.playerId),
+  }, secondSockets[0]);
   for (const ws of secondSockets.slice(1)) {
     guest.sockets.add(ws);
     socketMeta.get(ws)!.code = room.code;
@@ -385,6 +453,13 @@ setInterval(() => {
       for (const ws of wss.clients) {
         if (socketMeta.get(ws)?.playerId !== entry.playerId) continue;
         send(ws, { t: 'queue', queue: { status: 'expired', gameId: entry.gameId, waiting: 0, since: null } });
+      }
+    }
+    /* An invitation nobody answered cannot seat anybody afterwards. */
+    for (const invite of sweepInvites(invites, now, INVITE_TTL_MS)) {
+      for (const ws of wss.clients) {
+        if (socketMeta.get(ws)?.playerId !== invite.fromPlayer) continue;
+        send(ws, { t: 'inviteClosed', inviteId: invite.id, reason: 'expired' });
       }
     }
     broadcastPresence();
@@ -530,12 +605,37 @@ function otherSocketsFor(playerId: string, except: WebSocket): WebSocket[] {
   return out;
 }
 
+/** The public handle of a signed-in player, if their socket says one. */
+function handleOf(playerId: string): string | null {
+  for (const ws of wss.clients) {
+    const meta = socketMeta.get(ws);
+    if (meta?.playerId === playerId) return meta.handle;
+  }
+  return null;
+}
+
+/** Every live socket of a signed-in account, whichever tab it is. */
+function socketsForAccount(accountId: string): WebSocket[] {
+  const out: WebSocket[] = [];
+  for (const ws of wss.clients) {
+    const meta = socketMeta.get(ws);
+    if (meta?.accountId === accountId && ws.readyState === WebSocket.OPEN) out.push(ws);
+  }
+  return out;
+}
+
 function detach(ws: WebSocket) {
   const meta = socketMeta.get(ws);
   /* A closed tab cannot keep waiting — but a player with another tab open must
      keep their place. Only the last socket of a player leaves the queue. */
   if (meta?.playerId && !otherSocketsFor(meta.playerId, ws).length) {
     if (dequeue(queue, meta.playerId)) broadcastPresence();
+    /* The block index is rebuilt on the next hello, so a player who has gone is
+       not kept in memory for the rest of the process's life. */
+    if (meta.accountId) forgetAccount(accounts, blocksByAccount, meta.playerId);
+    for (const [id, invite] of invites) {
+      if (invite.fromPlayer === meta.playerId || invite.toAccount === meta.accountId) invites.delete(id);
+    }
   }
   const ctx = memberOf(ws);
   if (!ctx) return;
@@ -555,13 +655,33 @@ function detach(ws: WebSocket) {
 }
 
 wss.on('connection', (ws, req) => {
-  socketMeta.set(ws, { playerId: '', name: '', mascot: 'classic', code: null });
+  socketMeta.set(ws, {
+    playerId: '', name: '', mascot: 'classic', code: null,
+    accountId: null, handle: null, blocks: [],
+  });
   const ip = (req.socket.remoteAddress ?? 'anon');
 
+  /* One message at a time, in order.
+     `hello` may wait on the auth server, and a `queue` sent one millisecond later
+     must not overtake it — the old synchronous handler could get away without
+     this because nothing ever awaited. A rejected promise here must never take
+     the process with it, so every link in the chain swallows and reports. */
+  let chain: Promise<void> = Promise.resolve();
   ws.on('message', (raw) => {
+    chain = chain
+      .then(() => handleMessage(ws, raw, ip))
+      .catch((err) => { console.error('[relay] message handler failed', err); });
+  });
+
+  ws.on('close', () => detach(ws));
+  ws.on('error', () => detach(ws));
+});
+
+async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
     let msg: ClientMsg;
     try { msg = JSON.parse(String(raw)); } catch { return fail(ws, 'bad_json', 'Message could not be read.'); }
-    const meta = socketMeta.get(ws)!;
+    const meta = socketMeta.get(ws);
+    if (!meta) return;
 
     try {
       switch (msg.t) {
@@ -569,10 +689,56 @@ wss.on('connection', (ws, req) => {
         case 'hello': {
           if (!msg.playerId || typeof msg.playerId !== 'string' || msg.playerId.length > 64)
             return fail(ws, 'bad_identity', 'Invalid player identity.');
-          meta.playerId = msg.playerId;
+
+          /* A token means "I am this account". It is checked against the auth
+             server, never decoded and believed: the payload of a JWT is just
+             base64 until somebody with the key says otherwise. A verified player
+             gets an account-derived id, so the id cannot be typed by somebody
+             else — which is the whole point of a friend list. */
+          if (msg.token) {
+            const result = await verifyAccessToken(String(msg.token));
+            if (!result.ok) {
+              if (result.reason === 'unavailable') {
+                /* Not the player's fault, and not evidence they are lying.
+                   Refusing beats silently downgrading them to a guest, because a
+                   guest is outside every block list. The client retries. */
+                return fail(ws, 'auth_unavailable', 'Could not confirm your account just now.',
+                  'The sign-in service did not answer. Try again in a moment.');
+              }
+              return fail(ws, 'auth_invalid', 'Your session has expired.',
+                'Sign in again to play with friends.');
+            }
+            const account = result.user;
+            meta.accountId = account.id;
+            accounts.set(account.id, account.id);
+            /* One player per account: the id is the account, so two tabs of the
+               same person are two sockets of one player, as they should be. */
+            meta.playerId = `u:${account.id}`;
+            meta.handle = account.handle;
+            rememberBlocks(blocksByAccount, account.id, sanitizeBlocks(msg.blocks));
+            meta.blocks = sanitizeBlocks(msg.blocks);
+            accounts.set(meta.playerId, account.id);
+          } else {
+            meta.playerId = msg.playerId;
+            meta.accountId = null;
+            meta.blocks = sanitizeBlocks(msg.blocks);
+          }
           meta.name = String(msg.name ?? 'Trainer').slice(0, 24) || 'Trainer';
           meta.mascot = String(msg.mascot ?? 'classic').slice(0, 24);
-          send(ws, { t: 'welcome', playerId: meta.playerId, serverTime: Date.now() });
+
+          /* A socket that changes identity (signing in on an open tab) must not
+             leave the old player id behind in the block index. */
+          for (const ws2 of wss.clients) {
+            const other = socketMeta.get(ws2);
+            if (other && ws2 !== ws && meta.accountId && other.playerId === meta.playerId && !other.accountId) {
+              other.playerId = '';
+            }
+          }
+
+          send(ws, {
+            t: 'welcome', playerId: meta.playerId, serverTime: Date.now(),
+            verified: Boolean(meta.accountId), handle: meta.handle,
+          });
           send(ws, { t: 'presence', presence: presenceNow() });
 
           // auto-resume: reattach to a room we are still a member of
@@ -601,7 +767,13 @@ wss.on('connection', (ws, req) => {
           const rules = RULES[msg.gameId];
           if (!rules) return fail(ws, 'unknown_game', 'That game has no online referee yet.', 'Pick another game from the library.');
           dequeue(queue, meta.playerId);            // opening a room leaves the queue
-          const room = openRoom(meta, ws, {
+          const room = openRoom(
+            {
+              playerId: meta.playerId, name: meta.name, mascot: meta.mascot,
+              accountId: meta.accountId, handle: meta.handle,
+            },
+            ws,
+            {
             gameId: msg.gameId,
             settings: msg.settings,
             roomName: String(msg.roomName ?? '') || 'Private Arena',
@@ -633,7 +805,7 @@ wss.on('connection', (ws, req) => {
           });
           const mine = findInQueue(queue, meta.playerId)?.entry ?? null;
           broadcastPresence();
-          const partner = takePair(queue, msg.gameId, meta.playerId);
+          const partner = takePair(queue, msg.gameId, meta.playerId, pairBlocked);
           if (partner) { matchPair(msg.gameId, partner.first, partner.second); return; }
           send(ws, { t: 'queue', queue: queueView('waiting', mine, msg.gameId) });
           return;
@@ -658,6 +830,16 @@ wss.on('connection', (ws, req) => {
             return fail(ws, 'room_closed', 'That arena has closed.', 'Ask your opponent to open a new room.');
           touch(room);
 
+          /* A block survives a shared code: if either side has blocked the
+             other, this room is not available to them, and the message does not
+             say which of the two did the blocking. */
+          for (const m of room.members.values()) {
+            if (m.id !== meta.playerId && blockedBetween(accounts, blocksByAccount, meta.playerId, m.id)) {
+              return fail(ws, 'blocked', 'You cannot join that arena.',
+                'Pick another room, or look for a random opponent instead.');
+            }
+          }
+
           const existing = room.members.get(meta.playerId);
           if (existing) {                                   // reconnect, keeps the slot
             existing.sockets.add(ws); existing.connected = true; existing.lastSeen = Date.now();
@@ -676,6 +858,7 @@ wss.on('connection', (ws, req) => {
           room.members.set(meta.playerId, {
             id: meta.playerId, name: meta.name, mascot: meta.mascot, slot,
             ready: false, connected: true, lastSeen: Date.now(), rematchVote: false, sockets: new Set([ws]),
+            accountId: meta.accountId, handle: meta.handle,
           });
           meta.code = code;
           dequeue(queue, meta.playerId);            // joined by code: out of the queue
@@ -852,6 +1035,18 @@ wss.on('connection', (ws, req) => {
         case 'chat': {
           const ctx = memberOf(ws);
           if (!ctx) return;
+          /* Two strangers with no host get no chat until a board exists. The
+             first message to a person you have never met is too often the
+             reason this game has a report button at all. Private rooms, whose
+             code was the introduction, keep their lobby chat. */
+          if (!chatAllowed({
+            matchmade: ctx.room.matchmade,
+            historyLength: ctx.room.history.length,
+            status: ctx.room.status,
+          })) {
+            return fail(ws, 'chat_locked', 'Chat opens when the first match starts.',
+              'You were matched with a stranger — play a round first.');
+          }
           if (!allow(`chat:${ctx.me.id}`, 60)) return fail(ws, 'rate_limited', 'Chatting too fast.', 'Wait a few seconds.');
           const raw = String(msg.text ?? '').trim();
           if (!raw) return;
@@ -927,6 +1122,135 @@ wss.on('connection', (ws, req) => {
           broadcastPresence();
           return;
         }
+
+        /* ---------------------------------------------------------- invite
+           "Play with me" between two people who are already friends. The friend
+           list lives in Postgres and is read by the browser; the relay's job is
+           only to carry the invitation to a live socket, and to refuse to open a
+           room unless the person invited answers it. */
+        case 'invite': {
+          if (!meta.playerId) return fail(ws, 'no_identity', 'Say hello first.');
+          if (!meta.accountId) {
+            return fail(ws, 'not_signed_in', 'Sign in to invite a friend.',
+              'Friends are tied to an account, so that they survive a cleared browser.');
+          }
+          if (memberOf(ws)) return fail(ws, 'in_room', 'You are already in an arena.',
+            'Leave it before inviting somebody.');
+          const to = String(msg.to ?? '').trim().toLowerCase();
+          if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(to) || to === meta.accountId) {
+            return fail(ws, 'bad_target', 'That is not somebody you can invite.');
+          }
+          const rules = RULES[msg.gameId];
+          if (!rules) return fail(ws, 'unknown_game', 'That game has no online referee yet.',
+            'Pick another game from the library.');
+          if (!allow(`invite:${meta.accountId}`, 6)) {
+            return fail(ws, 'rate_limited', 'Too many invitations at once.',
+              'Give your friends a moment to answer.');
+          }
+          if (blockedBetween(accounts, blocksByAccount, meta.playerId, `u:${to}`)) {
+            return fail(ws, 'blocked', 'You cannot invite that player.');
+          }
+          const target = socketsForAccount(to);
+          if (!target.length) {
+            return fail(ws, 'not_online', 'They are not online right now.',
+              'Open a private room and send them the code instead.');
+          }
+          const invite: Invite = {
+            id: randomUUID(),
+            fromPlayer: meta.playerId,
+            fromAccount: meta.accountId,
+            toAccount: to,
+            gameId: msg.gameId,
+            settings: sanitiseSettings(msg.settings),
+            at: Date.now(),
+          };
+          invites.set(invite.id, invite);
+          for (const sock of target) {
+            send(sock, {
+              t: 'invite', inviteId: invite.id, fromAccountId: meta.accountId,
+              fromName: meta.name, gameId: invite.gameId, settings: invite.settings, at: invite.at,
+            });
+          }
+          return;
+        }
+
+        case 'inviteReply': {
+          if (!meta.accountId) return fail(ws, 'not_signed_in', 'Sign in first.');
+          const taken = takeInvite(invites, String(msg.inviteId ?? ''), meta.accountId, Date.now());
+          if ('error' in taken) {
+            const gone = taken.error === 'not_yours' ? 'unknown' : taken.error;
+            return fail(ws, 'invite_gone', gone === 'expired'
+              ? 'That invitation has expired.'
+              : 'That invitation is no longer available.');
+          }
+          const invite = taken.invite;
+
+          if (!msg.accept) {
+            for (const sock of socketsForAccount(invite.fromAccount)) {
+              send(sock, { t: 'inviteClosed', inviteId: invite.id, reason: 'declined' });
+            }
+            return;
+          }
+
+          if (memberOf(ws)) {
+            for (const sock of socketsForAccount(invite.fromAccount)) {
+              send(sock, { t: 'inviteClosed', inviteId: invite.id, reason: 'gone' });
+            }
+            return fail(ws, 'in_room', 'You are already in an arena.', 'Leave it first, then answer.');
+          }
+          if (blockedBetween(accounts, blocksByAccount, invite.fromPlayer, meta.playerId)) {
+            return fail(ws, 'blocked', 'You cannot play with that player.', 'You have blocked them.');
+          }
+
+          const hostSockets = socketsForAccount(invite.fromAccount);
+          const hostMeta = hostSockets.map((sock) => socketMeta.get(sock)).find((m) => m?.playerId);
+          if (!hostSockets.length || !hostMeta) {
+            return fail(ws, 'invite_gone', 'They have gone offline.',
+              'Ask them to invite you again when they are back.');
+          }
+          /* The host may have opened something else while the invitation sat
+             there. In that case the invitation is stale, not a second room. */
+          const hostCtx = hostSockets.map((sock) => memberOf(sock)).find(Boolean);
+          if (hostCtx) {
+            return fail(ws, 'invite_gone', 'They are already in another arena.',
+              'Ask them to invite you again when they are free.');
+          }
+
+          const room = openRoom(
+            {
+              playerId: hostMeta.playerId, name: hostMeta.name, mascot: hostMeta.mascot,
+              accountId: hostMeta.accountId, handle: hostMeta.handle,
+            },
+            hostSockets[0],
+            {
+              gameId: invite.gameId,
+              settings: invite.settings,
+              roomName: `${hostMeta.name}’s arena`,
+              mode: 'online',
+            },
+          );
+          const host = room.members.get(hostMeta.playerId)!;
+          for (const sock of hostSockets.slice(1)) {
+            host.sockets.add(sock);
+            socketMeta.get(sock)!.code = room.code;
+          }
+          seat(room, {
+            playerId: meta.playerId, name: meta.name, mascot: meta.mascot,
+            accountId: meta.accountId, handle: meta.handle,
+          }, ws);
+          room.status = 'READY_CHECK';
+          dequeue(queue, meta.playerId);
+          dequeue(queue, hostMeta.playerId);
+          touch(room);
+          broadcastRoom(room);
+          broadcastPresence();
+          for (const sock of hostSockets) {
+            send(sock, { t: 'inviteClosed', inviteId: invite.id, reason: 'accepted' });
+          }
+          console.log(`[relay] ${invite.fromAccount.slice(0, 8)} invited ${meta.accountId.slice(0, 8)} → ${room.code}`);
+          return;
+        }
+
         case 'ping': {
           const ctx = memberOf(ws);
           if (ctx) ctx.me.lastSeen = Date.now();
@@ -940,11 +1264,7 @@ wss.on('connection', (ws, req) => {
       const room = roomOf(ws);
       if (room?.match) broadcastState(room);
     }
-  });
-
-  ws.on('close', () => detach(ws));
-  ws.on('error', () => detach(ws));
-});
+}
 
 /* ------------------------------------------------------------------ settings hygiene */
 function sanitiseSettings(input: unknown): Record<string, unknown> {

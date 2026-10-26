@@ -304,10 +304,15 @@ interface SurfaceProps {
   onRead?: () => void;
   /** sheet mode: start at the newest message and put the caret in the input */
   autoFocus?: boolean;
+  /** Chat is closed until the first round of a matchmade game. */
+  locked?: boolean;
+  /** This player muted the other one locally — say so instead of showing silence. */
+  muted?: boolean;
 }
 
 function ChatSurface({
   messages, system, sendChat, onTyping, peerTyping, me, opp, onClose, className = '', onRead, autoFocus,
+  locked, muted,
 }: SurfaceProps) {
   const logRef = useRef<HTMLDivElement | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -428,12 +433,19 @@ function ChatSurface({
         </span>
       </div>
 
+      {muted && (
+        <p className="shrink-0 px-3 py-1.5 border-t-2 border-ink-600 bg-blush-100 text-[10.5px] font-bold text-cream-300">
+          {opp.name || 'They'} {opp.name ? 'is' : 'are'} muted on this device. Unmute from the actions under the seats.
+        </p>
+      )}
+
       {/* reactions — stickers, not OS emoji */}
       <div className="shrink-0 px-2 py-1.5 border-t-2 border-ink-600 bg-ink-850 flex gap-1.5 overflow-x-auto no-scrollbar">
         {REACTIONS.map((s) => (
           <button
             key={s.label}
             type="button"
+            disabled={Boolean(locked)}
             onClick={() => send(s.label)}
             aria-label={`Send reaction: ${STICKER_SAY[s.label] ?? s.label}`}
             title={s.label}
@@ -447,7 +459,13 @@ function ChatSurface({
         ))}
       </div>
 
-      <Composer onSend={send} onTyping={onTyping} oppName={opp.name} />
+      <Composer
+        onSend={send}
+        onTyping={onTyping}
+        oppName={opp.name}
+        disabled={Boolean(locked)}
+        disabledReason={locked ? 'Chat opens when the first round starts — play one, then say hello.' : undefined}
+      />
     </div>
   );
 }

@@ -37,8 +37,8 @@ export default function Privacy() {
           <p className="eyebrow text-volt-700 mb-1.5">The short version</p>
           <h1 className="display text-[30px] sm:text-[40px] text-cream-100 leading-none">Privacy</h1>
           <p className="text-[13.5px] text-cream-500 mt-2 max-w-[62ch]">
-            No account, no password, no advertising profile. Almost everything this arcade knows lives
-            in your own browser — this page says exactly what, and how to erase it.
+            No advertising profile, and an account only if you make one. Almost everything this arcade
+            knows lives in your own browser — this page says exactly what, and how to erase it.
           </p>
         </div>
         <PikaScene clip="curious" className="hidden md:block w-[220px] shrink-0" rounded={20} tilt={1.2} />
@@ -77,6 +77,39 @@ export default function Privacy() {
             five minutes takes you out of it. While you are connected, the server also publishes an anonymous
             count — how many people are playing each game and how many are waiting — so the lobby can show it.
             That count carries no names, no ids and nothing that survives a restart.
+          </p>
+        </Section>
+
+        <Section title="Friends, blocks and reports (only if you sign in)">
+          <p>
+            Playing a stranger needs no account at all. A <strong>friend list</strong> does, because a
+            friend is a person on another device rather than a name in this browser — so if this
+            deployment has a cloud database and you sign in, the following is stored against your account
+            instead of in your browser:
+          </p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>your <strong>handle</strong>, the short name a friend types to find you — exact match only,
+              so nobody can browse a list of players;</li>
+            <li><strong>friendships</strong>, which both of you can see, and which a decline simply deletes;</li>
+            <li><strong>blocks</strong>, which only you can read. The person you blocked is never told and
+              cannot discover it, and your block list is sent to the referee server so it can keep the two
+              of you apart;</li>
+            <li><strong>reports</strong>, which you file as yourself and which only the maintainer can read —
+              they are never posted publicly, unlike a note on the feedback wall.</li>
+          </ul>
+          <p>
+            Signing in means the referee server verifies your session with the same auth service before it
+            believes who you are, and it uses your account id for the connection instead of the random id
+            your browser made up. It still stores no games, no results and no messages: rooms live in
+            memory and disappear with them.
+          </p>
+          <p>
+            <strong>Mute</strong> is the exception to all of this: it is a setting in this browser, it hides
+            one person's chat from you, it is never sent anywhere, and they are not told.
+          </p>
+          <p>
+            Deleting your account in the Supabase dashboard removes the profile, friend requests, blocks and
+            reports it owns. The site keeps no copy.
           </p>
         </Section>
 

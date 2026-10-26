@@ -7,12 +7,17 @@ import { Button, Icon, Panel, SectionTitle, Segmented } from '../components/ui';
 import { PikachuMascot, PikaScene, BoltRule } from '../mascot';
 import { useRoom } from '../lib/useRoom';
 import { useStore, useAmbience } from '../lib/store';
+import { FriendsPanel } from '../components/FriendsPanel';
 
 export default function PlayTogether() {
   const nav = useNavigate();
   const [params] = useSearchParams();
-  const { room, create, join, conn, connect, error, clearError, presence, queue, findMatch, cancelMatch } = useRoom();
-  const { identity, setIdentity, sfx, award } = useStore();
+  const {
+    room, create, join, conn, connect, error, clearError, presence, queue, findMatch, cancelMatch,
+    invites, inviteFriend, respondInvite, dismissInvite,
+  } = useRoom();
+  const { identity, setIdentity, sfx, award, toast } = useStore();
+  const toastSuccess = (title: string, body?: string) => toast({ kind: 'success', title, body });
   useAmbience('hub');
 
   const games = onlineGames();
@@ -116,6 +121,39 @@ export default function PlayTogether() {
             {error.recovery && <p className="text-[12px] text-cream-500 mt-0.5">{error.recovery}</p>}
           </div>
           <Button size="sm" variant="ghost" onClick={clearError}>Dismiss</Button>
+        </Panel>
+      )}
+
+      {/* A friend asking to play. Shown whichever tab is open, because an
+          invitation is time-limited and answering it is the whole point. */}
+      {invites.length > 0 && (
+        <Panel className="p-3.5 mb-5 border-volt-400" aria-live="polite">
+          {invites.map((inv) => (
+            <div key={inv.inviteId} className="flex flex-wrap items-center gap-3">
+              <PikachuMascot state="excited" size={52} className="hidden sm:block shrink-0" />
+              <div className="flex-1 min-w-[180px]">
+                <p className="text-[13.5px] font-extrabold text-cream-100">
+                  {inv.fromName} wants to play {games.find((g) => g.id === inv.gameId)?.title ?? inv.gameId}
+                </p>
+                <p className="text-[11.5px] text-cream-500">
+                  Accepting opens a private room with both of you seated — no code to copy.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="primary" size="sm" onClick={() => { respondInvite(inv.inviteId, true); }}>
+                  Join them
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { respondInvite(inv.inviteId, false); }}>
+                  Not now
+                </Button>
+                <button type="button" aria-label="Dismiss invitation"
+                  className="text-cream-400 hover:text-cream-100 px-1 cursor-pointer"
+                  onClick={() => dismissInvite(inv.inviteId)}>
+                  <Icon name="x" size={14} />
+                </button>
+              </div>
+            </div>
+          ))}
         </Panel>
       )}
 
@@ -259,6 +297,16 @@ export default function PlayTogether() {
                 </Button>
               </div>
             </Panel>
+
+            <div className="mt-4">
+              <FriendsPanel
+                canPlay={!room}
+                onPlay={(playerId) => {
+                  inviteFriend(playerId, picked.id, settings);
+                  toastSuccess('Invitation sent', 'It expires in a minute if they do not answer.');
+                }}
+              />
+            </div>
           </div>
         </div>
         </div>

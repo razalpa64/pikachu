@@ -141,8 +141,12 @@ check(
   !/Publish to the shelf|Cartridges on the shelf/i.test(deskText),
 );
 check(
-  'with an honest reason instead',
-  /not wired up on this build|Sign in to continue/i.test(deskText),
+  'with an honest, actionable reason instead',
+  /no Supabase project|Sign in to continue/i.test(deskText),
+);
+check(
+  'and, on an unconfigured build, names the variable to add',
+  /Sign in to continue/i.test(deskText) || /VITE_SUPABASE_URL/.test(deskText),
   deskText.slice(0, 120),
 );
 

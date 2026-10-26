@@ -61,6 +61,33 @@ export function supabaseEnabled(): boolean {
 }
 
 /**
+ * Which half of the configuration is missing — **names only, never values**.
+ *
+ * "Cloud sync is not configured" is true and useless: it does not say whether to
+ * add a URL or a key, and the two live in different places. This is what the
+ * admin door needs in order to name the variable that is actually absent.
+ */
+export function supabaseConfigState(): {
+  configured: boolean;
+  hasUrl: boolean;
+  hasKey: boolean;
+  secretRefused: boolean;
+  projectHost: string | null;
+} {
+  let projectHost: string | null = null;
+  if (URL && /^https?:\/\//.test(URL)) {
+    try { projectHost = new globalThis.URL(URL).host; } catch { projectHost = null; }
+  }
+  return {
+    configured: supabaseEnabled(),
+    hasUrl: Boolean(URL && /^https?:\/\//.test(URL)),
+    hasKey: Boolean(ANON),
+    secretRefused: Boolean(RAW_KEY && !ANON),
+    projectHost,
+  };
+}
+
+/**
  * Resolve the client, importing the SDK on first use. Returns null when cloud
  * sync is not configured — every caller must handle that, because the no-cloud
  * path is the normal one.

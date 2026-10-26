@@ -16,7 +16,11 @@
 import { LIBRARY_HEADING, RETRO_HEADING, RETRO_LEDE } from './copy';
 import { ruleOnSpdx } from './gbadevCatalog';
 import { MAX_ROM_BYTES, type RetroGame } from './retro';
-import { signInWithPassword, supabase, supabaseEnabled } from './supabase';
+import { supabase, supabaseConfigState, supabaseEnabled } from './supabase';
+import {
+  accountCandidates, describeAdminProbeError, describeAuthError, missingEnvNames, notOnRosterProblem,
+  type AdminAuthProblem, type RawAuthError,
+} from './adminAuth';
 
 /* ------------------------------------------------------------------ types */
 
@@ -156,65 +160,171 @@ export type SiteContentKey = (typeof SITE_CONTENT_KEYS)[number]['key'];
 export const adminConfigured = (): boolean => supabaseEnabled();
 
 /**
- * Is the signed-in account an admin?
+ * What the build knows about its own configuration.
  *
- * One RPC, answered by Postgres. A failure (offline, no session, function not
- * deployed) is `false` — the safe answer, and the one that keeps `/admin` dark on
- * a project that has not run the migration.
+ * Names only — no key, no token — because the useful sentence is "add
+ * VITE_SUPABASE_PUBLISHABLE_KEY", not "cloud sync is not configured".
  */
-export async function amIAdmin(): Promise<boolean> {
-  if (!supabaseEnabled()) return false;
+export function adminReadiness() {
+  const state = supabaseConfigState();
+  return { ...state, missing: missingEnvNames(state) };
+}
+
+export interface AdminProbe {
+  /** `yes` = on the roster, `no` = a real session that is not on it, `error` = could not ask. */
+  state: 'yes' | 'no' | 'error';
+  problem?: AdminAuthProblem;
+}
+
+/**
+ * Ask Postgres whether this session is an admin — and listen to *how* it answered.
+ *
+ * A `false` and a failure are different things, and the desk used to treat them
+ * identically: an un-run migration looked exactly like "you are not on the
+ * roster", which is a dead end with the wrong instructions.
+ */
+export async function probeAdmin(): Promise<AdminProbe> {
+  if (!supabaseEnabled()) {
+    return {
+      state: 'error',
+      problem: {
+        code: 'no_cloud', title: 'This build has no Supabase project',
+        body: 'The admin desk needs the cloud project even to ask who you are.',
+        hint: 'Copy .env.example to .env, fill in the URL and publishable key, then restart the dev server.',
+      },
+    };
+  }
   const sb = await supabase();
-  if (!sb) return false;
+  if (!sb) {
+    return {
+      state: 'error',
+      problem: {
+        code: 'no_cloud', title: 'The Supabase SDK did not load',
+        body: 'The client could not be created, so nothing can be asked of the database.',
+        hint: 'Check the browser console for a [supabase] line, then reload.',
+      },
+    };
+  }
   try {
     const { data, error } = await sb.rpc('is_admin');
-    if (error) return false;
-    return data === true;
-  } catch {
-    return false;
+    if (error) return { state: 'error', problem: describeAdminProbeError(error as RawAuthError) };
+    return { state: data === true ? 'yes' : 'no' };
+  } catch (error) {
+    return { state: 'error', problem: describeAuthError(error as RawAuthError) };
   }
+}
+
+/**
+ * Is the signed-in account an admin?
+ *
+ * One RPC, answered by Postgres. Anything other than a literal `true` — an
+ * error, no session, a project without the migration — is `false`, which is what
+ * keeps `/admin` dark on a project that has not run it.
+ */
+export async function amIAdmin(): Promise<boolean> {
+  return (await probeAdmin()).state === 'yes';
 }
 
 export interface AdminSignInResult {
   ok: boolean;
   admin: boolean;
   name: string;
-  error?: string;
+  userId?: string | null;
+  email?: string | null;
+  /** Why it failed, or — when `ok` but not `admin` — why the desk stays shut. */
+  problem?: AdminAuthProblem;
+  /** The addresses that were actually attempted. */
+  tried?: string[];
 }
 
 /**
  * Sign in with the maintainer's own account.
  *
  * No credential lives in this file: this is the ordinary Supabase password
- * sign-in. Username-or-email is accepted because the Settings form allows both;
- * a bare username is tried on the app's synthetic domain only after the address
- * as typed has been refused.
+ * sign-in. A typed address is used exactly as typed; a bare word is a username
+ * and is looked up on the app's synthetic domain — and when that fails, the
+ * result says which address was tried, because "the password is wrong" and "that
+ * account lives at a Gmail address" are different problems with different fixes.
  */
 export async function signInAdmin(input: string, password: string): Promise<AdminSignInResult> {
   const sb = await supabase();
-  if (!sb) return { ok: false, admin: false, name: '', error: 'Cloud sync is not configured on this build.' };
-  const who = input.trim();
-  if (!who || !password) return { ok: false, admin: false, name: '', error: 'Enter your account and password.' };
-
-  try {
-    /* Same call the Settings form makes, so a username and an email address both
-       work exactly as they do there. */
-    const data = await signInWithPassword(who, password);
-    const admin = await amIAdmin();
-    const name =
-      (data.user?.user_metadata?.display_name as string | undefined) ||
-      (data.user?.user_metadata?.username as string | undefined) ||
-      data.user?.email ||
-      'Trainer';
-    return { ok: true, admin, name };
-  } catch (error) {
+  if (!sb) {
+    const state = adminReadiness();
     return {
-      ok: false,
-      admin: false,
-      name: '',
-      error: error instanceof Error ? error.message : 'Sign-in failed.',
+      ok: false, admin: false, name: '',
+      problem: {
+        code: 'no_cloud',
+        title: 'This build has no Supabase project',
+        body: state.missing.length
+          ? `Missing from the build: ${state.missing.join(', ')}.`
+          : 'The client could not be created.',
+        hint: 'Copy .env.example to .env, fill in the two values, restart the dev server and reload this page.',
+      },
     };
   }
+  const who = input.trim();
+  if (!who || !password) {
+    return {
+      ok: false, admin: false, name: '',
+      problem: {
+        code: 'missing_fields', title: 'Both fields are needed',
+        body: 'Enter the account the roster lists, and its password.',
+        hint: 'The account is whatever you created in Supabase → Authentication → Users.',
+      },
+    };
+  }
+
+  const tried = accountCandidates(who);
+  if (!tried.length) {
+    return {
+      ok: false, admin: false, name: '',
+      problem: {
+        code: 'missing_fields', title: 'That does not look like an account',
+        body: 'Use the email address the account was created with, or its username.',
+      },
+    };
+  }
+
+  let last: RawAuthError | null = null;
+  for (const email of tried) {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (!error && data.user) {
+      const user = data.user;
+      const name =
+        (user.user_metadata?.display_name as string | undefined) ||
+        (user.user_metadata?.username as string | undefined) ||
+        user.email ||
+        'Trainer';
+      const probe = await probeAdmin();
+      /* Signed in and asked: either the roster says yes, or the roster says no —
+         and "no" is not a failure to report vaguely, it is a sentence with a fix
+         attached (`notOnRosterProblem`). */
+      if (probe.state === 'yes') {
+        return { ok: true, admin: true, name, userId: user.id, email: user.email ?? email, tried };
+      }
+      if (probe.state === 'no') {
+        return {
+          ok: true, admin: false, name, userId: user.id, email: user.email ?? email, tried,
+          problem: notOnRosterProblem(user.id, user.email ?? email),
+        };
+      }
+      return {
+        ok: true, admin: false, name, userId: user.id, email: user.email ?? email, tried,
+        problem: probe.problem,
+      };
+    }
+    last = {
+      message: error?.message,
+      code: (error as { code?: string } | null)?.code,
+      status: (error as { status?: number } | null)?.status,
+      name: (error as { name?: string } | null)?.name,
+    };
+    /* Only a credentials failure is worth trying another address for; a rate
+       limit or an unconfirmed address would fail identically everywhere. */
+    if (describeAuthError(last).code !== 'invalid_credentials') break;
+  }
+
+  return { ok: false, admin: false, name: '', tried, problem: describeAuthError(last) };
 }
 
 /* ------------------------------------------------------------- cartridges */

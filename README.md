@@ -28,6 +28,7 @@ Open <http://localhost:5173>. That is everything — no accounts, no keys, no cl
 | `npm run coverage` | The same with a V8 coverage report |
 | `npm run smoke` | End-to-end relay test: two headless clients play a full match (relay must be running) |
 | `npm run e2e` | Browser tests: every route, four solo games, and a real two-browser online match |
+| `npm run admin:doctor` | Why `/admin` will not open: env, project, account, roster. `-- --fix` repairs the last two |
 | `npm run lint` | oxlint over `src` and `server` |
 | `npm run typecheck` | `tsc -b` — note: run the local binary, never `npx tsc` |
 
@@ -786,7 +787,9 @@ src/lib/retro.ts       manifest validation, cartridge-header check, shared types
 src/screens/Retro.tsx  /retro — the searchable shelf
 src/screens/RetroPlayer.tsx  /retro/:id — the console
 src/lib/admin.ts       the maintainer API: gate, upload, edit, delete, copy
+src/lib/adminAuth.ts   why the door stayed shut, and the SQL that opens it
 src/screens/Admin.tsx  /admin — the desk (unlinked, noindex)
+scripts/admin-doctor.ts  the same diagnosis, from the server side
 src/lib/content.ts     editable copy, with the shipped words as the fallback
 supabase/migrations/0004_admin.sql  roster, RLS, storage bucket, audit log
 scripts/e2e/retro.mjs  the proof (see below)
@@ -845,6 +848,15 @@ except the allowlisted one it renders as a locked page that gives nothing away. 
 **Settings → Cloud sync** with a maintainer's account is the only path to it — the redirect happens
 once, silently, and only when `public.is_admin()` says yes.
 
+The desk signs you in itself, and it is built to say *why* it will not open rather than “access
+denied”: a build with no project URL names the missing variable, an unconfirmed address says so,
+a wrong username is reported alongside the address it was actually tried as
+(`name@pikachu.arcade`), and a real session that is not on the roster gets the exact `insert` that
+would fix it, prefilled with its own user id. `npm run admin:doctor` checks the same things from the
+server side — including whether the account exists, whether its email is confirmed and whether the
+roster row is really there — and `-- --fix` does the two writes. See
+[`supabase/README.md`](supabase/README.md#if-sign-in-does-not-work).
+
 It can upload a `.gba` (header-checked, ≤ 32 MB), describe it, publish or unpublish it, edit a
 description, delete it again, and rewrite the Retro Arcade and Library headings. Uploaded cartridges
 appear on `/retro` for everybody, merged into the committed shelf by id and sorted by title, and the
@@ -864,8 +876,8 @@ Two things make that safe to expose:
   **No commercial ROMs** — Pokémon, Mario, Contra or anything else all-rights-reserved — belong here;
   they go through “your own cartridge”, where the file never leaves the browser.
 
-Setup (one auth user, one `insert` into the roster, run `0004_admin.sql`) and the revoke procedure are
-in [`supabase/README.md`](supabase/README.md). No password is stored in this repository — it is a
+Setup (one auth user, one `insert` into the roster, run `0004_admin.sql`), the sign-in
+troubleshooting table and the revoke procedure are in [`supabase/README.md`](supabase/README.md). No password is stored in this repository — it is a
 public repo, and a credential committed once stays in the history.
 
 ### Controls
@@ -979,7 +991,7 @@ EmulatorJS is MIT — `public/retro/data/LICENSE-EmulatorJS.txt`.
 npm test
 ```
 
-746 tests across 49 files covering: legality and junk-payload rejection for all seventeen
+774 tests across 51 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake
@@ -989,7 +1001,10 @@ how a second click cannot jump the line, when a wait expires, and how a blocked 
 over without costing you your place), the safety rules (which pairs may be matched, when a stranger
 may talk, how a friend invitation expires) and the relay's token verification (a good token, a stale
 one, an unreachable auth server, and a token that was never sent — with `fetch` stubbed, because the
-point is what the relay does with each answer). The five Supabase migrations are executed against a
+point is what the relay does with each answer), and the admin door (each of the four reasons it can
+stay shut, mapped from the API's own words, and the desk itself rendered in jsdom: the missing env
+name, the address a bare username became, the unconfirmed-email instruction and the prefilled
+`admin_users` insert, each asserted as text on the page rather than as a branch taken). The five Supabase migrations are executed against a
 real PostgreSQL (PGlite) with the Supabase roles stubbed in, then driven as `anon`, as an ordinary
 member and as the allowlisted admin — the admin tests assert that the first two cannot write a
 cartridge, read the roster, publish a draft or touch the site copy, which is the claim the hidden

@@ -13,10 +13,17 @@
 -- that only a project owner can write. Signing in with that account and
 -- password is what unlocks /admin — the credential never enters the bundle.
 --
--- Bootstrap, once, after creating the auth user:
+-- Bootstrap, once, after creating the auth user. Either paste this, or run
+-- `npm run admin:doctor -- --fix` with SUPABASE_SERVICE_ROLE_KEY set, which does
+-- the same insert and also confirms the email:
 --   insert into public.admin_users (user_id)
 --   select id from auth.users where lower(email) = 'razalpa64@gmail.com'
 --   on conflict do nothing;
+--
+-- Note the `select`: if the address is spelled differently, or the auth user was
+-- never created, this inserts nothing and reports success. The doctor checks the
+-- row actually exists, which is why "signed in but not on the roster" and "that
+-- migration was never run" are two different screens in `/admin`.
 
 /* ------------------------------------------------------------- admin roster */
 

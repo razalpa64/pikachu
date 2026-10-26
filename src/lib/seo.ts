@@ -294,7 +294,7 @@ const STATIC_PAGES: Record<string, PageCopy> = {
   '/together': {
     title: 'Play Together — Random Opponents or a Private Room',
     description:
-      'Press “Find an opponent” to be matched with someone who is online right now, or open a private room and share its five-letter code. The server referees every move, so a dropped connection never costs a match.',
+      'Press “Find an opponent” to be matched with someone who is online right now, add a friend by their handle, or open a private room and share its five-letter code. The server referees every move and keeps blocked players apart, so a dropped connection never costs a match.',
   },
   '/solo': {
     title: 'Single-Player Games — Play Against the AI',

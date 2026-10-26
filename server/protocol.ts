@@ -12,6 +12,15 @@ export interface MemberView {
   isHost: boolean;
   lastSeen: number;
   rematchVote: boolean;
+  /**
+   * The Supabase account behind this seat, when there is one. Present only for
+   * players whose token the relay verified — it is what "add friend", "block"
+   * and "report" need, and it is null for guests. Never the browser-local
+   * playerId, which anybody can type.
+   */
+  accountId: string | null;
+  /** Their public handle, when they have one. Never their email. */
+  handle: string | null;
 }
 
 export interface RoomView {
@@ -29,6 +38,12 @@ export interface RoomView {
   matchId: string | null;
   series: { games: number; wins: [number, number]; draws: number };
   history: { matchId: string; winnerSlot: 0 | 1 | null; reason: string; finishedAt: number }[];
+  /**
+   * Whether the composer should be live. False only in a matchmade room before
+   * the first round — the rule is the server's, and the UI reflects it rather
+   * than deciding it.
+   */
+  chatOpen: boolean;
 }
 
 /**
@@ -49,10 +64,28 @@ export interface QueueView {
   gameId: string | null;
   waiting: number;
   since: number | null;
+  /** Set when the only other people waiting are ones you have blocked. */
+  note?: 'blocked';
+}
+
+/** A friend inviting you straight into a room, with no code to copy. */
+export interface InviteView {
+  inviteId: string;
+  fromAccountId: string;
+  fromName: string;
+  gameId: string;
+  settings: Record<string, unknown>;
+  at: number;
 }
 
 export type ClientMsg =
-  | { t: 'hello'; playerId: string; name: string; mascot: string; resumeCode?: string }
+  | {
+      t: 'hello'; playerId: string; name: string; mascot: string; resumeCode?: string;
+      /** A Supabase access token, if the player is signed in. Verified server-side. */
+      token?: string;
+      /** Account ids this player will not be matched with. See server/safety.ts. */
+      blocks?: string[];
+    }
   | { t: 'create'; gameId: string; settings: Record<string, unknown>; roomName: string; mode?: 'online' | 'coop' }
   | { t: 'join'; code: string }
   | { t: 'ready'; ready: boolean }
@@ -72,10 +105,13 @@ export type ClientMsg =
   /* "put me in the queue for this game" — the server picks the opponent and
      creates the room itself, so a matched player never has to type a code. */
   | { t: 'queue'; gameId: string; settings: Record<string, unknown>; roomName?: string }
-  | { t: 'unqueue' };
+  | { t: 'unqueue' }
+  /* "Play with me" — delivered to a signed-in friend, who accepts or ignores it. */
+  | { t: 'invite'; to: string; gameId: string; settings: Record<string, unknown> }
+  | { t: 'inviteReply'; inviteId: string; accept: boolean };
 
 export type ServerMsg =
-  | { t: 'welcome'; playerId: string; serverTime: number }
+  | { t: 'welcome'; playerId: string; serverTime: number; verified: boolean; handle?: string | null }
   | { t: 'room'; room: RoomView; you: { slot: 0 | 1; id: string } }
   | { t: 'state'; matchId: string; seq: number; state: unknown; yourSlot: 0 | 1; lastAction: string | null; serverTime: number }
   | { t: 'finished'; matchId: string; winnerSlot: 0 | 1 | null; reason: string; state: unknown }
@@ -86,7 +122,9 @@ export type ServerMsg =
   | { t: 'left' }
   | { t: 'pong'; ts: number; serverTime: number }
   | { t: 'presence'; presence: PresenceView }
-  | { t: 'queue'; queue: QueueView };
+  | { t: 'queue'; queue: QueueView }
+  | ({ t: 'invite' } & InviteView)
+  | { t: 'inviteClosed'; inviteId: string; reason: 'declined' | 'expired' | 'gone' | 'accepted' };
 
 export const ROOM_TTL_MS = 1000 * 60 * 90;          // rooms expire after 90 min idle
 export const RECONNECT_GRACE_MS = 1000 * 45;        // disconnected player keeps their slot

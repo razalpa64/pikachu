@@ -2,9 +2,10 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from 'react';
 import { Relay, type ConnState } from './net/relay';
-import type { PresenceView, QueueView, RoomView } from '../../server/protocol';
+import type { InviteView, PresenceView, QueueView, RoomView } from '../../server/protocol';
 import { useStore } from './store';
 import { logRoomMessage } from './supabase';
+import { blockedIds, currentToken, onSessionChange, startSession } from './session';
 import { useNavigate } from 'react-router-dom';
 
 export interface MatchSnapshot {
@@ -49,6 +50,13 @@ interface RoomCtx {
   presence: PresenceView | null;
   /** Our own place in the matchmaking queue, if we are looking for a game. */
   queue: QueueState | null;
+  /** The id the relay knows us by — the account id once a token was verified. */
+  playerId: string;
+  /** Invitations from friends, waiting for an answer. */
+  invites: InviteView[];
+  inviteFriend: (playerId: string, gameId: string, settings: Record<string, unknown>) => void;
+  respondInvite: (inviteId: string, accept: boolean) => void;
+  dismissInvite: (inviteId: string) => void;
   findMatch: (gameId: string, settings: Record<string, unknown>, roomName?: string) => void;
   cancelMatch: () => void;
   clearError: () => void;
@@ -88,6 +96,10 @@ export function RoomProvider({ children }: { children: ReactNode }) {
   const [peerTyping, setPeerTyping] = useState(false);
   const [presence, setPresence] = useState<PresenceView | null>(null);
   const [queue, setQueue] = useState<QueueState | null>(null);
+  const [playerId, setPlayerId] = useState(identity.playerId);
+  const [invites, setInvites] = useState<InviteView[]>([]);
+  /** The relay may rename us (an account-derived id); chat comparisons use this. */
+  const relayId = useRef(identity.playerId);
   const typingTimer = useRef<number | null>(null);
   const typingLastSent = useRef(0);
   const relayRef = useRef<Relay | null>(null);
@@ -127,8 +139,8 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       state: (p) => { setMatch(p); if (p.seq === 0) setFinished(null); },
       finished: (p) => { setFinished(p); setMatch((m) => (m ? { ...m, state: p.state } : m)); },
       chat: (p) => {
-        setMessages((prev) => [...prev.slice(-99), { ...p, isSelf: p.senderId === ident.playerId }]);
-        if (p.senderId !== ident.playerId) {
+        setMessages((prev) => [...prev.slice(-99), { ...p, isSelf: p.senderId === relayId.current }]);
+        if (p.senderId !== relayId.current) {
           setPeerTyping(false);
           sfx('spark');
         }
@@ -143,6 +155,25 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       },
       nudge: (p) => { sfx('spark'); toast({ kind: 'info', title: `${p.from} says`, body: p.text }); },
       presence: (p) => setPresence(p),
+      welcome: (p) => {
+        relayId.current = p.playerId;
+        setPlayerId(p.playerId);
+      },
+      invite: (p) => {
+        setInvites((prev) => [...prev.filter((i) => i.inviteId !== p.inviteId).slice(-4), p]);
+        sfx('notify');
+        toast({ kind: 'info', title: `${p.fromName} wants to play`, body: 'Open Play Together to accept.' });
+      },
+      inviteClosed: (p) => {
+        /* An invitation this player sent. `accepted` is not news — the room
+           frame does that — but a decline is worth saying plainly. */
+        setInvites((prev) => prev.filter((i) => i.inviteId !== p.inviteId));
+        if (p.reason === 'declined') {
+          toast({ kind: 'info', title: 'Invitation declined', body: 'They are busy right now.' });
+        } else if (p.reason === 'expired') {
+          toast({ kind: 'info', title: 'Invitation expired', body: 'Nobody answered in a minute.' });
+        }
+      },
       queue: (q) => {
         /* `matched` and `cancelled` end the search; `waiting` and `timeout`
            keep it on screen. The room event that follows does the navigating. */
@@ -170,7 +201,19 @@ export function RoomProvider({ children }: { children: ReactNode }) {
     });
     try { relay.resumeCode = localStorage.getItem(RESUME_KEY); } catch { /* ignore */ }
     relayRef.current = relay;
-    return () => { relay.close(); relayRef.current = null; };
+
+    /* Identity, in the order it becomes known: whatever the browser remembers,
+       then whatever a token proves. `onSessionChange` fires on sign-in, sign-out,
+       a refreshed token and a changed block list, and every one of those means
+       the relay should be told again. */
+    void startSession().then(async () => {
+      relay.updateAuth(await currentToken(), blockedIds());
+    });
+    const stopWatching = onSessionChange(() => {
+      void currentToken().then((token) => relay.updateAuth(token, blockedIds()));
+    });
+
+    return () => { stopWatching(); relay.close(); relayRef.current = null; };
     // identity is applied via updateIdentity below; we intentionally build the relay once
   }, []);
 
@@ -267,7 +310,20 @@ export function RoomProvider({ children }: { children: ReactNode }) {
       try { localStorage.removeItem(RESUME_KEY); } catch { /* ignore */ }
     },
     nudge: (text) => relayRef.current?.send({ t: 'nudge', text }),
-  }), [conn, rtt, room, you, match, finished, error, messages, peerTyping, presence, queue, connect, ident.name]);
+    playerId,
+    invites,
+    inviteFriend: (to, gameId, settings) => {
+      relayRef.current?.connect();
+      relayRef.current?.invite(to, gameId, settings);
+      sfx('select');
+    },
+    respondInvite: (inviteId, accept) => {
+      setInvites((prev) => prev.filter((i) => i.inviteId !== inviteId));
+      relayRef.current?.inviteReply(inviteId, accept);
+      if (accept) sfx('select');
+    },
+    dismissInvite: (inviteId) => setInvites((prev) => prev.filter((i) => i.inviteId !== inviteId)),
+  }), [conn, rtt, room, you, match, finished, error, messages, peerTyping, presence, queue, connect, ident.name, playerId, invites]);
 
   return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
 }

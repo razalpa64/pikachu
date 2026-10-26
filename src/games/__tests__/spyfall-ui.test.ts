@@ -72,12 +72,15 @@ const cardTitle = () =>
  * The scene with the default seat labels taken out.
  *
  * One of the stadium's roles is literally "Player", and the curtain labels the
- * next person "Player 3". Asserting that the closed curtain does not contain the
- * card just read therefore failed once every few dozen deals — on a real card,
- * correctly hidden, because the card's *title* was a substring of a seat label.
- * Stripping the labels keeps the guard exact instead of loosening it.
+ * next person "Player 3" beside a chip that reads "Players 5". Asserting that the
+ * closed curtain does not contain the card just read therefore failed once every
+ * few dozen deals — on a real card, correctly hidden, because the card's *title*
+ * was a substring of the chrome. Stripping the seat label and the counter keeps
+ * the guard exact instead of loosening it: the cost is that a card called
+ * "Player" is only checked by the `seen` list, not by a substring scan, and that
+ * card is the one case where a substring scan could never have been meaningful.
  */
-const withoutSeatLabels = () => (host.textContent ?? '').replace(/Player \d+/g, '');
+const withoutSeatLabels = () => (host.textContent ?? '').replace(/Players?\s*\d*/g, '');
 
 /** Deal one card and return its title, hiding it again before the next hand. */
 async function passCard(): Promise<string> {

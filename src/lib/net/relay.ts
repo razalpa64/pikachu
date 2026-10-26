@@ -4,7 +4,7 @@
  * and never applies a state update with a sequence number older than the one it holds.
  */
 import type {
-  ClientMsg, PresenceView, QueueView, RoomView, ServerMsg,
+  ClientMsg, InviteView, PresenceView, QueueView, RoomView, ServerMsg,
 } from '../../../server/protocol';
 
 export type ConnState = 'idle' | 'connecting' | 'online' | 'reconnecting' | 'offline';
@@ -21,6 +21,12 @@ export interface RelayEvents {
   left?: () => void;
   presence?: (p: PresenceView) => void;
   queue?: (q: QueueView) => void;
+  /** The relay's answer to `hello`: was the account verified, and under what id. */
+  welcome?: (p: { playerId: string; verified: boolean; handle: string | null }) => void;
+  /** A friend asking you to play, right now. */
+  invite?: (p: InviteView) => void;
+  /** An invitation you sent was declined, expired, or accepted. */
+  inviteClosed?: (p: { inviteId: string; reason: 'declined' | 'expired' | 'gone' | 'accepted' }) => void;
 }
 
 export class Relay {
@@ -42,6 +48,10 @@ export class Relay {
 
   private identity: { playerId: string; name: string; mascot: string };
   private events: RelayEvents;
+  /** The access token the relay verifies, if this player is signed in. */
+  private token: string | null = null;
+  /** Account ids this player will not be matched with. */
+  private blocks: string[] = [];
 
   constructor(identity: { playerId: string; name: string; mascot: string }, events: RelayEvents = {}) {
     this.identity = identity;
@@ -89,7 +99,11 @@ export class Relay {
     ws.onopen = () => {
       this.attempts = 0;
       this.setConn('online');
-      this.send({ t: 'hello', ...this.identity, resumeCode: this.resumeCode ?? undefined });
+      this.send({
+        t: 'hello', ...this.identity, resumeCode: this.resumeCode ?? undefined,
+        ...(this.token ? { token: this.token } : {}),
+        ...(this.blocks.length ? { blocks: this.blocks } : {}),
+      });
       for (const msg of this.outbox.splice(0, this.outbox.length)) {
         if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
       }
@@ -99,6 +113,13 @@ export class Relay {
       let msg: ServerMsg;
       try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.t) {
+        case 'welcome':
+          this.events.welcome?.({
+            playerId: msg.playerId, verified: msg.verified, handle: msg.handle ?? null,
+          });
+          break;
+        case 'invite': this.events.invite?.(msg); break;
+        case 'inviteClosed': this.events.inviteClosed?.(msg); break;
         case 'pong':
           this.rtt = Date.now() - msg.ts;
           this.events.conn?.(this.conn, this.rtt);
@@ -162,7 +183,39 @@ export class Relay {
 
   updateIdentity(id: { playerId: string; name: string; mascot: string }) {
     this.identity = id;
-    if (this.ws?.readyState === WebSocket.OPEN) this.send({ t: 'hello', ...id, resumeCode: this.resumeCode ?? undefined });
+    this.rehello();
+  }
+
+  /**
+   * A new token (signed in, signed out, refreshed) or a new block list. Sends a
+   * fresh `hello` on the open socket — the relay answers with a `welcome` that
+   * may carry a different, account-derived playerId.
+   */
+  updateAuth(token: string | null, blocks: string[]) {
+    const sameToken = this.token === token;
+    const sameBlocks = this.blocks.join(',') === blocks.join(',');
+    this.token = token;
+    this.blocks = blocks;
+    if (!sameToken || !sameBlocks) this.rehello();
+  }
+
+  private rehello() {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    this.send({
+      t: 'hello', ...this.identity, resumeCode: this.resumeCode ?? undefined,
+      ...(this.token ? { token: this.token } : {}),
+      ...(this.blocks.length ? { blocks: this.blocks } : {}),
+    });
+  }
+
+  /** Ask a friend to play, over the relay — no code to copy. */
+  invite(to: string, gameId: string, settings: Record<string, unknown>) {
+    this.connect();
+    this.send({ t: 'invite', to, gameId, settings });
+  }
+
+  inviteReply(inviteId: string, accept: boolean) {
+    this.send({ t: 'inviteReply', inviteId, accept });
   }
 
   close() {

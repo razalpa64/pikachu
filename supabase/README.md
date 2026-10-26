@@ -230,8 +230,35 @@ bucket. Deleting the page from the bundle would not grant anybody a single extra
 3. **Run `0004_admin.sql`** if you have not already. It creates the roster, `public.is_admin()`,
    `retro_games`, `site_content`, `admin_audit` and the public `retro` bucket (32 MB cap,
    `application/octet-stream` and `image/png`, public read, admin-only write).
-4. Sign in at **Settings → Cloud sync** with that account. If `public.is_admin()` says yes, the app
-   opens `/admin`; for every other account the site behaves exactly as before and shows no trace.
+4. Open `/admin` and sign in there — the desk has its own form, so the site's Settings panel can
+   stay signed out. If `public.is_admin()` says yes, the shelf opens; for every other account the
+   site behaves exactly as before and shows no trace.
+
+### If sign-in does not work
+
+`/admin` has four ways to stay shut, and each one now says which it is instead of a generic failure.
+The same four are checked, in order, by a script that can see the server side too:
+
+```bash
+npm run admin:doctor                 # diagnose (reads .env / .env.local)
+npm run admin:doctor -- --fix        # confirm the email and write the roster row
+npm run admin:doctor -- you@example.com --password   # also test the password (prompts, TTY only)
+```
+
+| What the page says | What is actually wrong | Fix |
+| --- | --- | --- |
+| “This build has no Supabase project… missing `VITE_SUPABASE_URL`” | the deployed build has no project URL or key; nothing can be signed into | set both in the host's environment (they are `VITE_` vars, baked in at build time — redeploy afterwards) |
+| “That address and password do not match an account” | the credential is wrong, *or* a bare username was read as `name@pikachu.arcade` while the account lives at a real address | type the full email, or check the account in *Authentication → Users* |
+| “This account has not confirmed its email” | the password was right; Supabase refuses a session until the address is confirmed | *Users → ⋯ → Confirm email*, or `admin:doctor -- --fix` |
+| “Signed in — but this account is not on the roster” | the session is real and `is_admin()` returned false: no `admin_users` row | paste the prefilled `insert … admin_users` from the page, or `-- --fix` |
+| “The admin schema is not installed” | `public.is_admin()` does not exist — `0004_admin.sql` was never run | run the migration in the SQL editor |
+
+The doctor also checks the one thing neither screen can: whether the address is spelled the way you
+think it is. A `where lower(email) = '…'` that matches nothing inserts no row and reports no error,
+which is why the desk's own fix is prefilled with the session's **user id** rather than an address.
+
+The service key is what lets `--fix` do anything; it belongs in `.env` (server-side only, never
+prefixed `VITE_`) or in the shell, and it is reported by *kind* only — the script never prints it.
 
 ### The password is not in this repository
 

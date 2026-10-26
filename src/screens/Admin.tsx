@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   SITE_CONTENT_KEYS,
   adminConfigured,
-  amIAdmin,
+  adminReadiness,
+  probeAdmin,
   deleteGame,
   listAllGames,
   loadSiteContent,
@@ -17,10 +18,11 @@ import {
   type RetroRow,
   type UploadDraft,
 } from '../lib/admin';
+import { notOnRosterProblem, type AdminAuthProblem } from '../lib/adminAuth';
 import { cartridgeKind, resetRetroLibrary } from '../lib/retro';
 import { resetSiteContent } from '../lib/content';
 import { signOut, supabase } from '../lib/supabase';
-import { Button, ConfirmDialog, EmptyState, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
+import { Button, ConfirmDialog, CopyField, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
 import { useStore } from '../lib/store';
 
 /**
@@ -33,7 +35,7 @@ import { useStore } from '../lib/store';
  * visitor who guesses the URL gets a sign-in box and, past that, a polite refusal.
  */
 
-type Phase = 'checking' | 'offline' | 'locked' | 'denied' | 'ready';
+type Phase = 'checking' | 'offline' | 'locked' | 'broken' | 'denied' | 'ready';
 type Tab = 'shelf' | 'copy';
 
 const LICENCES = ['MIT', 'GPL-3.0-only', 'GPL-3.0-or-later', 'MPL-2.0', 'Zlib', 'BSD-2-Clause', 'Apache-2.0', 'CC-BY-4.0'];
@@ -73,19 +75,27 @@ export default function Admin() {
   const [phase, setPhase] = useState<Phase>(adminConfigured() ? 'checking' : 'offline');
   const [who, setWho] = useState('');
   const [tab, setTab] = useState<Tab>('shelf');
+  /* Why the door is shut, kept so the screen can say something specific rather
+     than "not allowed". */
+  const [problem, setProblem] = useState<AdminAuthProblem | null>(null);
+  const [identity, setIdentity] = useState<{ id: string | null; email: string | null }>({ id: null, email: null });
 
   /* ------------------------------------------------------------ the gate */
   useEffect(() => {
     if (!adminConfigured()) { setPhase('offline'); return; }
     let alive = true;
     void supabase().then(async (sb) => {
-      if (!sb || !alive) return;
+      if (!sb) { if (alive) setPhase('offline'); return; }
       const { data } = await sb.auth.getUser();
-      if (!data.user) { if (alive) setPhase('locked'); return; }
-      const admin = await amIAdmin();
+      if (!alive) return;
+      if (!data.user) { setPhase('locked'); return; }
+      const probe = await probeAdmin();
       if (!alive) return;
       setWho((data.user.user_metadata?.display_name as string) || data.user.email || 'signed in');
-      setPhase(admin ? 'ready' : 'denied');
+      setIdentity({ id: data.user.id, email: data.user.email ?? null });
+      if (probe.state === 'yes') { setPhase('ready'); return; }
+      setProblem(probe.state === 'no' ? notOnRosterProblem(data.user.id, data.user.email ?? null) : probe.problem ?? null);
+      setPhase(probe.state === 'no' ? 'denied' : 'broken');
     });
     return () => { alive = false; };
   }, []);
@@ -95,24 +105,41 @@ export default function Admin() {
   }
 
   if (phase === 'offline') {
+    const ready = adminReadiness();
     return (
-      <div className="mx-auto max-w-[900px] px-[var(--shell-pad)] py-12">
-        <EmptyState
-          mascot="waiting"
-          title="The desk is not wired up on this build"
-          body="Admin tools need the Supabase project: copy .env.example to .env, fill in VITE_SUPABASE_URL and the publishable key, run supabase/migrations (0004_admin.sql last) and restart. The site itself works without any of this."
-          action={<Button onClick={() => nav('/')} icon={<Icon name="back" size={14} />}>Back to the arcade</Button>}
-        />
-      </div>
+      <DoorShell
+        title="This build has no Supabase project, so there is nothing to sign in to"
+        body={ready.missing.length
+          ? `Missing from the build: ${ready.missing.join(', ')}.`
+          : 'The environment names are set but do not form a usable project URL and key.'}
+        hint="Copy .env.example to .env, fill both values in, restart the dev server, then reload this page. The rest of the arcade works without any of this."
+        onBack={() => nav('/')}
+      />
+    );
+  }
+
+  if (phase === 'broken') {
+    return (
+      <DoorShell
+        title={problem?.title ?? 'The desk could not check this account'}
+        body={problem?.body ?? 'The database did not answer the question.'}
+        hint={problem?.hint}
+        sql={problem?.sql}
+        onBack={() => nav('/')}
+      />
     );
   }
 
   if (phase === 'locked') {
+    const ready = adminReadiness();
     return (
       <SignIn
-        onDone={(admin, name) => {
-          setWho(name);
-          setPhase(admin ? 'ready' : 'denied');
+        projectHost={ready.projectHost}
+        onDone={(result) => {
+          setWho(result.name);
+          setIdentity({ id: result.userId ?? null, email: result.email ?? null });
+          setProblem(result.problem ?? null);
+          setPhase(result.admin ? 'ready' : result.ok ? 'denied' : 'locked');
         }}
       />
     );
@@ -120,19 +147,25 @@ export default function Admin() {
 
   if (phase === 'denied') {
     return (
-      <div className="mx-auto max-w-[900px] px-[var(--shell-pad)] py-12">
-        <EmptyState
-          mascot="waiting"
-          title="That account is not on the roster"
-          body={`Signed in as ${who}. Admin rights come from a row in public.admin_users, so an ordinary account cannot open this page even with the URL.`}
-          action={
-            <div className="flex gap-2 flex-wrap">
-              <Button onClick={async () => { await signOut(); setPhase('locked'); }}>Sign in as someone else</Button>
-              <Button variant="ghost" onClick={() => nav('/')}>Back to the arcade</Button>
-            </div>
-          }
-        />
-      </div>
+      <DoorShell
+        title={problem?.title ?? `Signed in as ${who} — but this account is not on the roster`}
+        body={problem?.body ?? 'Admin rights come from a row in public.admin_users, so an ordinary account cannot open this page even with the URL.'}
+        hint={problem?.hint}
+        sql={problem?.sql}
+        extra={
+          <p className="text-[12px] text-cream-500">
+            Signed in as <strong className="text-cream-100">{who}</strong>
+            {identity.email ? <> ({identity.email})</> : null}
+            {identity.id ? <> · id <span className="font-mono text-[11px]">{identity.id}</span></> : null}
+          </p>
+        }
+        actions={
+          <Button onClick={async () => { await signOut(); setProblem(null); setPhase('locked'); }}>
+            Sign in as someone else
+          </Button>
+        }
+        onBack={() => nav('/')}
+      />
     );
   }
 
@@ -172,21 +205,81 @@ export default function Admin() {
 
 /* --------------------------------------------------------------- sign in */
 
-function SignIn({ onDone }: { onDone: (admin: boolean, name: string) => void }) {
+/**
+ * A door that explains why it is shut.
+ *
+ * Every state here has a different cause and a different fix, so the copy is
+ * never "access denied": it says which variable is missing, which address was
+ * tried, whether the password or the address was wrong, or which SQL pastes the
+ * account onto the roster. The SQL is prefilled with the session's own id,
+ * because a `where lower(email) = …` that silently matches nothing is one of the
+ * ways people arrive at this page.
+ */
+function DoorShell({
+  title, body, hint, sql, extra, actions, onBack,
+}: {
+  title: string;
+  body: string;
+  hint?: string;
+  sql?: string;
+  extra?: React.ReactNode;
+  actions?: React.ReactNode;
+  onBack: () => void;
+}) {
+  return (
+    <div className="mx-auto max-w-[640px] px-[var(--shell-pad)] py-12">
+      <Panel className="p-5">
+        <p className="eyebrow mb-1">Restricted</p>
+        <h1 className="display text-[23px] text-cream-100 leading-tight">{title}</h1>
+        <p className="text-[13px] text-cream-400 mt-2 leading-relaxed">{body}</p>
+        {hint && <p className="text-[12.5px] text-cream-500 mt-2 leading-relaxed">{hint}</p>}
+        {sql && (
+          <div className="mt-4">
+            <CopyField label="Run this in the Supabase SQL editor" value={sql} />
+          </div>
+        )}
+        {extra && <div className="mt-3">{extra}</div>}
+        <div className="flex flex-wrap gap-2 mt-5">
+          {actions}
+          <Button variant="ghost" onClick={onBack} icon={<Icon name="back" size={14} />}>
+            Back to the arcade
+          </Button>
+        </div>
+        <p className="text-[11.5px] text-cream-500 mt-4 leading-relaxed">
+          Or run <code className="font-mono text-[11px] text-volt-700">npm run admin:doctor</code> — it checks the
+          project itself and can confirm the email and allowlist the account in one step.
+        </p>
+      </Panel>
+    </div>
+  );
+}
+
+function SignIn({
+  onDone, projectHost,
+}: {
+  onDone: (result: { ok: boolean; admin: boolean; name: string; userId?: string | null; email?: string | null; problem?: AdminAuthProblem }) => void;
+  projectHost: string | null;
+}) {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [problem, setProblem] = useState<AdminAuthProblem | null>(null);
+  const [tried, setTried] = useState<string[]>([]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    setError(null);
+    setProblem(null);
+    setTried([]);
     const result = await signInAdmin(account, password);
     setBusy(false);
-    if (!result.ok) { setError(result.error ?? 'Sign-in failed.'); return; }
+    setTried(result.tried ?? []);
+    if (!result.ok) {
+      setProblem(result.problem ?? { code: 'unknown', title: 'Sign-in failed', body: 'Nothing was returned.' });
+      return;
+    }
     setPassword('');
-    onDone(result.admin, result.name);
+    onDone(result);
   };
 
   return (
@@ -196,6 +289,7 @@ function SignIn({ onDone }: { onDone: (admin: boolean, name: string) => void }) 
         <h1 className="display text-[24px] text-cream-100 leading-tight">Sign in to continue</h1>
         <p className="text-[12.5px] text-cream-400 mt-2">
           This page only opens for accounts on the admin roster.
+          {projectHost && <> Project <span className="font-mono text-[11px] text-cream-300">{projectHost}</span>.</>}
         </p>
         <form onSubmit={submit} className="mt-4 space-y-3">
           <Field label="Email or username">
@@ -205,6 +299,7 @@ function SignIn({ onDone }: { onDone: (admin: boolean, name: string) => void }) 
               onChange={(e) => setAccount(e.target.value)}
               autoComplete="username"
               spellCheck={false}
+              autoFocus
             />
           </Field>
           <Field label="Password">
@@ -216,11 +311,28 @@ function SignIn({ onDone }: { onDone: (admin: boolean, name: string) => void }) 
               autoComplete="current-password"
             />
           </Field>
-          {error && <p role="alert" className="text-[12.5px] font-bold text-blush-600">{error}</p>}
+          {problem && (
+            <div role="alert" className="border-[1.5px] border-blush-300 bg-blush-100 rounded-lg p-3">
+              <p className="text-[12.5px] font-extrabold text-cream-100">{problem.title}</p>
+              <p className="text-[12px] text-cream-300 mt-1 leading-relaxed">{problem.body}</p>
+              {problem.hint && <p className="text-[11.5px] text-cream-500 mt-1.5 leading-relaxed">{problem.hint}</p>}
+              {tried.length > 0 && problem.code === 'invalid_credentials' && (
+                <p className="text-[11.5px] text-cream-500 mt-1.5">
+                  Tried: {tried.map((t) => <span key={t} className="font-mono">{t}</span>).reduce<React.ReactNode[]>(
+                    (acc, node, i) => (i ? [...acc, ', ', node] : [node]), [],
+                  )}
+                </p>
+              )}
+            </div>
+          )}
           <Button type="submit" disabled={busy} className="w-full justify-center">
             {busy ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
+        <p className="text-[11px] text-cream-500 mt-4 leading-relaxed">
+          A bare username is looked up as <span className="font-mono">name@pikachu.arcade</span>. If this account
+          was created in the dashboard with a real address, type the whole address instead.
+        </p>
       </Panel>
     </div>
   );

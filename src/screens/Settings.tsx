@@ -7,6 +7,7 @@ import {
   fetchRemoteUserData, supabase, supabaseEnabled,
 } from '../lib/supabase';
 import { amIAdmin, resetRetroLibrary } from '../lib/admin';
+import { describeAuthError } from '../lib/adminAuth';
 import { resetSiteContent } from '../lib/content';
 import { Button, ConfirmDialog, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
 import { PikachuMascot } from '../mascot';
@@ -118,7 +119,16 @@ export default function Settings() {
       }
       toast({ kind: 'success', title: 'Signed in!', body: `Welcome back, ${displayName}!` });
     } catch (err: any) {
-      toast({ kind: 'error', title: 'Sign-in failed', body: err?.message || 'Incorrect username or password.' });
+      /* The raw Supabase message is written for developers ("Invalid login credentials"),
+         and it is identical whether the password is wrong, the address is unconfirmed or
+         the project is unreachable. Say which, because those need different actions. */
+      const problem = describeAuthError({
+        message: typeof err?.message === 'string' ? err.message : '',
+        code: err?.code,
+        status: err?.status,
+        name: err?.name,
+      });
+      toast({ kind: 'error', title: problem.title, body: [problem.body, problem.hint].filter(Boolean).join(' ') });
     } finally {
       setSubmitting(false);
     }

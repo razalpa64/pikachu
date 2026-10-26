@@ -13,13 +13,17 @@ import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 import { StoreProvider } from '../../lib/store';
 
-const state = {
+/* `vi.hoisted` because `vi.mock` is hoisted above these declarations, and the
+   store module pulls `supabase` in statically — so the factory can run before a
+   plain `const` would be initialised. */
+const state = vi.hoisted(() => ({
   configured: true,
   signIn: vi.fn(),
   getUser: vi.fn(),
   rpc: vi.fn(),
   signOut: vi.fn(),
-};
+  sendLink: vi.fn(),
+}));
 
 vi.mock('../../lib/supabase', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../lib/supabase')>();
@@ -45,6 +49,7 @@ vi.mock('../../lib/supabase', async (importOriginal) => {
     storage: { from: () => ({ remove: async () => ({ error: null }), upload: async () => ({ error: null }), getPublicUrl: () => ({ data: { publicUrl: '' } }) }) },
   }),
   signOut: vi.fn(async () => {}),
+  signInWithEmail: state.sendLink,
   usernameToEmail: (u: string) => `${u.toLowerCase()}@pikachu.arcade`,
   };
 });
@@ -133,6 +138,37 @@ describe('/admin door', () => {
     expect(t).toMatch(/razal@pikachu\.arcade/);
     /* Still on the form: a failed attempt must not look like a refusal. */
     expect(t).toContain('Sign in to continue');
+  });
+
+  it('offers an emailed link when the password does not match, and sends it', async () => {
+    state.getUser.mockResolvedValue({ data: { user: null } });
+    state.signIn.mockResolvedValue({ data: { user: null }, error: { message: 'Invalid login credentials', status: 400 } });
+    state.sendLink.mockResolvedValue(undefined);
+    await mount();
+    await signInWith('razalpa64@gmail.com', 'wrong');
+
+    /* The escape hatch exists, and names the project it asked, because a second
+       Supabase project is a common reason an account "does not exist". */
+    expect(text()).toContain('Email me a sign-in link instead');
+    expect(text()).toContain('demo.supabase.co');
+
+    const linkButton = Array.from(document.querySelectorAll('button'))
+      .find((b) => /sign-in link/i.test(b.textContent ?? ''))!;
+    await act(async () => { linkButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+    await flush();
+
+    expect(state.sendLink).toHaveBeenCalledWith('razalpa64@gmail.com');
+    expect(text()).toContain('Link sent to razalpa64@gmail.com');
+    expect(text()).toContain('/admin');
+  });
+
+  it('will not send a link to a bare username', async () => {
+    state.getUser.mockResolvedValue({ data: { user: null } });
+    await mount();
+    const linkButton = () => Array.from(document.querySelectorAll('button'))
+      .find((b) => /sign-in link/i.test(b.textContent ?? '')) as HTMLButtonElement;
+    expect(linkButton().disabled).toBe(true);
+    expect(text()).toMatch(/full email address first/i);
   });
 
   it('tells you to confirm an unconfirmed email, not to try again', async () => {

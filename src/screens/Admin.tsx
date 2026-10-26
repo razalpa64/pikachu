@@ -18,10 +18,10 @@ import {
   type RetroRow,
   type UploadDraft,
 } from '../lib/admin';
-import { notOnRosterProblem, type AdminAuthProblem } from '../lib/adminAuth';
+import { describeAuthError, notOnRosterProblem, type AdminAuthProblem, type RawAuthError } from '../lib/adminAuth';
 import { cartridgeKind, resetRetroLibrary } from '../lib/retro';
 import { resetSiteContent } from '../lib/content';
-import { signOut, supabase } from '../lib/supabase';
+import { signInWithEmail, signOut, supabase } from '../lib/supabase';
 import { Button, ConfirmDialog, CopyField, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
 import { useStore } from '../lib/store';
 
@@ -265,12 +265,18 @@ function SignIn({
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<AdminAuthProblem | null>(null);
   const [tried, setTried] = useState<string[]>([]);
+  /* The second way in. A password can be forgotten, mistyped or rotated; an
+     emailed link only needs an inbox, and it produces the same session. */
+  const [link, setLink] = useState<'idle' | 'sending' | 'sent'>('idle');
+  const [linkProblem, setLinkProblem] = useState<AdminAuthProblem | null>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setProblem(null);
     setTried([]);
+    setLink('idle');
+    setLinkProblem(null);
     const result = await signInAdmin(account, password);
     setBusy(false);
     setTried(result.tried ?? []);
@@ -280,6 +286,18 @@ function SignIn({
     }
     setPassword('');
     onDone(result);
+  };
+
+  const sendLink = async () => {
+    setLink('sending');
+    setLinkProblem(null);
+    try {
+      await signInWithEmail(account.trim());
+      setLink('sent');
+    } catch (error) {
+      setLink('idle');
+      setLinkProblem(describeAuthError(error as RawAuthError));
+    }
   };
 
   return (
@@ -316,6 +334,12 @@ function SignIn({
               <p className="text-[12.5px] font-extrabold text-cream-100">{problem.title}</p>
               <p className="text-[12px] text-cream-300 mt-1 leading-relaxed">{problem.body}</p>
               {problem.hint && <p className="text-[11.5px] text-cream-500 mt-1.5 leading-relaxed">{problem.hint}</p>}
+              {projectHost && (
+                <p className="text-[11px] text-cream-500 mt-1.5">
+                  Asked project <span className="font-mono">{projectHost}</span> — if the account was created
+                  in a different Supabase project, this is the wrong one.
+                </p>
+              )}
               {tried.length > 0 && problem.code === 'invalid_credentials' && (
                 <p className="text-[11.5px] text-cream-500 mt-1.5">
                   Tried: {tried.map((t) => <span key={t} className="font-mono">{t}</span>).reduce<React.ReactNode[]>(
@@ -329,9 +353,50 @@ function SignIn({
             {busy ? 'Signing in…' : 'Sign in'}
           </Button>
         </form>
+
+        <div className="mt-4 border-t-[1.5px] border-black/10 pt-3">
+          {link === 'sent' ? (
+            <div role="status">
+              <p className="text-[12.5px] font-extrabold text-cream-100">Link sent to {account.trim()}</p>
+              <p className="text-[12px] text-cream-400 mt-1 leading-relaxed">
+                Open it on this device, then come back to <span className="font-mono">/admin</span> — the link
+                signs this browser in and the desk asks the roster who you are.
+              </p>
+              <p className="text-[11px] text-cream-500 mt-1 leading-relaxed">
+                Nothing yet? Supabase's built-in mailer allows only a few messages an hour, and a project with
+                no SMTP configured sends none at all.
+              </p>
+            </div>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full justify-center"
+                disabled={link === 'sending' || !account.includes('@')}
+                onClick={sendLink}
+              >
+                {link === 'sending' ? 'Sending…' : 'Email me a sign-in link instead'}
+              </Button>
+              <p className="text-[11px] text-cream-500 mt-1.5 leading-relaxed">
+                {account.includes('@')
+                  ? 'No password needed. The link only works in this browser, and only for the address above.'
+                  : 'Type the full email address first — a link has to be sent somewhere real.'}
+              </p>
+              {linkProblem && (
+                <p role="alert" className="text-[11.5px] text-blush-300 mt-1.5">
+                  {linkProblem.title}. {linkProblem.hint ?? linkProblem.body}
+                </p>
+              )}
+            </>
+          )}
+        </div>
         <p className="text-[11px] text-cream-500 mt-4 leading-relaxed">
-          A bare username is looked up as <span className="font-mono">name@pikachu.arcade</span>. If this account
-          was created in the dashboard with a real address, type the whole address instead.
+          A bare username is looked up as <span className="font-mono">name@pikachu.arcade</span> — an account
+          created in the dashboard with a real address needs the whole address typed out. Forgot the password?
+          Use the link above, or run{' '}
+          <code className="font-mono text-[11px] text-volt-700">npm run admin:doctor</code> to see exactly
+          which account this project holds.
         </p>
       </Panel>
     </div>

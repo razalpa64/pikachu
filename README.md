@@ -28,7 +28,7 @@ Open <http://localhost:5173>. That is everything — no accounts, no keys, no cl
 | `npm run coverage` | The same with a V8 coverage report |
 | `npm run smoke` | End-to-end relay test: two headless clients play a full match (relay must be running) |
 | `npm run e2e` | Browser tests: every route, four solo games, and a real two-browser online match |
-| `npm run admin:doctor` | Why `/admin` will not open: env, project, account, roster. `-- --fix` repairs the last two |
+| `npm run admin:doctor` | Why `/admin` will not open: env, project, account, roster. `--users` lists the accounts, `--fix` confirms + allowlists, `--setup` creates or repairs |
 | `npm run lint` | oxlint over `src` and `server` |
 | `npm run typecheck` | `tsc -b` — note: run the local binary, never `npx tsc` |
 
@@ -991,7 +991,7 @@ EmulatorJS is MIT — `public/retro/data/LICENSE-EmulatorJS.txt`.
 npm test
 ```
 
-774 tests across 51 files covering: legality and junk-payload rejection for all seventeen
+790 tests across 52 files covering: legality and junk-payload rejection for all seventeen
 server-refereed games, win/draw detection, fool's-mate, promotion, clock flagging, take-backs,
 mandatory capture and promotion in checkers, memory redaction and streaks, fleet placement
 validation plus a full AI-vs-AI battle, reaction-duel timing on a real clock, snake
@@ -1004,7 +1004,9 @@ one, an unreachable auth server, and a token that was never sent — with `fetch
 point is what the relay does with each answer), and the admin door (each of the four reasons it can
 stay shut, mapped from the API's own words, and the desk itself rendered in jsdom: the missing env
 name, the address a bare username became, the unconfirmed-email instruction and the prefilled
-`admin_users` insert, each asserted as text on the page rather than as a branch taken). The five Supabase migrations are executed against a
+`admin_users` insert, the emailed-link fallback, each asserted as text on the page rather than as a
+branch taken), plus the account-matching rules the doctor uses to turn "no user with that address"
+into the address that actually exists. The five Supabase migrations are executed against a
 real PostgreSQL (PGlite) with the Supabase roles stubbed in, then driven as `anon`, as an ordinary
 member and as the allowlisted admin — the admin tests assert that the first two cannot write a
 cartridge, read the roster, publish a draft or touch the site copy, which is the claim the hidden

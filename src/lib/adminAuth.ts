@@ -21,7 +21,7 @@
  * and the exact SQL that allowlists the account. It is pure, so the mapping is
  * tested rather than eyeballed (`adminAuth.test.ts`).
  */
-import { usernameToEmail } from './supabase';
+import { usernameToEmail } from './authAddress';
 
 export type AdminAuthCode =
   | 'no_cloud'
@@ -95,8 +95,12 @@ export function describeAuthError(raw: RawAuthError | null | undefined): AdminAu
     return {
       code: 'invalid_credentials',
       title: 'That address and password do not match an account',
-      body: 'Supabase found no user with this address and password combination.',
-      hint: 'Check the address — a bare username is looked up as that-name@pikachu.arcade.',
+      body:
+        'Supabase found no user with this address and password combination on this project. ' +
+        'Either the account is at a different address, or it does not exist here yet.',
+      hint:
+        'A bare username is looked up as name@pikachu.arcade, so an account created with a real email needs ' +
+        'the whole address. Otherwise set a fresh password, or sign in with an emailed link instead of one.',
     };
   }
 

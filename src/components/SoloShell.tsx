@@ -38,7 +38,9 @@ export default function SoloShell({
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
-    <div className="relative min-h-[calc(100dvh-58px)] flex flex-col">
+    /* On a phone this screen owns the app bar (the site header is hidden), so it
+       fills the viewport and its own bar sticks to the very top. */
+    <div className="relative min-h-[calc(100dvh-58px)] max-lg:min-h-[100dvh] flex flex-col">
       {/* atmosphere */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
         <div className="absolute inset-0 opacity-[0.22]"><GameArtwork artKey={game.artKey} /></div>
@@ -49,7 +51,7 @@ export default function SoloShell({
           a 58px header, permanently ate ~105px before a single pixel of game.
           Below `sm` it is one 44px row that scrolls away: back, title, restart.
           The tagline, the record chips and "Play online" return from `sm` up. */}
-      <div className="relative border-b border-ink-600 bg-ink-850/88 backdrop-blur-md blur-heavy sm:sticky sm:top-[58px] z-30">
+      <div className="sticky top-0 sm:top-[58px] border-b border-ink-600 bg-ink-850/88 backdrop-blur-md blur-heavy z-30">
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-1.5 sm:py-2.5 flex items-center gap-2 sm:gap-3 sm:flex-wrap">
           {/* aria-label, not just the visible span: below `sm` the label is hidden and
               an icon-only button would otherwise have no accessible name at all. */}

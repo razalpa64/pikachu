@@ -5,6 +5,8 @@ import type { GameMeta } from '../games/types';
 import { GameCard } from '../components/GameCard';
 import { PikaScene } from '../mascot';
 import { Button, EmptyState, Icon, Panel, Segmented } from '../components/ui';
+import { Sheet } from '../components/Sheet';
+import { haptic } from '../lib/haptics';
 import { AdSlot } from '../components/AdSlot';
 import { useStore, useAmbience } from '../lib/store';
 import { useSiteContent } from '../lib/content';
@@ -15,6 +17,14 @@ import { BoltRule } from '../mascot';
 type Filter = 'all' | 'online' | 'solo' | 'ai' | 'coop' | 'favourites' | 'recent'
   | 'strategy' | 'arcade' | 'puzzle' | 'party';
 type Sort = 'featured' | 'name' | 'duration' | 'played';
+
+/** Sort options, shared by the wide-screen control and the phone sheet. */
+const SORTS: { value: Sort; label: string }[] = [
+  { value: 'featured', label: 'Featured' },
+  { value: 'name', label: 'A–Z' },
+  { value: 'duration', label: 'Quickest' },
+  { value: 'played', label: 'Most played' },
+];
 
 /** How many games each filter will actually show — the number comes from the
  *  registry, so a chip can never advertise an empty shelf. */
@@ -80,6 +90,11 @@ export default function Library() {
    * the first render, which is the deep-link case).
    */
   const railRef = useRef<HTMLDivElement>(null);
+  /* The phone filter sheet. On a wide screen the chips and the sort control fit
+     beside the search box; on a phone they were a second and third row of chrome
+     above the content, and the last chip was always clipped mid-word. */
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilter = FILTERS.find((f) => f.id === filter) ?? FILTERS[0];
   useEffect(() => {
     const active = railRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
     if (active && typeof active.scrollIntoView === 'function') {
@@ -123,12 +138,15 @@ export default function Library() {
   }, [filter, deferred, sort, progress]);
 
   return (
-    <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-7">
-      <header className="mb-6 flex items-start justify-between gap-6">
+    <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] pt-3 pb-7 sm:py-7">
+      <header className="mb-3 lg:mb-6 flex items-start justify-between gap-6">
         <div className="min-w-0">
-          <p className="eyebrow text-volt-700 mb-1.5">Everything here is playable today</p>
-          <h1 className="display text-[30px] sm:text-[38px] text-cream-100">{copy('library.title', LIBRARY_HEADING)}</h1>
-          <p className="text-[13.5px] text-cream-500 mt-1.5 max-w-[62ch]">
+          {/* On a phone the title bar already says "Games", so the eyebrow and the
+              three-line pitch are just 150 px between you and a game. They come
+              back at sm, where there is room for them. */}
+          <p className="eyebrow text-volt-700 mb-1.5 hidden sm:block">Everything here is playable today</p>
+          <h1 className="display text-[26px] sm:text-[38px] text-cream-100">{copy('library.title', LIBRARY_HEADING)}</h1>
+          <p className="text-[13.5px] text-cream-500 mt-1.5 max-w-[62ch] hidden sm:block">
             {GAMES.length} finished games with real engines behind them. No placeholders, no “coming soon” tiles —
             search, filter, and start one in a click.
           </p>
@@ -141,7 +159,9 @@ export default function Library() {
           top to type. `top` is the same 58 px every other sticky bar in the app uses, so the search
           box tucks under the header instead of leaving a sliver of page visible. */}
       <div className="sticky top-[58px] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-3 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
-        <div className="flex flex-col lg:flex-row gap-2.5 lg:items-center">
+        {/* Search and filters share one row on every screen: stacked, they were
+            two 46 px bands of chrome between the title and the first game. */}
+        <div className="flex flex-row items-center gap-2.5">
           <div className="relative flex-1 min-w-0">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream-500"><Icon name="search" size={16} /></span>
             <input ref={searchRef} value={query} onChange={(e) => setQuery(e.target.value)} type="search"
@@ -157,10 +177,24 @@ export default function Library() {
               <kbd aria-hidden className="hidden sm:block absolute right-2.5 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded border border-ink-400 bg-ink-850 text-[10px] font-bold text-cream-400">/</kbd>
             )}
           </div>
-          <div className="flex items-center justify-between gap-2 shrink-0">
-            <span className="eyebrow hidden sm:inline">Sort</span>
+          {/* One button opens everything that is not the search box. It carries
+              the name of the filter that is applied, so the state is never
+              hidden behind an icon. */}
+          <button
+            type="button"
+            onClick={() => { haptic('tap'); setFiltersOpen(true); }}
+            aria-haspopup="dialog"
+            aria-expanded={filtersOpen}
+            className="lg:hidden shrink-0 flex items-center gap-2 h-[46px] px-3.5 rounded-2xl border-2 border-ink-500 bg-ink-800 text-cream-100 active:scale-95 transition-transform no-tap"
+          >
+            <Icon name="sliders" size={16} />
+            <span className="text-[12px] font-extrabold uppercase tracking-wider max-w-[92px] truncate">{activeFilter.label}</span>
+            {filter !== 'all' && <span className="w-1.5 h-1.5 rounded-full bg-blush-600" aria-hidden />}
+          </button>
+          <div className="hidden lg:flex items-center justify-between gap-2 shrink-0">
+            <span className="eyebrow">Sort</span>
             <Segmented value={sort} onChange={setSort} size="sm" label="Sort games"
-              options={[{ value: 'featured', label: 'Featured' }, { value: 'name', label: 'A–Z' }, { value: 'duration', label: 'Quickest' }, { value: 'played', label: 'Most played' }]} />
+              options={[{ value: 'featured', label: 'Featured' }, { value: 'name', label: 'A–Z' }, { value: 'duration', label: 'Quickest' }, { label: 'Most played', value: 'played' }]} />
           </div>
         </div>
       </div>
@@ -168,8 +202,8 @@ export default function Library() {
       {/* filter rail: on a phone it scrolls, and the soft edge on the right is
           the only thing that says so — without it the last chip looks cut off
           rather than waiting to be swiped to. */}
-      <div className="relative mb-5">
-      <div ref={railRef} className="flex gap-1.5 overflow-x-auto pb-2.5 -mx-[var(--shell-pad)] px-[var(--shell-pad)] lg:mx-0 lg:px-0 lg:flex-wrap">
+      <div className="relative mb-5 hidden lg:block">
+      <div ref={railRef} className="flex gap-1.5 pb-2.5 flex-wrap">
         {FILTERS.map((f) => {
           const active = filter === f.id;
           const n = countFor(f.id, progress.favourites);
@@ -184,8 +218,63 @@ export default function Library() {
           );
         })}
       </div>
-        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--color-ink-900)] to-transparent lg:hidden" />
       </div>
+
+      {/* The phone sheet: every filter and the sort order, with the counts the
+          chips show, so choosing is one tap rather than a swipe and a guess. */}
+      <Sheet open={filtersOpen} onClose={() => setFiltersOpen(false)} title="Filter games">
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Filter by">
+          {FILTERS.map((f) => {
+            const active = filter === f.id;
+            const n = countFor(f.id, progress.favourites);
+            return (
+              <button
+                key={f.id}
+                type="button"
+                aria-pressed={active}
+                onClick={() => { haptic('select'); setFilter(f.id); setFiltersOpen(false); }}
+                className={`flex items-center gap-2 min-h-[46px] px-3 rounded-2xl border-2 text-left no-tap transition-colors ${
+                  active ? 'bg-volt-200 border-ink-500 text-[#5a3a12]' : 'bg-white border-ink-500 text-cream-100'
+                }`}
+              >
+                {f.icon && <Icon name={f.icon} size={15} />}
+                <span className="text-[12px] font-extrabold uppercase tracking-wider truncate flex-1">{f.label}</span>
+                {n >= 0 && <span className="text-[11px] font-bold opacity-60 tabnum">{n}</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <p className="eyebrow mt-5 mb-2">Sort by</p>
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Sort by">
+          {SORTS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={sort === o.value}
+              onClick={() => { haptic('select'); setSort(o.value); }}
+              className={`min-h-[44px] px-3 rounded-2xl border-2 text-[12px] font-extrabold uppercase tracking-wider no-tap transition-colors ${
+                sort === o.value ? 'bg-blush-100 border-blush-600 text-[#8f1740]' : 'bg-white border-ink-500 text-cream-100'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex gap-2">
+          <Button
+            variant="primary"
+            className="flex-1"
+            onClick={() => { haptic('tap'); setFiltersOpen(false); }}
+          >Show {results.length} {results.length === 1 ? 'game' : 'games'}</Button>
+          {(filter !== 'all' || sort !== 'featured') && (
+            <Button variant="ghost" onClick={() => { haptic('tap'); setFilter('all'); setSort('featured'); }}>
+              Reset
+            </Button>
+          )}
+        </div>
+      </Sheet>
 
       {results.length === 0 ? (
         <Panel>

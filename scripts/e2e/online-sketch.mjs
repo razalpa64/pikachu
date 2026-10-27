@@ -96,20 +96,41 @@ t('the mask has one underscore per letter',
   `${hint.replace(/\s/g, '').length} vs ${word.replace(/\s/g, '').length}`);
 
 const leak = await guesser.evaluate(w => {
-  /* Class names are not content: a word like "ring" appears in Tailwind's
-     `ring-2`, and that is not the answer leaking. Strip them before hunting. */
-  const strip = (html) => html.replace(/class="[^"]*"/g, '').replace(/"className":"(?:[^"\\]|\\.)*"/g, '');
-  const hay = [strip(document.documentElement.innerHTML)];
+  /* Where a word could hide, and nowhere else.
+   *
+   * A previous version regexed the page's HTML with class names in it, so a
+   * short word that is also a Tailwind utility — "ring", "grid", "shadow" — was
+   * reported as a leak about half the time. Class names are not content. What is
+   * checked instead:
+   *   • everything the player can read (innerText);
+   *   • every attribute a screen reader or a tooltip would read;
+   *   • every string prop of every React component in the tree, except the ones
+   *     that are style or class names.
+   */
+  const hay = [document.body.innerText];
+  for (const el of document.querySelectorAll('*')) {
+    for (const attr of ['aria-label', 'title', 'placeholder', 'alt', 'value']) {
+      const v = el.getAttribute(attr);
+      if (v) hay.push(v);
+    }
+  }
+  const skip = /^(className|class|style|d|src|srcSet|href|to|id|key|fill|stroke|viewBox)$/;
   const walk = (n, d) => {
     if (!n || d > 60) return;
-    try { hay.push(strip(JSON.stringify(n.memoizedProps ?? ''))); } catch { /* circular */ }
+    const props = n.memoizedProps;
+    if (props && typeof props === 'object') {
+      for (const [k, v] of Object.entries(props)) {
+        if (skip.test(k)) continue;
+        if (typeof v === 'string') hay.push(v);
+        else if (Array.isArray(v)) for (const item of v) if (typeof item === 'string') hay.push(item);
+      }
+    }
     walk(n.child, d + 1); walk(n.sibling, d + 1);
   };
   const root = document.getElementById('root');
-  const k = root && Object.keys(root).find(x => x.startsWith('__reactContainer'));
+  const k = root && Object.keys(root).find((x) => x.startsWith('__reactContainer'));
   if (k) walk(root[k].current, 0);
-  // whole-word match only: a short word like "eye" is a substring of the
-  // `eyebrow` CSS class and that is not a leak
+  // whole-word match only: "eye" is inside "eyebrow", and that is not a leak
   return new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(hay.join('|'));
 }, word);
 t("the word is nowhere in the guesser's page, DOM or props", !leak, leak ? `"${word}" found` : '');

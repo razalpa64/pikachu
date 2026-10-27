@@ -2,6 +2,7 @@ import {
   forwardRef, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type ReactNode,
 } from 'react';
 import { useStore } from '../lib/store';
+import { createPortal } from 'react-dom';
 import { PikachuMascot, type MascotState } from '../mascot';
 
 /* ------------------------------------------------------------------ button */
@@ -35,6 +36,8 @@ export const Icon = ({ name, size = 18, className = '' }: { name: string; size?:
     trophy: <><path d="M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3" /><path d="M10 14h4v3h-4zM8 20h8v2H8z" /></>,
     target: <><circle cx="12" cy="12" r="8.5" /><circle cx="12" cy="12" r="4.6" /><circle cx="12" cy="12" r="1.3" /></>,
     gear: <><circle cx="12" cy="12" r="3.2" /><path d="M12 2.5v3M12 18.5v3M21.5 12h-3M5.5 12h-3M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1M18.7 18.7l-2.1-2.1M7.4 7.4 5.3 5.3" /></>,
+    /* three rails with a handle each: the universal "filters" glyph */
+    sliders: <><path d="M4 7h7M17 7h3M4 12h3M11 12h9M4 17h9M19 17h1" /><circle cx="13" cy="7" r="2.2" /><circle cx="9" cy="12" r="2.2" /><circle cx="15" cy="17" r="2.2" /></>,
     search: <><circle cx="11" cy="11" r="6.5" /><path d="m16 16 5 5" /></>,
     star: <path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.3 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z" />,
     play: <path d="M7 4.5 19.5 12 7 19.5z" />,
@@ -130,24 +133,41 @@ export function ConfirmDialog({
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('keydown', onKey); prev?.focus(); };
   }, [open, onCancel]);
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-[90] grid place-items-center p-4 blur-heavy backdrop-blur-[3px]" style={{ background: "rgba(92, 64, 53, .38)" }} onClick={onCancel}>
+  if (!open || typeof document === 'undefined') return null;
+  /**
+   * A bottom sheet on a phone, a centred dialog on a wide screen.
+   *
+   * `grid place-items-center` in the middle of a 390 px screen puts a small card
+   * under the thumb's reach and asks the eye to jump to the centre. A sheet
+   * comes up from the edge the hand is at, and its actions run full width along
+   * the bottom — the two shapes are the same markup, switched in CSS.
+   */
+  /* Portalled, like every modal: inside a screen it would inherit that screen's
+     stacking context and could sit under the fixed tab bar. */
+  return createPortal(
+    <div className="fixed inset-0 z-[90] flex items-end lg:items-center justify-center lg:p-4 blur-heavy backdrop-blur-[3px]" style={{ background: "rgba(92, 64, 53, .38)" }} onClick={onCancel}>
       <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId}
-        className="panel panel-notch w-full max-w-[420px] p-6 a-pop" onClick={(e) => e.stopPropagation()}>
+        /* `.panel` carries a 2px border and a 22px radius on every side; on a
+           phone the sheet is flush with the bottom edge, so those are undone
+           here rather than in a second class that would fight the first. */
+        className="sheet-in w-full max-w-none lg:max-w-[420px] panel rounded-t-[26px] rounded-b-none border-x-0 border-b-0 lg:border-2 lg:rounded-2xl p-5 lg:p-6"
+        style={{ paddingBottom: 'max(18px, env(safe-area-inset-bottom))' }}
+        onClick={(e) => e.stopPropagation()}>
+        <div className="lg:hidden mx-auto mb-3 w-9 h-1 rounded-full bg-ink-400/60" aria-hidden />
         <div className="flex gap-3 items-start">
-          <PikachuMascot state={danger ? 'thinking' : 'waiting'} size={74} />
+          <span className="max-lg:hidden"><PikachuMascot state={danger ? 'thinking' : 'waiting'} size={74} /></span>
           <div className="flex-1 min-w-0">
-            <h3 id={titleId} className="display text-[19px] text-cream-100">{title}</h3>
-            {body && <p className="text-[13px] text-cream-500 mt-1.5 leading-relaxed">{body}</p>}
+            <h3 id={titleId} className="display text-[20px] lg:text-[19px] text-cream-100">{title}</h3>
+            {body && <p className="text-[13.5px] lg:text-[13px] text-cream-500 mt-1.5 leading-relaxed">{body}</p>}
           </div>
         </div>
-        <div className="flex gap-2.5 justify-end mt-5">
-          <Button variant="ghost" size="sm" onClick={onCancel} cue="back">{cancelLabel}</Button>
-          <Button variant={danger ? 'danger' : 'primary'} size="sm" onClick={onConfirm}>{confirmLabel}</Button>
+        <div className="flex flex-col-reverse gap-2 mt-5 lg:flex-row lg:justify-end lg:gap-2.5">
+          <Button variant="ghost" size="md" onClick={onCancel} cue="back">{cancelLabel}</Button>
+          <Button variant={danger ? 'danger' : 'primary'} size="md" onClick={onConfirm}>{confirmLabel}</Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -198,7 +218,10 @@ export function ToastStack() {
   const { toasts, dismiss } = useStore();
   if (!toasts.length) return null;
   return (
-    <div className="fixed z-[100] bottom-4 right-4 left-4 sm:left-auto sm:w-[340px] flex flex-col gap-2 safe-b pointer-events-none" role="region" aria-live="polite">
+    /* On a phone the tab bar owns the bottom 60 px, so a toast at `bottom-4`
+       sat on top of the navigation — the one strip of the screen that has to
+       stay tappable. It floats above the bar instead. */
+    <div className="fixed z-[100] bottom-[calc(74px+env(safe-area-inset-bottom))] lg:bottom-4 right-4 left-4 sm:left-auto sm:w-[340px] flex flex-col gap-2 pointer-events-none" role="region" aria-live="polite">
       {toasts.map((t) => (
         <div key={t.id}
           className={`panel p-3 pr-9 flex gap-2.5 items-start a-slide-up relative pointer-events-auto

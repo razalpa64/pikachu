@@ -78,7 +78,12 @@ export function HomeHero() {
           style={{ backgroundImage: 'radial-gradient(rgba(90,63,52,.9) .5px, transparent .6px)', backgroundSize: '5px 5px' }} />
       </div>
 
-      <div className="relative mx-auto max-w-[1340px] px-[var(--shell-pad)] pt-8 pb-9 sm:pt-10 lg:pt-12 lg:pb-11">
+      {/* A phone gives this screen 780 px above the tab bar. The wordmark used to
+          take 9.2vw of them (36 px of every 100), so the first thing you saw on
+          opening the app was a logo and the first thing you had to do was scroll
+          to find a game. It is smaller here, the paragraph is shorter, and the
+          two buttons and the shelves come into the first screenful. */}
+      <div className="relative mx-auto max-w-[1340px] px-[var(--shell-pad)] pt-5 pb-6 sm:pt-10 lg:pt-12 lg:pb-11">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_356px] lg:gap-12 lg:items-start">
 
           {/* ------------------------------- the words ------------------------------- */}
@@ -90,8 +95,8 @@ export function HomeHero() {
 
             {/* One h1, two lines: the name at display size, the word that says what
                 kind of place it is underneath, tracked out to the same width. */}
-            <h1 id="hero-title" className="mb-4" aria-label="Pikachu Arcade">
-              <span className="wordmark block text-[clamp(52px,9.2vw,104px)] leading-[.84]">PIKACHU</span>
+            <h1 id="hero-title" className="mb-3 lg:mb-4" aria-label="Pikachu Arcade">
+              <span className="wordmark block text-[clamp(40px,9.2vw,104px)] leading-[.84] max-sm:text-[46px]">PIKACHU</span>
               <span className="mt-3 flex items-center gap-3">
                 <span aria-hidden className="display text-[clamp(17px,3.4vw,26px)] text-cream-300 tracking-[.4em]">ARCADE</span>
                 <svg aria-hidden width="64" height="12" viewBox="0 0 72 14" className="shrink-0 opacity-80">
@@ -100,7 +105,7 @@ export function HomeHero() {
               </span>
             </h1>
 
-            <p className="text-[15.5px] sm:text-[17px] text-cream-300 leading-[1.6] max-w-[48ch] mb-5">
+            <p className="text-[15px] sm:text-[17px] text-cream-300 leading-[1.55] max-w-[48ch] mb-4 lg:mb-5">
               {GAMES.length} hand-built games for one or two people — a real chess engine, five AI
               temperaments, and private rooms you open with a five-letter code.
               <span className="block mt-2 text-cream-400 text-[14px] sm:text-[14.5px]">
@@ -235,7 +240,10 @@ export function HomeHero() {
           alt="A picnic laid out on a sunny hillside: a strawberry milkshake, a basket of berries, two cushions and a lantern"
           width={1568} height={652}
           fetchPriority="high" decoding="async" draggable={false}
-          className="block w-full h-[210px] sm:h-[300px] lg:h-[380px] object-cover object-[center_62%] select-none"
+          /* 210 px of painting is a third of a phone's first screen, and it sat
+             between the visitor and the first shelf. It is a horizon, not
+             content: shorter on a phone, full height from sm up. */
+          className="block w-full h-[124px] sm:h-[300px] lg:h-[380px] object-cover object-[center_62%] select-none"
           style={{
             WebkitMaskImage: 'linear-gradient(180deg, transparent 0%, #000 9%, #000 100%)',
             maskImage: 'linear-gradient(180deg, transparent 0%, #000 9%, #000 100%)',
@@ -252,6 +260,7 @@ export function HomeHero() {
             it can never eat a tap; one image, not two, so a phone fetches it once. */}
         <div className="absolute -bottom-1.5 right-[4%] sm:right-[7%] pointer-events-none origin-bottom-right scale-[.8] sm:scale-100">
           <PikachuMascot state={room ? 'excited' : 'idle'} size={150} priority />
+          {/* scale is applied on the wrapper, so nothing here changes layout */}
         </div>
       </div>
     </section>

@@ -2031,6 +2031,69 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   .dos-papers { grid-template-columns: 1.1fr 1fr; }
 }
 
+/* The loading skeleton. Two tones and a slow sweep, so it reads as "filling in"
+   rather than as a broken image. Stops dead under reduced motion. */
+.skel {
+  background: linear-gradient(100deg, var(--color-blush-100) 26%, #fffaf1 44%, var(--color-blush-100) 62%);
+  background-size: 220% 100%;
+  animation: skel-sweep 1.3s ease-in-out infinite;
+}
+@keyframes skel-sweep { from { background-position: 130% 0 } to { background-position: -30% 0 } }
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; background: var(--color-blush-100); }
+}
+
+/* ------------------------------------------------------- touch-screen basics */
+/* On iOS Safari a text field smaller than 16 px makes the page zoom in when it
+   gets focus, and it does not zoom back out — the screen is then wider than the
+   viewport and every fixed bar is off by the difference. One rule, applied to
+   every field, rather than a font size on each of the thirty inputs. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Momentum scrolling and no rubber-band on the bars is what a webview shell does
+   for an app; this is the same thing, without the shell. */
+@media (max-width: 1023px) {
+  .overscroll-none-mobile { overscroll-behavior-y: contain; }
+}
+
+/* ------------------------------------------------------------- app motion */
+/* A screen change is a fade, one frame long enough to read as a transition and
+   short enough never to wait for. Opacity only: a transform on <main> would
+   become the containing block for the fixed overlays inside a screen (the room's
+   chat bar), and they would jump for the length of the animation. */
+@keyframes screen-fade { from { opacity: 0 } to { opacity: 1 } }
+.screen-enter { animation: screen-fade .18s ease-out both; }
+
+@keyframes sheet-rise {
+  from { transform: translate3d(0, 100%, 0) }
+  to { transform: translate3d(0, 0, 0) }
+}
+@keyframes sheet-fade { from { opacity: 0 } to { opacity: 1 } }
+.sheet-in { animation: sheet-rise .28s cubic-bezier(.22, .9, .32, 1) both; }
+.sheet-backdrop { animation: sheet-fade .18s ease-out both; }
+
+@media (min-width: 1024px) {
+  /* On a wide screen the sheet is a dialog, so it arrives the way the rest of
+     the arcade's dialogs do rather than sliding up from an edge. */
+  .sheet-in { animation: a-pop .18s ease-out both; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-enter, .sheet-in, .sheet-backdrop { animation: none; }
+}
+
+/* Every tap target answers the finger. This is the whole difference between a
+   page and an app on a touch screen, and it costs one rule. */
+@media (hover: none) {
+  .no-tap:active { transform: scale(.96); }
+}
+
 /* ---------------------------------------------------------------- the pad */
 /* Under the picture, on the same plastic. Left thumb on the D-pad, right thumb
    on the buttons — the two clusters are pushed to opposite edges so a hand on

@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { StoreProvider, useStore } from './lib/store';
 import { RoomProvider } from './lib/useRoom';
 import { ToastStack } from './components/ui';
-import { ElectricLoader } from './mascot';
 import AppShell from './components/AppShell';
 import { SeoHead } from './components/SeoHead';
 import { idlePrefetch } from './lib/prefetch';
@@ -32,8 +31,37 @@ const RetroDosPlayer = lazy(() => import('./screens/RetroDos'));
    the signed-in account is on the admin roster. */
 const Admin = lazy(() => import('./screens/Admin'));
 
+/**
+ * What you see while a route's chunk arrives.
+ *
+ * It used to be a spinner in the middle of 58vh, which on a phone is a blank
+ * screen with a dot on it — the least app-like thing on the site. A skeleton of
+ * the page's own shape (a title, a search bar, cards) says "this screen exists
+ * and is filling in", and it costs nothing when the chunk is already cached
+ * because it is replaced in the same frame.
+ */
 function RouteFallback() {
-  return <div className="min-h-[58vh] grid place-items-center"><ElectricLoader status="Just a moment" detail="Loading this part of the arcade for the first time." /></div>;
+  return (
+    <div className="mx-auto w-full max-w-[1340px] px-[var(--shell-pad)] pt-6" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Loading this part of the arcade.</span>
+      <div className="skel h-3 w-24 rounded-full" />
+      <div className="skel h-8 w-52 rounded-lg mt-3" />
+      <div className="skel h-4 w-full max-w-[420px] rounded-md mt-3" />
+      <div className="skel h-4 w-2/3 max-w-[300px] rounded-md mt-2" />
+      <div className="skel h-11 w-full rounded-full mt-6" />
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="rounded-2xl border-2 border-ink-600 overflow-hidden">
+            <div className="skel aspect-[16/10]" />
+            <div className="p-3 space-y-2">
+              <div className="skel h-4 w-2/3 rounded-md" />
+              <div className="skel h-3 w-1/2 rounded-md" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ScrollTop() {
@@ -65,7 +93,10 @@ function Shell() {
     <RoomProvider>
       <ScrollTop />
       <AppShell>
+        {/* Keyed on the path so each screen enters with the app's fade, and so a
+            stale screen can never be left behind by a Suspense boundary. */}
         <Suspense fallback={<RouteFallback />}>
+        <div key={pathname} className="screen-enter">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/library" element={<Library />} />
@@ -88,6 +119,7 @@ function Shell() {
             <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+        </div>
         </Suspense>
       </AppShell>
       <ToastStack />

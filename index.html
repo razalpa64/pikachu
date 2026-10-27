@@ -2,7 +2,15 @@
 <html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5" />
+    <!--
+      viewport-fit=cover so the app can paint into the notch and pad itself with
+      the safe-area insets (the tab bar and every sheet do).
+      interactive-widget=resizes-content: on Android, opening the keyboard on the
+      guess box or the chat used to slide the whole page up behind it; this makes
+      the viewport shrink instead, which is what a native app does.
+      maximum-scale=5 keeps pinch-zoom available: it is a game with small dice.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5, interactive-widget=resizes-content" />
 
     <!-- ------------------------------------------------------------------
          Everything below is the *static* head: what a link unfurler, a
@@ -17,7 +25,12 @@
     <meta name="author" content="razalpa" />
     <meta name="application-name" content="Pikachu Arcade" />
     <meta name="apple-mobile-web-app-title" content="Pikachu" />
-    <meta name="theme-color" content="#fff8ec" />
+    <meta name="theme-color" content="#fffaf1" />
+    <!-- The status bar sits on the paper-coloured header, so its text must stay
+         dark. Without this, an installed copy on iOS draws white text on cream. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="color-scheme" content="light" />
 
     <!-- Open Graph / Twitter: a shared room link should look like the arcade -->

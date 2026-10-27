@@ -309,7 +309,7 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | Six of them visibly respond to the keys a player presses | same | **yes** |
 | Sadist and Out of Cash take menu input beyond their first screens | would need a longer scripted run per game | **no** |
 
-`npm test` → 881 tests in 58 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 884 tests in 58 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
 What this report still will not claim is that all nine games are *finishable*, or
 that a human sat and played them end to end. What it can now claim, because the
@@ -324,6 +324,50 @@ the touch viewport) runs against the dev server; if the sandbox cannot download
 Chromium, point `PIKACHU_CHROME` and `PIKACHU_LD` at any Chromium build and the
 same checks run. That is how the DOS shelf went from "structurally correct" to
 "watched working" in one sitting.
+
+## The phone is a shell, not a page
+
+The desktop layout has a 58 px header, seven links and a right-hand rail. On a
+390 px screen none of that fits, and shrinking it was the wrong answer: a header
+with seven small links is a website telling you it is a website. Below `lg` the
+site is an app instead.
+
+- **Five tabs, thumb height.** `nav[aria-label="Quick"]` — Home, Games,
+  Together, Solo, Retro — fixed to the bottom, 78×58 px per tab, padded for the
+  home indicator. Above `lg` it does not exist (`height: 0`).
+- **A title bar that names the screen.** 63 px, sticky, safe-area padded, and it
+  carries the account button instead of a hamburger drawer. The drawer is gone.
+- **Games own their bar.** On `/solo/*` and `/room/*` the site header hides
+  (`ownBar` in `AppShell.tsx`) and the screen's own bar is sticky at `top: 0`.
+  Two title bars on a phone spent 63 px saying the same thing twice; removing it
+  moved the chess board from 341 px down to 183 px.
+- **Overlays are sheets.** `Sheet` portals to `document.body` — inline it would
+  inherit the screen's stacking context and slide under the tab bar — and every
+  confirmation, the account menu, the join-code pad and the library's Filter
+  games sheet come up from the bottom with the scrim, focus trap, Escape, focus
+  return and body scroll lock that a native sheet has. Above `lg` they remain
+  centred dialogs.
+- **Content first.** The hero painting is 124 px on a phone (300–380 px above
+  `sm`) because it is a horizon, not content; Home's section rhythm is 6 rather
+  than 10; Library's rail and manifesto paragraph are hidden, and its controls
+  fit one row with the filter list behind a sheet.
+- **No zoom on focus.** Every text field is 16 px at `max-width: 1023px`; iOS
+  zooms the whole page for anything smaller and never zooms back.
+- **Nothing toasts under the bar.** The toast stack sits at
+  `calc(74px + env(safe-area-inset-bottom))` on a phone, so a saved profile
+  never covers the navigation.
+- **The viewport is honest.** `viewport-fit=cover` plus
+  `interactive-widget=resizes-content`, and `theme-color`/manifest match the
+  paper the header is painted on, so an installed copy has a dark-on-cream status
+  bar rather than white on cream.
+
+The contract is checked, not asserted: `npm run e2e:shell` drives a 390×844
+touch viewport through nine routes and makes 56 assertions — no route scrolls
+sideways (`scrollWidth === 390`), tab geometry, the title bar's name, the account
+sheet's position and its Escape/focus/scroll-lock behaviour, the filter sheet
+narrowing 26 games to 17, the game screen's own bar sticking at 0 with the board
+at 183 px, and a confirm sheet at 572 px with 47 px buttons. It runs against the
+dev server like the other harnesses.
 
 ## What the admin desk can do
 

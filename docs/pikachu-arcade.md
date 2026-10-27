@@ -43,7 +43,25 @@ own. Five bundles were inspected structurally as a sample (`npm run
 dos:import -- --inspect 5`); all five were valid ZIPs with a `.jsdos/dosbox.conf`.
 That is a statement about the *format*, not about the right to host them.
 
-## The five committed DOS cartridges
+## A bug that made every DOS game look broken
+
+The first version of `public/retro/dos.html` pinned js-dos at
+`pathPrefix: "/retro/jsdos/"`. js-dos does not append `emulators/` to that value —
+it appends the file names, so it asked for `/retro/jsdos/emulators.js`, which has
+never existed in this repository. The 404 is silent inside js-dos: it logs to the
+console, keeps its own loading screen and never creates a `<canvas>`. The player's
+own watchdog then reported, 25 seconds later, "DOS started, but no screen
+appeared" — blaming the bundle for the site's own 404. The shelf's smoke test had
+been *asserting the broken value*, so it passed.
+
+Fixed: the prefix is one constant, `/retro/jsdos/emulators/`, the player now
+fetches `emulators.js`, `wdosbox.js` and `wdosbox.wasm` through that constant
+before booting and names any missing file instead of blaming the game, and three
+places pin it — a unit test that resolves the prefix against `public/`, the smoke
+test that fetches it over HTTP, and `VENDOR.md`. Bundles also no longer end their
+`[autoexec]` with `exit`: quitting DOS shuts js-dos down, which reads as a crash.
+
+## The nine committed DOS cartridges
 
 Nothing in this table came from a ROM site, a "freeware" aggregator or a
 third-party upload. Each game was published by the person who wrote it, in their
@@ -140,10 +158,11 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | A DOS row cannot carry a GBA path (and vice versa) | `src/lib/__tests__/supabase-schema.test.ts` + PGlite | **yes** |
 | The player document, the 1.4 MB core, the bundle and both manifests are served correctly | `npm run smoke:dos` | **yes, green** |
 | Every bundle's `[autoexec]` starts a program that is really at the archive root | `npm run smoke:dos` (now checks the entry, not just the conf) | **yes, green** |
+| The player asks js-dos for its cores at a path that exists, over HTTP | `src/lib/__tests__/dos.test.ts` + `npm run smoke:dos` | **yes, green** |
 | js-dos draws a frame and the calibration bars are in it | `npm run e2e:retro:dos` (Playwright) | **no — no Chromium in this sandbox** |
 | Any of the eight games actually plays | would need a browser and a DOS runtime | **no — and there is no DOSBox in this sandbox to test with either** |
 
-`npm test` → 816 tests in 54 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 819 tests in 54 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
 The one claim this report will not make is “the DOS shelf plays”. The HTTP and
 structural layers are proven; the framebuffer is not. On a machine with a browser,

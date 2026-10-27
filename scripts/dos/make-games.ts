@@ -137,6 +137,11 @@ const GPL3_RIGHTS =
   'grants — no aggregator label, no upload from a third party, no ROM site. The licence text ' +
   'ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.';
 
+/* Every generated [autoexec] ends with the program and nothing after it.
+   It used to end with `exit`, which quits DOS — and js-dos tears the whole
+   session down when DOS quits, so a game that ends (or fails to start) looked
+   like the emulator crashing. Leaving the prompt up keeps the screen alive. */
+
 const CELIS_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
@@ -185,7 +190,6 @@ umb=true
 mount c .
 c:
 CELIS.EXE
-exit
 `;
 
 const SADIST_CONF = `[sdl]
@@ -235,7 +239,6 @@ umb=true
 mount c .
 c:
 SADIST.EXE
-exit
 `;
 
 const MOTH_CONF = `[sdl]
@@ -270,7 +273,6 @@ umb=true
 mount c .
 c:
 MOTH.COM
-exit
 `;
 
 const VINNIE_CONF = `[sdl]
@@ -314,7 +316,6 @@ umb=true
 mount c .
 c:
 POOH.EXE
-exit
 `;
 
 const BIRD_CONF = `[sdl]
@@ -349,7 +350,6 @@ umb=true
 mount c .
 c:
 FLPYBIRD.COM
-exit
 `;
 
 const TETRIS_CONF = `[sdl]
@@ -384,7 +384,6 @@ umb=true
 mount c .
 c:
 TETRIS.EXE
-exit
 `;
 
 const SNAKE54_CONF = `[sdl]
@@ -416,7 +415,6 @@ umb=true
 mount c .
 c:
 SNAKE.COM
-exit
 `;
 
 const TITLES: Title[] = [

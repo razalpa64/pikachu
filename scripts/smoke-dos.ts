@@ -63,7 +63,20 @@ async function main() {
     const html = new TextDecoder().decode(body);
     check('player document is served', res.ok, `${res.status} ${res.headers.get('content-type') ?? ''}`);
     check('it loads js-dos from our own folder', html.includes('/retro/jsdos/js-dos.js'));
-    check('it pins the core path', html.includes('pathPrefix: "/retro/jsdos/"'));
+    /* js-dos resolves its cores as `pathPrefix + "emulators.js"`, so the prefix
+       has to name the `emulators/` directory itself. This assertion used to pin
+       the wrong value ('/retro/jsdos/') and happily passed while every launch
+       404'd on /retro/jsdos/emulators.js. */
+    const prefix = /EMULATOR_PREFIX\s*=\s*"([^"]+)"/.exec(html)?.[1] ?? '';
+    check('it pins a core path that ends in emulators/', prefix.endsWith('/emulators/'), prefix || 'no prefix found');
+    check('the core path it uses is the one js-dos needs', html.includes('pathPrefix: EMULATOR_PREFIX'));
+    check('it no longer pins the broken prefix', !html.includes('pathPrefix: "/retro/jsdos/"'));
+
+    /* And fetch what js-dos will actually ask for, through that exact prefix. */
+    for (const name of ['emulators.js', 'wdosbox.js', 'wdosbox.wasm']) {
+      const { res, body } = await bytes(`${prefix}${name}`);
+      check(`core file is served: ${name}`, res.ok && body.length > 0, `${res.status} · ${body.length} bytes`);
+    }
     check('it asks for the small DOSBox backend', html.includes('backend: "dosbox"'));
     /* The allowlist is the thing that stops a crafted message booting anything
        else; assert it is in the document that shipped. */

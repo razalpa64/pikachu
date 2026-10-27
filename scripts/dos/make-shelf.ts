@@ -159,6 +159,8 @@ function calibrationProgram(): Uint8Array {
  * so a calibration run is reproducible, and an `[autoexec]` that mounts the
  * bundle and starts the program — no installer, no interactive prompt.
  */
+/* No `exit` at the end of the [autoexec]: quitting DOS shuts js-dos down, and a
+   test card that ends by itself would look like a crash. */
 const DOSBOX_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
@@ -184,7 +186,6 @@ prebuffer=20
 mount c .
 c:
 CALIB.COM
-exit
 `;
 
 const SHELF_NOTE =

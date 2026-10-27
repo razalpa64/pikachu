@@ -87,6 +87,14 @@
  * vendored under `/retro/jsdos/` (see VENDOR.md there). And a `.jsdos` bundle is
  * a ZIP that js-dos reads; this page never unpacks it, never inspects its
  * contents beyond the pre-flight fetch, and never runs anything itself.
+ *
+ * `pathPrefix` must end in `emulators/`. js-dos loads `pathPrefix + "emulators.js"`
+ * and then `pathPrefix + "wdosbox.js"`, so a prefix of `/retro/jsdos/` asks the
+ * server for `/retro/jsdos/emulators.js`, which does not exist. That 404 is
+ * silent inside js-dos — it logs to the console, keeps its own loading screen and
+ * never creates a canvas — which is exactly the failure this page used to report
+ * as "DOS started, but no screen appeared". The prefix is one constant now, and
+ * `npm run smoke:dos` fetches the core files through it.
  */
 (function () {
   "use strict";
@@ -97,6 +105,10 @@
   var bootTitle = document.getElementById("boot-title");
   var bootLine = document.getElementById("boot-line");
   var host = document.getElementById("dos");
+
+  /* Where the vendored js-dos cores live. js-dos appends the file names itself,
+     so this has to point at the directory holding emulators.js and wdosbox.*. */
+  var EMULATOR_PREFIX = "/retro/jsdos/emulators/";
 
   var started = false;
   var startedAt = 0;
@@ -146,6 +158,24 @@
       });
   }
 
+  /**
+   * Check the emulator's own files before asking js-dos to boot. A missing core
+   * used to surface 25 seconds later as "no screen appeared", which blames the
+   * game for the site's own 404; naming the file is honest and faster.
+   */
+  function preflightCore() {
+    return Promise.all(["emulators.js", "wdosbox.js", "wdosbox.wasm"].map(function (name) {
+      return fetch(EMULATOR_PREFIX + name, { method: "GET", headers: { range: "bytes=0-0" } })
+        .then(function (res) {
+          if (res.ok || res.status === 206) return true;
+          throw new Error("core:" + name + ":" + res.status);
+        })
+        .catch(function (error) {
+          throw (/^core:/.test(String(error && error.message)) ? error : new Error("core:" + name + ":network"));
+        });
+    }));
+  }
+
   function loadScript(src) {
     return new Promise(function (resolve, reject) {
       var script = document.createElement("script");
@@ -177,6 +207,19 @@
         throw error;
       })
       .then(function () {
+        return preflightCore().catch(function (error) {
+          var parts = String((error && error.message) || error).split(":");
+          fail(
+            "The emulator's own files are missing.",
+            "This page asked for " + EMULATOR_PREFIX + parts[1] +
+              " and did not get it (" + parts[2] + "). That is a problem with the site, not the game; " +
+              "the bundle has not been blamed for it.",
+          );
+          post({ type: "status", status: "error" });
+          throw new Error("core-missing");
+        });
+      })
+      .then(function () {
         if (window.Dos) return;
         return loadScript("/retro/jsdos/js-dos.js").catch(function () {
           fail("The emulator did not load.", "js-dos could not be fetched from this site. Reload, and check the browser console for a 404 under /retro/jsdos/.");
@@ -192,7 +235,7 @@
            deliberately not shipped (7–8 MB each) and would 404. */
         api = window.Dos(host, {
           url: game.url,
-          pathPrefix: "/retro/jsdos/",
+          pathPrefix: EMULATOR_PREFIX,
           backend: "dosbox",
           onExit: undefined
         });
@@ -220,14 +263,14 @@
           window.clearInterval(poller);
           fail(
             "DOS started, but no screen appeared.",
-            "This bundle may be malformed, or its [autoexec] may never start a program. The desk can validate the archive before publishing it.",
+            "The emulator loaded but never drew a canvas. Its console will say why; the archive itself passed the shelf's own checks before it shipped.",
           );
           post({ type: "status", status: "error" });
         }, 25000);
       })
       .catch(function (error) {
         /* Already reported; this keeps the console honest without a second alarm. */
-        if (error && /jsdos|script|missing|forbidden|http-/.test(String(error.message))) return;
+        if (error && /jsdos|script|missing|forbidden|http-|core-/.test(String(error.message))) return;
         fail("The player could not start.", String((error && error.message) || error));
         post({ type: "status", status: "error" });
       });

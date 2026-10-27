@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,6 +73,44 @@ describe('the zip reader and writer', () => {
     gba.set([0x24, 0xff, 0xae, 0x51]);
     expect(readZipDirectory(gba)).toBeNull();
     expect(await entry(gba, '.jsdos/dosbox.conf')).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------ the player */
+
+describe('the DOS player document', () => {
+  const html = readFileSync(join(root, 'public/retro/dos.html'), 'utf8');
+  const prefix = /EMULATOR_PREFIX\s*=\s*"([^"]+)"/.exec(html)?.[1] ?? '';
+
+  it('points js-dos at the directory its cores are actually in', () => {
+    /* js-dos builds its URLs as `pathPrefix + "emulators.js"` and
+       `pathPrefix + "wdosbox.js"`. A prefix of `/retro/jsdos/` therefore asks
+       for `/retro/jsdos/emulators.js`, which does not exist — js-dos logs the
+       404 and never creates a canvas, and the player reported that as "DOS
+       started, but no screen appeared". This pins the prefix to a directory
+       that holds the files, so the bug cannot come back silently. */
+    expect(prefix).toBe('/retro/jsdos/emulators/');
+    for (const name of ['emulators.js', 'wdosbox.js', 'wdosbox.wasm']) {
+      expect(existsSync(join(root, 'public', prefix, name)), `${prefix}${name}`).toBe(true);
+    }
+    expect(html).not.toContain('pathPrefix: "/retro/jsdos/"');
+    expect(html).toContain('pathPrefix: EMULATOR_PREFIX');
+  });
+
+  it('checks those files before it blames the game for a black screen', () => {
+    expect(html).toContain('preflightCore');
+  });
+
+  it('never ends an [autoexec] with `exit`, which shuts the emulator down', async () => {
+    /* `exit` quits DOS, and js-dos tears the session down when DOS quits — a
+       game that ends, or a test card that finishes, would look like a crash.
+       Every bundle here starts its program and then leaves the prompt alone. */
+    for (const game of parseDosShelf(shelfRaw).games) {
+      const bytes = new Uint8Array(readFileSync(join(root, 'public/retro/dos', game.bundle)));
+      const conf = text(await entry(bytes, '.jsdos/dosbox.conf')) ?? '';
+      const lines = (extractAutoexec(conf) ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+      expect(lines, game.id).not.toContain('exit');
+    }
   });
 });
 

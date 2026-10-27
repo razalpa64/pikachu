@@ -16,6 +16,19 @@ Nothing here has been modified. Files are copied verbatim from the npm tarball:
   emulators/wlibzip.js     ZIP reader used to mount a .jsdos bundle
   emulators/wlibzip.wasm
 
+Where `pathPrefix` has to point (read this before changing the player): js-dos
+builds its core URLs itself, as `pathPrefix + "emulators.js"` and
+`pathPrefix + "wdosbox.js"`. That is why the default is
+`https://v8.js-dos.com/latest/emulators/` — the *`emulators/` directory itself*,
+not the directory above it. A player that pins `/retro/jsdos/` therefore asks for
+`/retro/jsdos/emulators.js`, gets a 404, and shows no error of its own: js-dos
+logs to the console, keeps its loading screen and never creates a canvas. That is
+exactly the bug this repository shipped once, and it made *every* DOS game look
+like a broken bundle. The correct value here is `/retro/jsdos/emulators/`, held
+in one constant in `public/retro/dos.html`, asserted by
+`src/lib/__tests__/dos.test.ts` against the files on disk and by
+`npm run smoke:dos` against the running server.
+
 Not vendored, and not needed for the DOS shelf: the DOSBox-X cores (7–8 MB each),
 the WebRTC/IPX networking shim, the sockdrive transport and the in-browser file
 explorer. js-dos fetches those only when a feature asks for them by name, and this

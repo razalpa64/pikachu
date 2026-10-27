@@ -551,6 +551,29 @@ export const dosGameById = (games: DosGame[] | null, id: string | undefined): Do
 export const bundleUrlFor = (game: DosGame): string =>
   /^https:\/\//i.test(game.bundle) ? game.bundle : `/retro/dos/${game.bundle}`;
 
+/**
+ * The program an `[autoexec]` starts, or `null`.
+ *
+ * The last line that runs something wins, comments are not lines, and a line may
+ * carry arguments — `DOOM.EXE -warp 1 1 -skill 3` is a program with switches, not
+ * a file called "DOOM.EXE -warp 1 1 -skill 3". Three scripts used to match a line
+ * by `/\.(exe|com|bat)$/`, which treated DOOM launched into a level as "no
+ * program at all" and failed the build; this is the one place that decides.
+ */
+export function autoexecProgram(autoexec: string | null | undefined): { file: string; args: string[] } | null {
+  const lines = String(autoexec ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
+    /* `rem` is DOS's own comment, and a config that explains itself uses it. */
+    .filter((line) => !/^rem\b/i.test(line));
+  for (const line of lines.reverse()) {
+    const [first, ...rest] = line.split(/\s+/);
+    if (/\.(exe|com|bat)$/i.test(first)) return { file: first, args: rest };
+  }
+  return null;
+}
+
 export const coverUrlForDos = (game: DosGame): string | null =>
   game.cover ? `/retro/dos/${game.cover}` : null;
 

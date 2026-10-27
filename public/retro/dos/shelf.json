@@ -1,7 +1,7 @@
 {
   "version": 1,
   "system": "MS-DOS",
-  "note": "The DOS shelf holds only builds this project may host: four games published by their own authors under the GPL or MIT, plus our CC0 calibration cartridge. None of them is a commercial title. The 1,499 titles in the discovery index are somebody else’s games with an aggregator’s \"Freeware\" or \"Shareware\" label, which is not a redistribution grant — so they stay in the review queue, searchable and linked to their original source, with no Play button until an administrator records evidence on the desk.",
+  "note": "The DOS shelf holds only builds this project may host: games published by their own authors under the GPL or MIT, our CC0 calibration cartridge, and one vendor shareware release — id’s DOOM episode one, which John Carmack confirmed on 23 October 1999 is freely distributable and which Debian and RPM Fusion distribute on that basis, with the IWAD pinned to the official checksum. Each record states its own basis in `rights`. The 1,499 titles in the discovery index are somebody else’s games with an aggregator’s \"Freeware\" or \"Shareware\" label, which is not a redistribution grant — so they stay in the review queue, searchable and linked to their original source, with no Play button until an administrator records evidence on the desk.",
   "games": [
     {
       "id": "pikachu-calibration",
@@ -15,7 +15,7 @@
       "description": "A 361-byte program written for this site and assembled byte by byte in `scripts/dos/make-shelf.ts`. It prints a banner in text mode, paints four colour bars in VGA mode 13h, then loops back to the banner — press any key to alternate between the two screens. If the DOS player is working, this runs — which is why it ships: it is the one cartridge whose behaviour we can describe exactly.",
       "bundle": "bundles/pikachu-calibration.jsdos",
       "bytes": 1056,
-      "cover": null,
+      "cover": "covers/pikachu-calibration.png",
       "accent": "#f2c14e",
       "tags": [
         "test",
@@ -35,13 +35,33 @@
       "description": "A side-scrolling shooter for MS-DOS written in Turbo Pascal, which its author compares to Gradius, R-Type and Zybex. The repository labels the build “demo version 0.667” and says the game was never finished but is playable. Packaged from the project’s own files at commit 01bea78; the VGA, memory and Sound Blaster settings come from the DOSBox config the author ships in DOSBox/Celis.conf.",
       "bundle": "bundles/celis.jsdos",
       "bytes": 1181587,
-      "cover": null,
+      "cover": "covers/celis.png",
       "accent": "#5cc8ff",
       "tags": [
         "shooter",
         "arcade"
       ],
       "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below."
+    },
+    {
+      "id": "doom-shareware",
+      "title": "DOOM",
+      "tagline": "Shareware episode one, unmodified",
+      "year": 1993,
+      "author": "id Software",
+      "license": "Distributable (id shareware terms)",
+      "licenseUrl": "https://www.doomworld.com/idgames/idstuff/doom/doom19s",
+      "sourceUrl": "https://www.doomworld.com/idgames/idstuff/doom/doom19s",
+      "description": "Episode one, Knee-Deep in the Dead, exactly as id shipped it in 1994: DOOM.EXE v1.9 and DOOM1.WAD, byte for byte, with the README that came in the archive. The IWAD is checked against the SHA-256 of the official 4,196,020-byte shareware file every time the bundle is built, so what runs here is id’s own release and not a repack. Arrow keys move and turn, Ctrl fires, Space opens doors, F1 shows the key card.",
+      "bundle": "bundles/doom-shareware.jsdos",
+      "bytes": 4975816,
+      "cover": "covers/doom-shareware.png",
+      "accent": "#c0392b",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "id Software’s shareware release. John Carmack, 23 Oct 1999: \"The DOOM shareware wad is freely distributable.\" Debian ships these files as doom-wad-shareware on that basis; RPM Fusion as doom-shareware, License: Distributable. Unmodified, no charge, registered episodes excluded. DOOM is a trademark of id Software; this site is not affiliated."
     },
     {
       "id": "floppybird",
@@ -55,7 +75,7 @@
       "description": "A clone of Flappy Bird written in 16-bit x86 assembly. The repository builds two things from one source: a raw-metal boot image for a floppy, and this 8 704-byte .COM that runs under DOS — its own Makefile starts it with dosbox -conf dosbox.conf build/flpybird.com. Packaged from commit 511ffa5 with the MIT text; the .tga graphics it draws are the author’s own files from the same repository.",
       "bundle": "bundles/floppybird.jsdos",
       "bytes": 11462,
-      "cover": null,
+      "cover": "covers/floppybird.png",
       "accent": "#ffd166",
       "tags": [
         "arcade",
@@ -75,7 +95,7 @@
       "description": "One .COM file, 508 bytes: it switches the machine to VGA mode 13h, sets up a double buffer, hides the cursor and runs a mouse-aimed shooting loop against alien sprites, with health, hits and a game-over state. Part of x86-assembly, the author’s collection of programs written small on purpose for 8086-class machines. Packaged from dos/game7/game7.com at commit 83a8662, with the MIT licence beside it; the .asm source is in the repository.",
       "bundle": "bundles/moth-hunter.jsdos",
       "bytes": 3279,
-      "cover": null,
+      "cover": "covers/moth-hunter.png",
       "accent": "#9ee37d",
       "tags": [
         "arcade",
@@ -95,7 +115,7 @@
       "description": "In the author’s words: an unofficial Tetris clone for DOS, written purely in NASM assembly. The whole game is the single 2 820-byte TETRIS.EXE in bin/, drawn in text mode, with its assembly source beside it in the repository. Packaged from commit 3fc9598 with the MIT licence and the readme. It is a clone — the name belongs to somebody else, and this site does not present it as the original.",
       "bundle": "bundles/nasm-tetris.jsdos",
       "bytes": 6552,
-      "cover": null,
+      "cover": "covers/nasm-tetris.png",
       "accent": "#8ad6c1",
       "tags": [
         "puzzle",
@@ -115,7 +135,7 @@
       "description": "A point-and-click graphic adventure: your favourite rock band is in town, the ticket costs money you do not have, and the plan is deception. Written for DOS with DJGPP and Allegro and released under the GPL. This bundle is the project’s own published web/out-of-cash.jsdos, byte for byte from commit 8dd5c62 — not repacked here, so its own dosbox.conf and CWSDPMI are exactly as its author tested them.",
       "bundle": "bundles/out-of-cash.jsdos",
       "bytes": 4229809,
-      "cover": null,
+      "cover": "covers/out-of-cash.png",
       "accent": "#ffb347",
       "tags": [
         "adventure",
@@ -135,7 +155,7 @@
       "description": "A 1998 DOS game by Grzegorz “GAD” Drozd, who published it — binaries, data, artwork and the Turbo Pascal source — under the GPL. Packaged from commit 2372676 with the files the source opens at runtime: GRAF.DAT, SADIST.DAT, both .CFG files, the character packs in POSTACI/, the terrain packs in TERENY/ and the loose bitmaps and WAV banks lifted out of Data/. Its audio is wired to a Sound Blaster 16 in the bundle’s dosbox.conf.",
       "bundle": "bundles/sadist.jsdos",
       "bytes": 8088577,
-      "cover": null,
+      "cover": "covers/sadist.png",
       "accent": "#ff7a6b",
       "tags": [
         "action",
@@ -155,7 +175,7 @@
       "description": "A complete snake game in 54 bytes of 16-bit x86 machine code — a code-golf exercise that draws in VGA mode 13h, reads the arrow keys straight from the keyboard controller at port 60h and stops on Escape (the pause key pauses). Packaged from commit 45b2117 with the MIT licence; the assembly it is built from, snake.asm, is in the same repository.",
       "bundle": "bundles/snake-54.jsdos",
       "bytes": 2719,
-      "cover": null,
+      "cover": "covers/snake-54.png",
       "accent": "#7fd1ae",
       "tags": [
         "arcade",
@@ -175,7 +195,7 @@
       "description": "A platformer from 1995, sold commercially in Russia as Super Vinnie-Pooh and published by its author — code, graphics, levels — under Apache-2.0 in 2022. Packaged from commit b84f07b with POOH.EXE, the ten .FMS sprite banks, the three .FML graphics and level libraries, its config and the original 1995 readme. The game text is Russian; nothing here was translated or redrawn.",
       "bundle": "bundles/vinnie-pooh.jsdos",
       "bytes": 2499602,
-      "cover": null,
+      "cover": "covers/vinnie-pooh.png",
       "accent": "#c98bff",
       "tags": [
         "platformer",

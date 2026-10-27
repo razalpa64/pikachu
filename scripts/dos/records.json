@@ -19,7 +19,7 @@
       "id": "celis",
       "bundle": "bundles/celis.jsdos",
       "bytes": 1181587,
-      "cover": null,
+      "cover": "covers/celis.png",
       "provenance": {
         "repo": "GadZombie/celis",
         "commit": "01bea787b64e0033bc0fcb26784d8a5af55b6c9e",
@@ -46,7 +46,7 @@
       "id": "sadist",
       "bundle": "bundles/sadist.jsdos",
       "bytes": 8088577,
-      "cover": null,
+      "cover": "covers/sadist.png",
       "provenance": {
         "repo": "GadZombie/sadist",
         "commit": "237267637e41e3368cf3137dc743e69db280bc83",
@@ -73,7 +73,7 @@
       "id": "out-of-cash",
       "bundle": "bundles/out-of-cash.jsdos",
       "bytes": 4229809,
-      "cover": null,
+      "cover": "covers/out-of-cash.png",
       "provenance": {
         "repo": "warrior-rockk/out-of-cash",
         "commit": "8dd5c620197f4b2f40666a35693f2ab34215d865",
@@ -100,7 +100,7 @@
       "id": "moth-hunter",
       "bundle": "bundles/moth-hunter.jsdos",
       "bytes": 3279,
-      "cover": null,
+      "cover": "covers/moth-hunter.png",
       "provenance": {
         "repo": "w84death/x86-assembly",
         "commit": "83a8662fec59b66d80940901f0ff739ca5908810",
@@ -127,7 +127,7 @@
       "id": "vinnie-pooh",
       "bundle": "bundles/vinnie-pooh.jsdos",
       "bytes": 2499602,
-      "cover": null,
+      "cover": "covers/vinnie-pooh.png",
       "provenance": {
         "repo": "D0NM/Vinnie",
         "commit": "b84f07bd63e0ad7a6e9aebd5d06736c25c38aa7e",
@@ -154,7 +154,7 @@
       "id": "floppybird",
       "bundle": "bundles/floppybird.jsdos",
       "bytes": 11462,
-      "cover": null,
+      "cover": "covers/floppybird.png",
       "provenance": {
         "repo": "icebreaker/floppybird",
         "commit": "511ffa5f5f7e6d5dbe9c2942557670ae6fc85a53",
@@ -181,7 +181,7 @@
       "id": "nasm-tetris",
       "bundle": "bundles/nasm-tetris.jsdos",
       "bytes": 6552,
-      "cover": null,
+      "cover": "covers/nasm-tetris.png",
       "provenance": {
         "repo": "Arkowski24/nasm-tetris",
         "commit": "3fc95987c68e71200538b2f52f1b032e9b15b85f",
@@ -208,13 +208,40 @@
       "id": "snake-54",
       "bundle": "bundles/snake-54.jsdos",
       "bytes": 2719,
-      "cover": null,
+      "cover": "covers/snake-54.png",
       "provenance": {
         "repo": "donno2048/snake",
         "commit": "45b21177a811d62f7300f327cb58a44c52236d29",
         "license": "MIT",
         "prebuilt": null,
         "sha256": "87e3f36939dc44988693b32baf76e9e6799f8cf7329502723961c0d2de382e1f"
+      }
+    },
+    {
+      "title": "DOOM",
+      "tagline": "Shareware episode one, unmodified",
+      "year": 1993,
+      "author": "id Software",
+      "license": "Distributable (id shareware terms)",
+      "licenseUrl": "https://www.doomworld.com/idgames/idstuff/doom/doom19s",
+      "sourceUrl": "https://www.doomworld.com/idgames/idstuff/doom/doom19s",
+      "description": "Episode one, Knee-Deep in the Dead, exactly as id shipped it in 1994: DOOM.EXE v1.9 and DOOM1.WAD, byte for byte, with the README that came in the archive. The IWAD is checked against the SHA-256 of the official 4,196,020-byte shareware file every time the bundle is built, so what runs here is id’s own release and not a repack. Arrow keys move and turn, Ctrl fires, Space opens doors, F1 shows the key card.",
+      "accent": "#c0392b",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "id Software’s shareware release. John Carmack, 23 Oct 1999: \"The DOOM shareware wad is freely distributable.\" Debian ships these files as doom-wad-shareware on that basis; RPM Fusion as doom-shareware, License: Distributable. Unmodified, no charge, registered episodes excluded. DOOM is a trademark of id Software; this site is not affiliated.",
+      "id": "doom-shareware",
+      "bundle": "bundles/doom-shareware.jsdos",
+      "bytes": 4975816,
+      "cover": "covers/doom-shareware.png",
+      "provenance": {
+        "repo": "JuansesDev/AerionOs",
+        "commit": "f759adad3d9571f9c755e9d7fb5216cfd55c97bd",
+        "license": "Distributable (id shareware terms)",
+        "prebuilt": null,
+        "sha256": "84361dddedc7feb1d12b3f6100691ab8449db73847bdf5d57cba5177f8198925"
       }
     }
   ]

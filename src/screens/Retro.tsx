@@ -490,7 +490,12 @@ export default function Retro() {
             </h1>
             <p className="text-[13.5px] text-cream-500 mt-2 max-w-[64ch]">
               {platform === 'dos'
-                ? 'MS-DOS games running in your browser on js-dos, with the same rule as the cartridge shelf: a title is here only because the right to host that build was recorded. Pending titles stay on the desk, never behind a Play button.'
+                /* Two kinds of title sit on this shelf now, and the sentence has
+                   to cover both: author-published free software, and id's
+                   shareware episode of DOOM, whose permission is written down
+                   rather than licensed. Saying only the first would be a lie
+                   about the second. */
+                ? 'Real MS-DOS games running in your browser on js-dos. Every title says why it may be here: most are published by their authors under the GPL or MIT, and one is a vendor shareware release redistributed with written permission. Each card carries its licence and its source.'
                 : copy('retro.lede', RETRO_LEDE)}
             </p>
           </div>

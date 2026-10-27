@@ -25,7 +25,7 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { MAX_BUNDLE_BYTES, inspectBundle, validateDosGame } from '../../src/lib/dos';
+import { MAX_BUNDLE_BYTES, autoexecProgram, inspectBundle, validateDosGame } from '../../src/lib/dos';
 import { buildZip, readZipDirectory, readZipEntry } from '../../src/lib/zip';
 
 /* ------------------------------------------------------------- assembler */
@@ -200,12 +200,14 @@ CALIB.COM
 `;
 
 const SHELF_NOTE =
-  'The DOS shelf holds only builds this project may host: four games published by their own authors ' +
-  'under the GPL or MIT, plus our CC0 calibration cartridge. None of them is a commercial title. The ' +
-  '1,499 titles in the discovery index are somebody else’s games with an aggregator’s "Freeware" or ' +
-  '"Shareware" label, which is not a redistribution grant — so they stay in the review queue, ' +
-  'searchable and linked to their original source, with no Play button until an administrator records ' +
-  'evidence on the desk.';
+  'The DOS shelf holds only builds this project may host: games published by their own authors under ' +
+  'the GPL or MIT, our CC0 calibration cartridge, and one vendor shareware release — id’s DOOM ' +
+  'episode one, which John Carmack confirmed on 23 October 1999 is freely distributable and which ' +
+  'Debian and RPM Fusion distribute on that basis, with the IWAD pinned to the official checksum. ' +
+  'Each record states its own basis in `rights`. The 1,499 titles in the discovery index are ' +
+  'somebody else’s games with an aggregator’s "Freeware" or "Shareware" label, which is not a ' +
+  'redistribution grant — so they stay in the review queue, searchable and linked to their original ' +
+  'source, with no Play button until an administrator records evidence on the desk.';
 
 /** The cartridge this script builds, in the shape the shelf manifest expects. */
 function calibrationRecord(programBytes: number, bundleBytes: number) {
@@ -226,7 +228,9 @@ function calibrationRecord(programBytes: number, bundleBytes: number) {
       'behaviour we can describe exactly.',
     bundle: 'bundles/pikachu-calibration.jsdos',
     bytes: bundleBytes,
-    cover: null,
+    /* Captured from the running cartridge, not drawn: the first thing you see
+       when you insert it is the DOSBox banner, so that is the card. */
+    cover: 'covers/pikachu-calibration.png',
     accent: '#f2c14e',
     tags: ['test', 'utility'],
     rights: 'Authored for this project and released CC0 1.0. Contains no third-party code or data.',
@@ -243,6 +247,11 @@ interface ShelfRow {
   title: string;
   bundle: string;
   bytes: number;
+  /* Everything else a record carries — the tagline, the licence, the rights
+     paragraph, the cover — has to survive this script too. It used to push only
+     the four fields above, so running `dos:shelf` silently blanked the authored
+     text in every record it passed through. */
+  [key: string]: unknown;
 }
 
 function readBuiltGames(): ShelfRow[] {
@@ -278,15 +287,10 @@ async function checkBundle(id: string, file: string): Promise<string> {
 
   /* The program the autoexec starts must exist at the archive root: js-dos
      mounts the bundle as C:, so a subdirectory would be a black screen. */
-  const program = (report.autoexec ?? '')
-    .split('\n')
-    .map((line) => line.trim())
-    /* Out of Cash's conf ends with a block of `# Generated using ...` comments,
-       and one of them mentions js-dos.com — strip comments before guessing
-       which line is the program. */
-    .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
-    .filter((line) => /\.(exe|com|bat)$/i.test(line))
-    .pop();
+  /* Out of Cash's conf ends with a block of `# Generated using ...` comments and
+     one of them mentions js-dos.com, and DOOM's line carries its own switches;
+     `autoexecProgram` strips the first kind and splits the second. */
+  const program = autoexecProgram(report.autoexec)?.file;
   const present = program && entries?.some((e) => e.name.toLowerCase() === program.toLowerCase());
   if (program && !present) {
     throw new Error(`${id}: [autoexec] starts ${program}, which is not at the bundle root (${entries?.length ?? 0} entries)`);
@@ -331,8 +335,12 @@ async function main() {
     : [];
   const known = new Set(['pikachu-calibration', ...built.map((g) => g.id)]);
   /* Anything an administrator published earlier is left alone; this script only
-     owns the calibration cartridge and the records npm run dos:games built. */
-  const extras = existing.filter((g) => g && !known.has(g.id));
+     owns the calibration cartridge and the records npm run dos:games built.
+     A built title that is missing from records.json this run (a checksum that
+     failed, a download that did not happen) keeps the record it already had
+     rather than vanishing from the shelf. */
+  const builtIds = new Set(built.map((g) => g.id));
+  const extras = existing.filter((g) => g && !known.has(g.id) && !builtIds.has(g.id));
 
   const games = [calibrationRecord(program.length, bundle.length), ...built, ...extras];
   for (const game of games) {

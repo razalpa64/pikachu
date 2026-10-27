@@ -31,7 +31,8 @@
     "dos:import": "tsx scripts/dos/import.ts",
     "dos:import:plan": "tsx scripts/dos/import.ts --dry-run",
     "dos:games": "tsx scripts/dos/make-games.ts",
-    "dos:shelf": "tsx scripts/dos/make-shelf.ts"
+    "dos:shelf": "tsx scripts/dos/make-shelf.ts",
+    "dos:covers": "node scripts/dos/capture-covers.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

@@ -22,6 +22,17 @@ export interface ZipEntry {
   method: number;
   crc32: number;
   isDirectory: boolean;
+  /**
+   * Where this entry's local header sits in the file.
+   *
+   * Needed because a zip written to a stream (which is what most bundlers do,
+   * and what a `.jsdos` produced by js-dos looks like) leaves the sizes in the
+   * local header as zero and puts them in a trailing data descriptor instead.
+   * Walking local headers one after another — the obvious way to find an entry —
+   * cannot get past the first of those, so the central directory, which always
+   * knows the real offsets, is the map.
+   */
+  localOffset: number;
 }
 
 const SIG_EOCD = 0x06054b50;
@@ -65,7 +76,8 @@ export function readZipDirectory(bytes: Uint8Array): ZipEntry[] | null {
     const nameStart = p + 46;
     if (nameStart + nameLen > bytes.length) return null;
     const name = new TextDecoder().decode(bytes.subarray(nameStart, nameStart + nameLen));
-    entries.push({ name, size, compressedSize, method, crc32, isDirectory: name.endsWith('/') });
+    const localOffset = u32(bytes, p + 42);
+    entries.push({ name, size, compressedSize, method, crc32, isDirectory: name.endsWith('/'), localOffset });
     p = nameStart + nameLen + extraLen + commentLen;
   }
   return entries;
@@ -84,30 +96,29 @@ export function readZipDirectory(bytes: Uint8Array): ZipEntry[] | null {
 export async function readZipEntry(bytes: Uint8Array, wanted: string): Promise<Uint8Array | null> {
   const entries = readZipDirectory(bytes);
   if (!entries) return null;
-  const index = entries.findIndex((e) => e.name.replace(/^\.\//, '') === wanted);
-  if (index < 0) return null;
+  const entry = entries.find((e) => e.name.replace(/^\.\//, '') === wanted);
+  if (!entry) return null;
 
-  /* The central directory gives sizes, but not where the local header is; walk
-     local headers in order, which is how a ZIP is laid out. */
-  let offset = 0;
-  for (let i = 0; i < entries.length; i += 1) {
-    if (offset + 30 > bytes.length || u32(bytes, offset) !== SIG_LOCAL) return null;
-    const nameLen = u16(bytes, offset + 26);
-    const extraLen = u16(bytes, offset + 28);
-    const compressedSize = u32(bytes, offset + 18);
-    const dataStart = offset + 30 + nameLen + extraLen;
-    if (dataStart + compressedSize > bytes.length) return null;
-    if (i === index) {
-      const raw = bytes.subarray(dataStart, dataStart + compressedSize);
-      if (entries[i].method === 0) return raw.slice();
-      if (entries[i].method !== 8) return null;
-      const stream = new Blob([raw as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-      const buffer = await new Response(stream).arrayBuffer();
-      return new Uint8Array(buffer);
-    }
-    offset = dataStart + compressedSize;
-  }
-  return null;
+  /* Straight to the entry's own local header, using the offset the central
+     directory recorded — not a walk from the top of the file. See `localOffset`
+     for why: a streamed archive stores 0 in the local header's size fields, and
+     a walk that trusts them cannot even find the second entry. */
+  const offset = entry.localOffset;
+  if (offset + 30 > bytes.length || u32(bytes, offset) !== SIG_LOCAL) return null;
+  const nameLen = u16(bytes, offset + 26);
+  const extraLen = u16(bytes, offset + 28);
+  const dataStart = offset + 30 + nameLen + extraLen;
+  /* The central directory's sizes are authoritative; the local header's may be
+     zeroed when a data descriptor follows the data. */
+  const compressedSize = entry.compressedSize || u32(bytes, offset + 18);
+  if (!compressedSize || dataStart + compressedSize > bytes.length) return null;
+
+  const raw = bytes.subarray(dataStart, dataStart + compressedSize);
+  if (entry.method === 0) return raw.slice();
+  if (entry.method !== 8) return null;
+  const stream = new Blob([raw as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  const buffer = await new Response(stream).arrayBuffer();
+  return new Uint8Array(buffer);
 }
 
 /* ------------------------------------------------------------------ writer */

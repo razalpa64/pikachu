@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   MAX_BUNDLE_BYTES,
+  autoexecProgram,
   countStages,
   dosGameById,
   extractAutoexec,
@@ -18,7 +19,7 @@ import {
   validateDosGame,
   type DosCandidate,
 } from '../dos';
-import { buildZip, readZipDirectory, readZipEntry } from '../zip';
+import { buildZip, crc32, readZipDirectory, readZipEntry } from '../zip';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 const shelfRaw = JSON.parse(readFileSync(join(root, 'public/retro/dos/shelf.json'), 'utf8')) as unknown;
@@ -28,6 +29,77 @@ const text = (bytes: Uint8Array | null) => (bytes ? new TextDecoder().decode(byt
 /** `readZipEntry` is async because deflated entries go through
  *  `DecompressionStream`; the tests await it like the callers do. */
 const entry = (zip: Uint8Array, name: string) => readZipEntry(zip, name);
+
+/**
+ * A ZIP the way a stream writes one: no sizes in the local headers, a data
+ * descriptor after each payload, and a correct central directory at the end.
+ * `buildZip` writes the other shape (sizes up front), so this cannot be made
+ * with it — and the difference is exactly the bug this test pins.
+ */
+function streamedZip(files: { name: string; body: string }[]): Uint8Array {
+  const enc = new TextEncoder();
+  const parts: Uint8Array[] = [];
+  const central: { name: Uint8Array; data: Uint8Array; offset: number }[] = [];
+  let offset = 0;
+  const header = (fields: [number, number][], nameLen: number, dataLen: number) => {
+    const out = new Uint8Array(30 + nameLen);
+    const view = new DataView(out.buffer);
+    view.setUint32(0, 0x04034b50, true);
+    for (const [at, value] of fields) view.setUint16(at, value, true);
+    view.setUint16(26, nameLen, true);
+    view.setUint16(28, 0, true);
+    void dataLen;
+    return out;
+  };
+  for (const file of files) {
+    const name = enc.encode(file.name);
+    const data = enc.encode(file.body);
+    /* local header: everything the format wants, with crc and sizes at zero */
+    const local = header([[4, 20], [6, 0], [8, 0], [10, 0], [12, 0]], name.length, data.length);
+    local.set(name, 30);
+    const descriptor = new Uint8Array(16);
+    const dv = new DataView(descriptor.buffer);
+    dv.setUint32(0, 0x08074b50, true);
+    dv.setUint32(4, crc32(data), true);
+    dv.setUint32(8, data.length, true);
+    dv.setUint32(12, data.length, true);
+    central.push({ name, data, offset });
+    parts.push(local, data, descriptor);
+    offset += local.length + data.length + descriptor.length;
+  }
+  const cd: Uint8Array[] = [];
+  let cdSize = 0;
+  for (const { name, data, offset: at } of central) {
+    const rec = new Uint8Array(46 + name.length);
+    const v = new DataView(rec.buffer);
+    v.setUint32(0, 0x02014b50, true);
+    v.setUint16(4, 20, true);        // version made by
+    v.setUint16(6, 20, true);        // version needed
+    v.setUint16(10, 0, true);        // method: stored
+    v.setUint32(16, crc32(data), true);
+    v.setUint32(20, data.length, true);
+    v.setUint32(24, data.length, true);
+    v.setUint16(28, name.length, true);
+    v.setUint32(42, at, true);       // where the local header is
+    rec.set(name, 46);
+    cd.push(rec);
+    cdSize += rec.length;
+  }
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true);
+  ev.setUint32(16, offset, true);
+  const all = [...parts, ...cd, end];
+  const total = all.reduce((n, part) => n + part.length, 0);
+  const zip = new Uint8Array(total);
+  let at = 0;
+  for (const part of all) { zip.set(part, at); at += part.length; }
+  return zip;
+}
+
 
 /* ------------------------------------------------------------------- zip */
 
@@ -83,6 +155,26 @@ describe('the zip reader and writer', () => {
       const exits = bytes[i] === 0xb8 && bytes[i + 1] === 0x00 && bytes[i + 2] === 0x4c;
       expect(exits, `mov ax, 4C00h at offset ${i}`).toBe(false);
     }
+  });
+
+  it('reads past the first entry of a streamed zip, which is how js-dos writes them', async () => {
+    /* An archive written to a stream leaves the size fields in each local header
+       at zero and puts the real sizes in a trailing data descriptor. The reader
+       used to walk local headers and trust their sizes, so it found the *first*
+       entry and declared every later one missing — which meant a .jsdos bundle
+       built in the browser could be uploaded and never read. The central
+       directory always knows where each entry starts; that is what is used now,
+       and this fixture is the shape that broke it. */
+    const files = [
+      { name: '.jsdos/dosbox.conf', body: '[autoexec]\nGAME.EXE\n' },
+      { name: 'GAME.EXE', body: 'MZ-not-really-this-is-a-test' },
+    ];
+    const zip = streamedZip(files);
+
+    expect(readZipDirectory(zip)?.map((e) => e.name)).toEqual(files.map((f) => f.name));
+    expect(text(await entry(zip, '.jsdos/dosbox.conf'))).toBe(files[0].body);
+    /* The second entry is the one the old walk could not reach. */
+    expect(text(await entry(zip, 'GAME.EXE'))).toBe(files[1].body);
   });
 
   it('says null for something that is not a zip at all', async () => {
@@ -146,6 +238,22 @@ describe('the DOS player document', () => {
       const conf = text(await entry(bytes, '.jsdos/dosbox.conf')) ?? '';
       expect(conf, game.id).not.toMatch(/autolock\s*=\s*true/i);
     }
+  });
+
+  it('reads an [autoexec] program with its switches, and ignores comments', () => {
+    /* DOOM is launched into a level, which means the run line is a program *and*
+       arguments. Three scripts used to match the whole line against
+       `/\.(exe|com|bat)$/`, so a correct bundle was rejected as "never starts a
+       program". */
+    expect(autoexecProgram('[autoexec]\n@echo off\nmount c .\nc:\nDOOM.EXE -warp 1 1 -skill 3\n'))
+      .toEqual({ file: 'DOOM.EXE', args: ['-warp', '1', '1', '-skill', '3'] });
+    /* A `rem` line is DOS's own comment, not a program called REM. */
+    expect(autoexecProgram('[autoexec]\nmount c .\nrem straight into the level\nGAME.BAT\n'))
+      .toEqual({ file: 'GAME.BAT', args: [] });
+    /* The last thing that runs wins, because that is what the machine ends on. */
+    expect(autoexecProgram('[autoexec]\nSETUP.EXE\nGAME.EXE\n')?.file).toBe('GAME.EXE');
+    expect(autoexecProgram('[autoexec]\nmount c .\nc:\n')).toBeNull();
+    expect(autoexecProgram(null)).toBeNull();
   });
 
   it('never ends an [autoexec] with `exit`, which shuts the emulator down', async () => {
@@ -297,22 +405,33 @@ describe('the committed DOS shelf', () => {
   it('holds the games this project can justify, and nothing else', () => {
     /* Sorted by title, which is the order the manifest is written in. */
     expect(shelf.games.map((g) => g.title)).toEqual([
-      'Calibration', 'Celis', 'Floppybird', 'Moth Hunter', 'nasm-tetris',
+      'Calibration', 'Celis', 'DOOM', 'Floppybird', 'Moth Hunter', 'nasm-tetris',
       'Out of Cash', 'Sadist', 'Snake (54 bytes)', 'Super Vinnie-Pooh',
     ]);
     for (const game of shelf.games) {
       expect(game.rights.length).toBeGreaterThan(8);
-      /* A formal licence, not an aggregator's label — this is the whole point. */
-      expect(game.license).toMatch(/^(CC0|MIT|GPL|ISC|Apache|BSD)/);
+      /* A formal licence, not an aggregator's label — this is the whole point.
+         One exception, and it is not a label: DOOM's shareware episode ships
+         under id's own terms, confirmed in writing by John Carmack on
+         23 October 1999 and relied on by Debian and RPM Fusion to this day, so
+         it is held to its own, stricter test below. */
+      expect(game.license, game.id).toMatch(/^(CC0|MIT|GPL|ISC|Apache|BSD|Distributable)/);
       expect(game.bundle).toMatch(/^bundles\/[a-z0-9-]+\.jsdos$/);
       expect(game.sourceUrl.startsWith('https://')).toBe(true);
     }
     expect(dosGameById(shelf.games, 'pikachu-calibration')?.title).toBe('Calibration');
     expect(dosGameById(shelf.games, 'sadist')?.license).toBe('GPL-3.0');
     expect(dosGameById(shelf.games, 'moth-hunter')?.license).toBe('MIT');
-    /* The two titles people ask for are not here, and the manifest says so by
-       simply not containing them. */
-    expect(dosGameById(shelf.games, 'doom')).toBeNull();
+    /* DOOM is here on the shareware basis, and the record has to say so: the
+       bytes are id's, the permission rests on a written statement, and the
+       registered episodes are not in the bundle. */
+    const doom = dosGameById(shelf.games, 'doom-shareware');
+    expect(doom?.title).toBe('DOOM');
+    expect(doom?.license).toMatch(/^Distributable/);
+    expect(doom?.rights).toMatch(/Carmack/);
+    expect(doom?.rights.toLowerCase()).toContain('freely distributable');
+    /* Vice City still has no DOS release, so it is still not here. */
+    expect(dosGameById(shelf.games, 'vice-city')).toBeNull();
     expect(dosGameById(shelf.games, 'vice-city')).toBeNull();
     expect(dosGameById(shelf.games, undefined)).toBeNull();
   });
@@ -330,13 +449,10 @@ describe('the committed DOS shelf', () => {
       });
       expect(report.problems, game.id).toEqual([]);
 
-      /* The program the autoexec names has to exist at the archive root. */
-      const program = (report.autoexec ?? '')
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
-        .filter((line) => /\.(exe|com|bat)$/i.test(line))
-        .pop();
+      /* The program the autoexec names has to exist at the archive root. The
+         line may carry switches — DOOM boots straight into a level — so this
+         reads the program the same way the build scripts do. */
+      const program = autoexecProgram(report.autoexec)?.file;
       expect(program, game.id).toBeTruthy();
       expect(entries?.some((e) => e.name.toLowerCase() === program!.toLowerCase()), `${game.id}: ${program}`).toBe(true);
 

@@ -94,18 +94,26 @@ class Program {
 /**
  * CALIB.COM
  *
- *   text mode:  print a two-line banner, wait for a key
+ *   text mode:  print the banner, wait for a key
  *   mode 13h:   fill 4 × 16000 bytes of A000:0 with four colours, wait for a key
- *   mode 3:     restore text, exit to DOS
+ *   mode 3:     back to text, and round again — forever, until the visitor
+ *               leaves the page
  *
- * Only three interrupts are used, all of them BIOS/DOS staples: INT 10h AL=0Eh
- * (teletype), INT 10h AH=00h (set video mode), INT 21h AH=09h/01h/4Ch (print,
- * read key, exit). Nothing here depends on the emulator beyond running x86.
+ * It used to finish with INT 21h AH=4Ch, and that was a mistake worth recording:
+ * the program returned to DOS, DOSBox cleared video mode 13h and drew a bare
+ * `C:\>` prompt, so the cartridge whose entire job is to prove the player works
+ * ended on a black screen. A test card should not exit. It now loops, which also
+ * gives a visitor something to press and a way to see both video modes.
+ *
+ * Only three interrupts are used, all of them BIOS/DOS staples: INT 10h AH=00h
+ * (set video mode), INT 21h AH=09h/01h (print, read key). Nothing here depends
+ * on the emulator beyond running x86.
  */
 function calibrationProgram(): Uint8Array {
   const p = new Program();
 
   /* ---- banner, in the default text mode ---- */
+  p.label('top');
   p.db(0xb4, 0x09);            // mov ah, 09h   — write $-terminated string
   p.abs16(0xba, 'banner');     // mov dx, banner
   p.db(0xcd, 0x21);            // int 21h
@@ -134,18 +142,21 @@ function calibrationProgram(): Uint8Array {
   p.db(0xb4, 0x01);            // mov ah, 01h   — wait for a key
   p.db(0xcd, 0x21);            // int 21h
 
-  /* ---- back to text and out ---- */
-  p.db(0xb8, 0x03, 0x00);      // mov ax, 0003h
+  /* ---- back to text, and round again ---- */
+  p.db(0xb8, 0x03, 0x00);      // mov ax, 0003h — 80×25 text, which clears
   p.db(0xcd, 0x10);            // int 10h
-  p.db(0xb8, 0x00, 0x4c);      // mov ax, 4C00h
-  p.db(0xcd, 0x21);            // int 21h
+  p.rel8(0xeb, 'top');         // jmp top       — never exits to the DOS prompt
 
   p.label('banner');
   const text =
     '\r\n' +
     '  PIKACHU ARCADE / DOS CALIBRATION\r\n' +
     '  ----------------------------------\r\n' +
-    '  Text mode: OK. Press a key for graphics...\r\n' +
+    '  Text mode is working. Press any key for the colour bars,\r\n' +
+    '  and any key again to come back to this screen.\r\n' +
+    '\r\n' +
+    '  If you can read this and see four coloured bars, the player,\r\n' +
+    '  its DOSBox core and this cartridge are all working.\r\n' +
     '$';
   p.db(...new TextEncoder().encode(text));
 
@@ -210,8 +221,9 @@ function calibrationRecord(programBytes: number, bundleBytes: number) {
     description:
       `A ${programBytes}-byte program written for this site and assembled byte by byte in ` +
       '`scripts/dos/make-shelf.ts`. It prints a banner in text mode, paints four colour bars in VGA ' +
-      'mode 13h, then returns to DOS. If the DOS player is working, this runs — which is why it ships: ' +
-      'it is the one cartridge whose behaviour we can describe exactly.',
+      'mode 13h, then loops back to the banner — press any key to alternate between the two screens. ' +
+      'If the DOS player is working, this runs — which is why it ships: it is the one cartridge whose ' +
+      'behaviour we can describe exactly.',
     bundle: 'bundles/pikachu-calibration.jsdos',
     bytes: bundleBytes,
     cover: null,

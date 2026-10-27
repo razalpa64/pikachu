@@ -18,14 +18,14 @@
       "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.",
       "id": "celis",
       "bundle": "bundles/celis.jsdos",
-      "bytes": 1181378,
+      "bytes": 1181587,
       "cover": null,
       "provenance": {
         "repo": "GadZombie/celis",
         "commit": "01bea787b64e0033bc0fcb26784d8a5af55b6c9e",
         "license": "GPL-3.0",
         "prebuilt": null,
-        "sha256": "b0ef88d05079c0e84597292c56466cad3649cddce36883d915824d533a56a195"
+        "sha256": "9973b851e6c41efd4d812f1a4d60da77084903df874a151a6a93341cf49927dc"
       }
     },
     {
@@ -45,14 +45,14 @@
       "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.",
       "id": "sadist",
       "bundle": "bundles/sadist.jsdos",
-      "bytes": 8088368,
+      "bytes": 8088577,
       "cover": null,
       "provenance": {
         "repo": "GadZombie/sadist",
         "commit": "237267637e41e3368cf3137dc743e69db280bc83",
         "license": "GPL-3.0",
         "prebuilt": null,
-        "sha256": "98836c257e8867f1421a0d160381fee27f726b61fdfd4b8692a35b404446df9b"
+        "sha256": "e5db8e19e58699066fe6631a9e8e697086e3b7cdffd2961637ea975379966111"
       }
     },
     {
@@ -99,14 +99,14 @@
       "rights": "MIT (c) Krzysztof Krystian Jankowski, who published both the .COM build and the assembly source in this repository under that licence. An unmodified copy of the build is packaged here with the MIT text as LICENSE.TXT, which is the notice the licence asks us to keep.",
       "id": "moth-hunter",
       "bundle": "bundles/moth-hunter.jsdos",
-      "bytes": 3070,
+      "bytes": 3279,
       "cover": null,
       "provenance": {
         "repo": "w84death/x86-assembly",
         "commit": "83a8662fec59b66d80940901f0ff739ca5908810",
         "license": "MIT",
         "prebuilt": null,
-        "sha256": "afbb5b82c1eedb99d0a9c4b814ca9bb04f12e7de6b06527f2b0a25973168e124"
+        "sha256": "69ceaf8f52cf81c8e59038a672afef144ffaf7c627c9c18a85bf16b0d1734fcc"
       }
     },
     {
@@ -126,14 +126,14 @@
       "rights": "Apache-2.0, granted by the game’s author and copyright holder, Mikhail Bratus, who added the licence file to this repository in 2022 next to the source and the assets. The build shipped here is his published POOH.exe plus the data files its code opens; no third-party art or sound.",
       "id": "vinnie-pooh",
       "bundle": "bundles/vinnie-pooh.jsdos",
-      "bytes": 2499393,
+      "bytes": 2499602,
       "cover": null,
       "provenance": {
         "repo": "D0NM/Vinnie",
         "commit": "b84f07bd63e0ad7a6e9aebd5d06736c25c38aa7e",
         "license": "Apache-2.0",
         "prebuilt": null,
-        "sha256": "7589b9080b03c66aa6c107c569a6167a75c1ce77d776b596e1c0af56352c5fff"
+        "sha256": "215a2ad5b86cb3cd5f681ac45dbab2670e6fdf72836e8dd3ae2a9f0bc0479163"
       }
     },
     {
@@ -153,14 +153,14 @@
       "rights": "MIT (c) Mihail Szabolcs, who published the source, the .COM build and the sprite data in this repository under that licence. Served unmodified with the MIT text as LICENSE.TXT.",
       "id": "floppybird",
       "bundle": "bundles/floppybird.jsdos",
-      "bytes": 11253,
+      "bytes": 11462,
       "cover": null,
       "provenance": {
         "repo": "icebreaker/floppybird",
         "commit": "511ffa5f5f7e6d5dbe9c2942557670ae6fc85a53",
         "license": "MIT",
         "prebuilt": null,
-        "sha256": "c3f1f6426a5a9cbcada7e316ac66b3b6af600a542c355e3bb171b3107ef5c335"
+        "sha256": "12720d73683474784941804c97dcf8e88fe0f5536063fbca2b7cb4809ca31c1c"
       }
     },
     {
@@ -180,14 +180,14 @@
       "rights": "MIT (c) Arkadiusz Placha: his own clone, his own assembly source, published together under that licence. The MIT text ships inside the bundle as LICENSE.TXT.",
       "id": "nasm-tetris",
       "bundle": "bundles/nasm-tetris.jsdos",
-      "bytes": 6343,
+      "bytes": 6552,
       "cover": null,
       "provenance": {
         "repo": "Arkowski24/nasm-tetris",
         "commit": "3fc95987c68e71200538b2f52f1b032e9b15b85f",
         "license": "MIT",
         "prebuilt": null,
-        "sha256": "26e073bcf6424c6ede78d5ccd41dfaf337d4abdaca5230f61154bc9be868977c"
+        "sha256": "8476bfd157d9620375c31a2cc94ce3f7eece7433fc90c7906dd0e5024cca6db6"
       }
     },
     {
@@ -207,14 +207,14 @@
       "rights": "MIT, published with the .COM and with the assembly source it is generated from, by its author. Fifty-four bytes of machine code; there is no third-party data inside it.",
       "id": "snake-54",
       "bundle": "bundles/snake-54.jsdos",
-      "bytes": 2510,
+      "bytes": 2719,
       "cover": null,
       "provenance": {
         "repo": "donno2048/snake",
         "commit": "45b21177a811d62f7300f327cb58a44c52236d29",
         "license": "MIT",
         "prebuilt": null,
-        "sha256": "51622d54b4c67add613af4ad1665e649c13441cf15883e1e253803d4d51b8ff1"
+        "sha256": "87e3f36939dc44988693b32baf76e9e6799f8cf7329502723961c0d2de382e1f"
       }
     }
   ]

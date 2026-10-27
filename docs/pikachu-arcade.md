@@ -114,6 +114,63 @@ under the monitor, a **Try again** that remounts the player document, **Open
 alone** for the standalone player, and keyboard focus handed to the frame once
 it boots so the first arrow key already moves the game.
 
+### The third bug, found by playing them: a mouse capture card over every game
+
+Once the machine started, every cartridge booted — and seven of the nine put a
+full-screen **“Click to capture mouse”** card and a sensitivity slider over the
+game before it could be played. That is not a fault in js-dos: it reads
+`autolock` out of each `dosbox.conf`, turns it into pointer lock, and shows the
+capture UI while the lock is pending. DOSBox's own default is `autolock=true`,
+authors copy their conf from a template, and the packaging script copied theirs
+— so the setting arrived switched on.
+
+None of the nine cartridges is a mouse-look first-person game. The two
+adventures (Celis, Sadist) move the DOS cursor absolutely, which needs no lock;
+the rest are keyboard games. Every `dosbox.conf` this repository generates now
+sets `autolock=false` (`scripts/dos/make-games.ts`), and
+`src/lib/__tests__/dos.test.ts` fails the build if `autolock=true` reappears in a
+shipped bundle.
+
+The same pass found a smaller one in our own test card. `CALIB.COM` ended with
+`INT 21h AH=4Ch` — a clean exit to DOS — so DOSBox cleared mode 13h and left a
+bare `C:\>` prompt. The cartridge whose entire job is to prove the player works
+finished on a black screen. It now loops: banner, key, colour bars, key, banner
+again, until the visitor leaves. `dos.test.ts` asserts the `4C 00` exit sequence
+is absent.
+
+### What the nine games actually do, now that there is a browser
+
+Verified in headless Chromium (1280×860, WebGL through SwiftShader) by loading
+each cartridge, waiting for the canvas, pressing the keys a player would press,
+and comparing the frames before and after:
+
+| Cartridge | Boots | What was on the screen | Accepted input |
+|---|---|---|---|
+| Calibration | yes | banner → four colour bars → back to the banner | **yes**, Space alternates both screens |
+| Floppybird | yes | title screen, then the game: parrot, city skyline, score | **yes**, Space starts it and flaps |
+| Moth Hunter | yes | the playfield: ship row at the top, moth below | **yes**, arrows move, Space fires |
+| nasm-tetris | yes | board, falling piece, next-piece box, score | **yes**, arrows move/rotate the piece |
+| Snake (54 bytes) | yes | the playfield, snake body, food | **yes**, arrows steer it |
+| Super Vinnie-Pooh | yes | Russian title menu, (c) 1996 FaMe, then attract mode | **yes**, Enter advances it |
+| Celis | yes | author credit screen, starfield, music player | **yes**, the animation advances |
+| Sadist | yes | the studio logo / title card | **not confirmed** — Enter and Space left the frame unchanged |
+| Out of Cash | yes | DOSBox banner, `OUTCA$H.EXE` loader, then the WARCOM SOFT 2025 logo | **partly** — it advanced through its loader; menu input not confirmed |
+
+That is nine of nine booting and drawing, six confirmed to take keyboard input,
+one whose title screen ignores the keys tried, and one still loading. It is not
+a claim that anybody finished a game — it is a claim that the player and the
+archive work, made from pixels rather than from hope.
+
+Getting there needed a browser this sandbox could not download. The repository's
+own `npm run e2e:retro:dos` now runs against any Chromium build via
+`PIKACHU_CHROME` / `PIKACHU_LD`, and **it passes, on desktop and on a phone
+viewport** — 15 checks, including the colour bars in the framebuffer, a keypress
+leaving the banner, and pause holding the picture still. Two things had to be
+fixed in that script to make it honest: reading the canvas with
+`drawImage` returns black because js-dos renders through WebGL (it now decodes a
+real screenshot, PNG and all), and the colour-bar check scanned a *horizontal*
+line through vertically-stacked bars, so it could only ever see one colour.
+
 ## The nine committed DOS cartridges
 
 Nothing in this table came from a ROM site, a "freeware" aggregator or a
@@ -216,16 +273,26 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | js-dos's `ci-ready`, a canvas and a stray pre-run screen all end in "running" | same file | **yes** |
 | An error from js-dos is repeated to the visitor, with a working retry | `src/screens/__tests__/retro-dos.test.ts` | **yes** |
 | The vendored js-dos still honours `autoStart` / `ci-ready` / `.pre-run-window` | `src/lib/__tests__/dos.test.ts` | **yes** |
-| js-dos draws a frame and the calibration bars are in it | `npm run e2e:retro:dos` (Playwright) | **no — no Chromium in this sandbox** |
-| Any of the eight games actually plays | would need a browser and a DOS runtime | **no — and there is no DOSBox in this sandbox to test with either** |
+| js-dos draws a frame, the calibration bars are in it, a keypress reaches the program, pause holds the picture | `npm run e2e:retro:dos` (Playwright, headless Chromium) | **yes — 15 checks, desktop and phone** |
+| All nine cartridges boot and draw | the same harness, one cartridge at a time, frames compared before and after input | **yes** |
+| Six of them visibly respond to the keys a player presses | same | **yes** |
+| Sadist and Out of Cash take menu input beyond their first screens | would need a longer scripted run per game | **no** |
 
-`npm test` → 830 tests in 55 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 832 tests in 55 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
-The one claim this report will not make is “the DOS shelf plays”. The HTTP and
-structural layers are proven; the framebuffer is not. On a machine with a browser,
-`npm run e2e:retro:dos` is the check that turns that claim honest — it asserts on
-canvas pixels, on pause holding the picture still, and on fullscreen taking the
-viewport.
+What this report still will not claim is that all nine games are *finishable*, or
+that a human sat and played them end to end. What it can now claim, because the
+pixels were read, is that every cartridge boots into its own screen, that six of
+them visibly respond to the keys a player presses, and that the player's own
+controls — pause, resume, mute, fullscreen, the error card — behave. The honest
+gap left is Sadist's menu and Out of Cash's menu, which a five-second scripted
+press did not get past.
+
+Reproducing it needs only a browser. `npm run e2e:retro:dos` (add `--phone` for
+the touch viewport) runs against the dev server; if the sandbox cannot download
+Chromium, point `PIKACHU_CHROME` and `PIKACHU_LD` at any Chromium build and the
+same 15 checks run. That is how the DOS shelf went from "structurally correct" to
+"watched working" in one sitting.
 
 ## What the admin desk can do
 
@@ -262,7 +329,11 @@ viewport.
 
 ## Gaps, stated plainly
 
-1. **No browser test of the DOS player in this environment.** See the table above.
+1. **The browser test needs a Chromium, and this sandbox cannot download one.**
+   `npx playwright install chromium` is blocked here, so the run recorded above
+   used an external Chromium build via `PIKACHU_CHROME` / `PIKACHU_LD`. On a
+   normal machine the plain command works. Either way, the check exists and
+   passes — what is missing is only the download.
 2. **Migration `0006_dos.sql` has been rehearsed in PGlite only.** It has not been
    applied to a live Supabase project; the deploy order is `0001` → `0006`.
 3. **Phase 5’s commit (`89e7958`) is not on `main`.** This branch was cut from

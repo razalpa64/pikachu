@@ -15,9 +15,10 @@
  *      the index claims to be playable.
  *
  * What it cannot check — and does not pretend to: that js-dos draws a frame.
- * That needs a real browser with WebAssembly, an AudioContext and a canvas; this
- * sandbox has no Chromium it can download, so "the game runs" is asserted by
- * `scripts/e2e/retro-dos.mjs` on a machine that has one, and nowhere else.
+ * That needs a real browser with WebAssembly, an AudioContext and a canvas, and
+ * it lives in `scripts/e2e/retro-dos.mjs` (`npm run e2e:retro:dos`), which runs
+ * a real Chromium and reads the pixels it painted. Keep the two separate: this
+ * file is the fast structural gate that runs anywhere, that one is the proof.
  */
 import {
   MAX_BUNDLE_BYTES,

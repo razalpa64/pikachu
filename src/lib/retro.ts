@@ -389,6 +389,8 @@ export interface PlayerMessage {
   type?: string;
   status?: PlayerStatus;
   message?: string;
+  /** The player's own second line — the concrete reason, when it has one. */
+  detail?: string;
   dataUrl?: string;
   value?: number;
 }

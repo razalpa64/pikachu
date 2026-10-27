@@ -44,6 +44,7 @@
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.11",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/jsdom": "^30.0.0",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",

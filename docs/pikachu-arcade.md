@@ -68,6 +68,52 @@ content types, a smoke check that the old prefix does *not* serve the loader, an
 Bundles also no longer end their `[autoexec]` with `exit`: quitting DOS shuts
 js-dos down, which reads as a crash.
 
+### The second bug: js-dos was waiting for a click nobody was told about
+
+With the prefix fixed, the shelf still reported "DOS started, but no screen
+appeared" on every game. The bundle was not at fault either time.
+
+js-dos renders its `<canvas>` in exactly one place — the run window — and it
+enters that window when the bundle signals `bndReady` *and* `autoStart` is true
+with `countDownStart` at zero. `autoStart` defaults to false and the player
+never set it, so js-dos did exactly what it is designed to do: it loaded the
+bundle, showed its own pre-run screen with a Play button, and stopped. No
+canvas, no error, no console message. Our watcher polled for a canvas that could
+never appear and blamed the archive for it 25 seconds later.
+
+The fix is one option and one honest signal:
+
+- `autoStart: true`, `countDownStart: 0` — the machine starts by itself, which is
+  the only behaviour this desk has ever promised.
+- `kiosk: true`, `theme: "dark"` — js-dos's own sidebar and start screen are
+  gone, so the bezel holds the game and nothing else.
+- `onEvent` handling `ci-ready` — js-dos's real readiness signal, preferred over
+  polling; a canvas is still watched for as the fallback, because the library
+  can reach "running" by more than one route.
+- If a pre-run screen does appear anyway (an older checkout, a future upgrade),
+  the player *presses its Play button itself* rather than leaving a visitor
+  staring at chrome they were never told about.
+- The watchdog is 45 s, not 25 s — a cold boot fetches a 1.4 MB core and unpacks
+  up to 8 MB inside WebAssembly — and when it fires it quotes whatever js-dos has
+  written on its screen, then says the fault is in the player. It never says
+  "the bundle is broken" unless something actually checked the bundle.
+
+`src/screens/__tests__/dos-player.test.ts` runs the shipped document in jsdom
+with a scripted `window.Dos`: it asserts the options we pass, that `ci-ready`
+turns the boot card off, that a canvas is noticed without an event, that a
+pre-run screen gets clicked, and that js-dos's error text is repeated verbatim.
+Removing `autoStart` from the player fails that suite — verified by doing it.
+`src/lib/__tests__/dos.test.ts` additionally checks the *vendored library* still
+contains the `autoStart`/`countDownStart` gate, the `ci-ready` event and the
+`.pre-run-window` class, so an upgrade that renames them fails the build instead
+of the shelf.
+
+The desk page around it was fixed in the same pass: a state card inside the
+bezel (warming up / still working / stopped), the player's own reason printed
+under the monitor, a **Try again** that remounts the player document, **Open
+alone** for the standalone player, and keyboard focus handed to the frame once
+it boots so the first arrow key already moves the game.
+
 ## The nine committed DOS cartridges
 
 Nothing in this table came from a ROM site, a "freeware" aggregator or a
@@ -166,10 +212,14 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | The player document, the 1.4 MB core, the bundle and both manifests are served correctly | `npm run smoke:dos` | **yes, green** |
 | Every bundle's `[autoexec]` starts a program that is really at the archive root | `npm run smoke:dos` (now checks the entry, not just the conf) | **yes, green** |
 | The player asks js-dos for its cores at a path that exists, over HTTP | `src/lib/__tests__/dos.test.ts` + `npm run smoke:dos` | **yes, green** |
+| The player passes the options that make js-dos start at all | `src/screens/__tests__/dos-player.test.ts` (jsdom, scripted `window.Dos`) | **yes** |
+| js-dos's `ci-ready`, a canvas and a stray pre-run screen all end in "running" | same file | **yes** |
+| An error from js-dos is repeated to the visitor, with a working retry | `src/screens/__tests__/retro-dos.test.ts` | **yes** |
+| The vendored js-dos still honours `autoStart` / `ci-ready` / `.pre-run-window` | `src/lib/__tests__/dos.test.ts` | **yes** |
 | js-dos draws a frame and the calibration bars are in it | `npm run e2e:retro:dos` (Playwright) | **no — no Chromium in this sandbox** |
 | Any of the eight games actually plays | would need a browser and a DOS runtime | **no — and there is no DOSBox in this sandbox to test with either** |
 
-`npm test` → 819 tests in 54 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 830 tests in 55 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
 The one claim this report will not make is “the DOS shelf plays”. The HTTP and
 structural layers are proven; the framebuffer is not. On a machine with a browser,

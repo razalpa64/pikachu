@@ -40,7 +40,7 @@ import { useStore } from '../lib/store';
 type Phase = 'booting' | 'loading' | 'running' | 'paused' | 'error';
 
 const PHASE_COPY: Record<Phase, { label: string; tone: string }> = {
-  booting: { label: 'Opening the desk', tone: '#f2b23c' },
+  booting: { label: 'Warming up the monitor', tone: '#f2b23c' },
   loading: { label: 'Mounting the drive', tone: '#f2b23c' },
   running: { label: 'Running', tone: '#6fcfa6' },
   paused: { label: 'Paused', tone: '#ffadc6' },
@@ -89,6 +89,11 @@ export default function RetroDosPlayer() {
   const [shelfError, setShelfError] = useState(false);
   const [phase, setPhase] = useState<Phase>('booting');
   const [problem, setProblem] = useState<string | null>(null);
+  /* The player document's own words, when it has any. A generic "it stopped" is
+     the least useful thing this page could say. */
+  const [detail, setDetail] = useState<string | null>(null);
+  /** Bumped by Retry: it remounts the iframe, which restarts the machine. */
+  const [attempt, setAttempt] = useState(0);
   const [muted, setMuted] = useState(false);
   const [stalled, setStalled] = useState(false);
   const [nativeFull, setNativeFull] = useState(false);
@@ -138,6 +143,16 @@ export default function RetroDosPlayer() {
   const remoteBundle = game && /^https:\/\//i.test(game.bundle) ? bundleUrlFor(game) : null;
   const src = remoteBundle || !game ? DOS_PLAYER_URL : `${DOS_PLAYER_URL}?game=${encodeURIComponent(game.id)}`;
 
+  /* Retry re-mounts the player document. Keyed on `attempt`, so the iframe is
+     torn down (taking its wasm machine with it) and a fresh one boots. */
+  const retry = useCallback(() => {
+    setPhase('booting');
+    setProblem(null);
+    setDetail(null);
+    setStalled(false);
+    setAttempt((n) => n + 1);
+  }, []);
+
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -151,7 +166,8 @@ export default function RetroDosPlayer() {
       }
       if (data.type === 'error') {
         setPhase('error');
-        setProblem('The player stopped. Its own message is on the screen below the monitor.');
+        setProblem((data.message as string | undefined) ?? 'The emulator stopped.');
+        setDetail((data.detail as string | undefined) ?? null);
       }
     };
     window.addEventListener('message', onMessage);
@@ -159,11 +175,13 @@ export default function RetroDosPlayer() {
   }, []);
 
   /* A bundle is a zip of an installation, not a cartridge: on a cold cache the
-     core alone is 1.4 MB, so silence is expected for a few seconds. Past the
-     player's own 25-second watchdog we stop promising it is coming. */
+     core alone is 1.4 MB, and an 8 MB game then has to be unpacked inside
+     WebAssembly. Silence for half a minute is normal, so the first hint that
+     this is taking a while waits 22 s, and the player's own watchdog is the one
+     that calls it a failure at 45 s. */
   useEffect(() => {
     if (phase === 'running' || phase === 'paused' || phase === 'error') return;
-    const t = window.setTimeout(() => setStalled(true), 20000);
+    const t = window.setTimeout(() => setStalled(true), 22000);
     return () => window.clearTimeout(t);
   }, [phase]);
 
@@ -301,7 +319,11 @@ export default function RetroDosPlayer() {
           {/* 4:3, the shape DOS actually ran in. The player document pads its own
               canvas inside this box; it is never stretched to fit. */}
           <div className="dos-screen">
+            {/* A DOS program reads the keyboard directly, so the frame takes
+                focus once it boots: the first arrow key then reaches the game
+                instead of being eaten by the desk page. */}
             <iframe
+              key={attempt}
               ref={iframeRef}
               src={src}
               title={`${game.title} — DOS emulator`}
@@ -309,14 +331,58 @@ export default function RetroDosPlayer() {
               allow="fullscreen; autoplay; gamepad"
               className="dos-iframe"
             />
-            {phase !== 'running' && phase !== 'paused' && (
-              <p className="dos-screen-note" role="status">
-                {phase === 'error'
-                  ? 'The emulator stopped — see the note under the monitor'
-                  : stalled
-                    ? 'Still fetching the emulator core — it is 1.4 MB on a cold cache'
-                    : phaseCopy.label}
-              </p>
+            {/* One card, three honest states: warming up, still working, failed.
+                The failed state carries the player's own words and a Retry, so a
+                dead screen is never a dead end. */}
+            {!started && (
+              <div
+                className="dos-screen-panel"
+                data-state={phase === 'error' ? 'error' : 'busy'}
+                role={phase === 'error' ? 'alert' : 'status'}
+              >
+                {phase === 'error' ? (
+                  <>
+                    <p className="dos-screen-panel-title">{problem ?? 'The emulator stopped'}</p>
+                    <p className="dos-screen-panel-line">
+                      {detail
+                        ?? 'The player document stopped before it drew a screen. Reloading usually clears it.'}
+                    </p>
+                    <div className="dos-screen-panel-actions">
+                      <button type="button" className="dos-screen-panel-btn" onClick={() => { retry(); sfx('click'); }}>
+                        <Icon name="play" size={12} /> Try again
+                      </button>
+                      <button type="button" className="dos-screen-panel-btn ghost" onClick={() => nav('/retro')}>
+                        <Icon name="back" size={12} /> Back to the shelf
+                      </button>
+                      {/* The player document also runs on its own. Opening it in
+                          a tab is the quickest way to see what it says in full —
+                          its console and js-dos's own error window included. */}
+                      <a
+                        className="dos-screen-panel-btn ghost"
+                        href={src}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Icon name="expand" size={12} /> Open alone
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="dos-screen-panel-spinner" aria-hidden />
+                    <p className="dos-screen-panel-title">
+                      {stalled ? 'Still working…' : phaseCopy.label}
+                    </p>
+                    <p className="dos-screen-panel-line">
+                      {phase === 'booting'
+                        ? 'Fetching the emulator and the bundle — 1.4 MB of core on a cold cache, then the game.'
+                        : stalled
+                          ? 'The DOSBox core and the bundle are large; an 8 MB game can take a while to unpack in the browser.'
+                          : 'Unpacking the bundle and mounting it as C:.'}
+                    </p>
+                  </>
+                )}
+              </div>
             )}
           </div>
 
@@ -450,9 +516,10 @@ export default function RetroDosPlayer() {
           </section>
         </div>
 
-        {problem && (
+        {phase === 'error' && problem && (
           <p role="alert" className="mt-4 rounded-lg border-2 border-blush-600/60 bg-ink-850 px-3.5 py-2.5 text-[12.5px] font-bold text-blush-600">
             {problem}
+            {detail ? <span className="block font-normal text-cream-400 mt-1">{detail}</span> : null}
           </p>
         )}
 

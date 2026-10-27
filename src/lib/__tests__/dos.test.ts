@@ -101,6 +101,19 @@ describe('the DOS player document', () => {
     expect(html).toContain('preflightCore');
   });
 
+  it('starts the machine without waiting for a click on js-dos’s pre-run screen', () => {
+    /* js-dos defaults `autoStart` to false. With it false, a loaded bundle ends
+       up on the library's own pre-run window — Play button, no canvas — and the
+       player's canvas watcher could never succeed. See
+       `src/screens/__tests__/dos-player.test.ts` for the behavioural version. */
+    const call = /window\.Dos\(host,\s*\{([\s\S]*?)\}\)/.exec(html)?.[1] ?? '';
+    expect(call).toContain('autoStart: true');
+    expect(call).toContain('countDownStart: 0');
+    expect(call).toContain('kiosk: true');
+    expect(call).toContain('onEvent');
+    expect(html).toContain('"ci-ready"');
+  });
+
   it('never ends an [autoexec] with `exit`, which shuts the emulator down', async () => {
     /* `exit` quits DOS, and js-dos tears the session down when DOS quits — a
        game that ends, or a test card that finishes, would look like a crash.
@@ -111,6 +124,33 @@ describe('the DOS player document', () => {
       const lines = (extractAutoexec(conf) ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
       expect(lines, game.id).not.toContain('exit');
     }
+  });
+});
+
+describe('the vendored js-dos still honours the player’s contract', () => {
+  /* The player passes `autoStart`/`kiosk`/`onEvent` and watches for a canvas and
+     a `.pre-run-window`. Every one of those is js-dos's own vocabulary, not
+     ours: if an upgrade renames the event, the option or the window class, the
+     player stops working in a way no type checker and no HTTP check can see.
+     These assertions fail the build before that ships. */
+  const lib = readFileSync(join(root, 'public/retro/jsdos/js-dos.js'), 'utf8');
+
+  it('has the autoStart option the player relies on', () => {
+    expect(lib).toContain('autoStart');
+    /* The gate itself: `bndReady` only plays by itself when autoStart is set and
+       there is no countdown. This is the line that was missing from our call. */
+    expect(lib).toMatch(/autoStart&&0===e\.countDownStart\?/);
+  });
+
+  it('emits the events the player listens for', () => {
+    for (const event of ['ci-ready', 'emu-ready', 'fullscreen-change']) {
+      expect(lib, event).toContain(event);
+    }
+  });
+
+  it('still has the pre-run window the player clicks through', () => {
+    expect(lib).toContain('pre-run-window');
+    expect(lib).toContain('jsdos-rso');
   });
 });
 

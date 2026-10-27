@@ -273,6 +273,152 @@ MOTH.COM
 exit
 `;
 
+const VINNIE_CONF = `[sdl]
+fullscreen=false
+fulldouble=false
+autolock=true
+waitonerror=true
+
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[cpu]
+core=auto
+cycles=fixed 30000
+cycleup=500
+cycledown=20
+
+[mixer]
+nosound=false
+rate=44100
+blocksize=1024
+prebuffer=20
+
+[sblaster]
+sbtype=sb16
+sbbase=220
+irq=7
+dma=1
+sbmixer=true
+oplmode=auto
+oplemu=default
+
+[dos]
+xms=true
+ems=true
+umb=true
+
+[autoexec]
+@echo off
+mount c .
+c:
+POOH.EXE
+exit
+`;
+
+const BIRD_CONF = `[sdl]
+fullscreen=false
+fulldouble=false
+autolock=true
+waitonerror=true
+
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[cpu]
+core=auto
+cycles=fixed 10000
+cycleup=500
+cycledown=500
+
+[mixer]
+nosound=false
+rate=44100
+blocksize=1024
+prebuffer=20
+
+[dos]
+xms=true
+ems=true
+umb=true
+
+[autoexec]
+@echo off
+mount c .
+c:
+FLPYBIRD.COM
+exit
+`;
+
+const TETRIS_CONF = `[sdl]
+fullscreen=false
+fulldouble=false
+autolock=true
+waitonerror=true
+
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[cpu]
+core=auto
+cycles=fixed 8000
+cycleup=500
+cycledown=500
+
+[mixer]
+nosound=false
+rate=44100
+blocksize=1024
+prebuffer=20
+
+[dos]
+xms=true
+ems=true
+umb=true
+
+[autoexec]
+@echo off
+mount c .
+c:
+TETRIS.EXE
+exit
+`;
+
+const SNAKE54_CONF = `[sdl]
+fullscreen=false
+fulldouble=false
+autolock=true
+waitonerror=true
+
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[cpu]
+core=auto
+cycles=fixed 8000
+cycleup=500
+cycledown=500
+
+[mixer]
+nosound=true
+
+[dos]
+xms=true
+ems=true
+umb=true
+
+[autoexec]
+@echo off
+mount c .
+c:
+SNAKE.COM
+exit
+`;
+
 const TITLES: Title[] = [
   {
     id: 'celis',
@@ -419,6 +565,137 @@ const TITLES: Title[] = [
         'MIT (c) Krzysztof Krystian Jankowski, who published both the .COM build and the assembly ' +
         'source in this repository under that licence. An unmodified copy of the build is packaged here ' +
         'with the MIT text as LICENSE.TXT, which is the notice the licence asks us to keep.',
+    },
+  },
+  {
+    id: 'vinnie-pooh',
+    repo: 'D0NM/Vinnie',
+    ref: 'b84f07bd63e0ad7a6e9aebd5d06736c25c38aa7e',
+    zip: {
+      files: [
+        { from: 'POOH.exe', as: 'POOH.EXE' },
+        { from: 'POOH.CFG', as: 'POOH.CFG' },
+        { from: 'SETPOOH.EXE', as: 'SETPOOH.EXE' },
+        { from: 'readmespooh.txt', as: 'README.TXT' },
+        { from: 'LICENSE.md', as: 'LICENSE.TXT' },
+        ...['BOSS', 'COMING', 'GLOOM', 'ICE', 'INTRO', 'LEAF', 'LYRA', 'SIMPLE', 'SPECCY', 'TECHPOOH']
+          .map((name) => ({ from: `${name}.FMS`, as: `${name}.FMS` })),
+        ...['GRAPH', 'LEVELS', 'MULT'].map((name) => ({ from: `${name}.FML`, as: `${name}.FML` })),
+      ],
+      dirs: [],
+    },
+    boot: { conf: VINNIE_CONF, entry: 'POOH.EXE' },
+    record: {
+      title: 'Super Vinnie-Pooh',
+      tagline: 'A 1995 platformer, open-sourced by its author',
+      year: 1995,
+      author: 'Mikhail Bratus (FaMe SoftWare)',
+      license: 'Apache-2.0',
+      licenseUrl: 'https://www.apache.org/licenses/LICENSE-2.0',
+      sourceUrl: 'https://github.com/D0NM/Vinnie',
+      description:
+        'A platformer from 1995, sold commercially in Russia as Super Vinnie-Pooh and published by its ' +
+        'author — code, graphics, levels — under Apache-2.0 in 2022. Packaged from commit b84f07b with ' +
+        'POOH.EXE, the ten .FMS sprite banks, the three .FML graphics and level libraries, its config and ' +
+        'the original 1995 readme. The game text is Russian; nothing here was translated or redrawn.',
+      accent: '#c98bff',
+      tags: ['platformer', '1995'],
+      rights:
+        'Apache-2.0, granted by the game’s author and copyright holder, Mikhail Bratus, who added the ' +
+        'licence file to this repository in 2022 next to the source and the assets. The build shipped here ' +
+        'is his published POOH.exe plus the data files its code opens; no third-party art or sound.',
+    },
+  },
+  {
+    id: 'floppybird',
+    repo: 'icebreaker/floppybird',
+    ref: '511ffa5f5f7e6d5dbe9c2942557670ae6fc85a53',
+    blobs: [
+      { from: 'build/flpybird.com', as: 'FLPYBIRD.COM' },
+      { from: 'LICENSE', as: 'LICENSE.TXT' },
+    ],
+    boot: { conf: BIRD_CONF, entry: 'FLPYBIRD.COM' },
+    record: {
+      title: 'Floppybird',
+      tagline: 'Flappy Bird, 8 704 bytes of assembly',
+      year: null,
+      author: 'Mihail Szabolcs',
+      license: 'MIT',
+      licenseUrl: 'https://opensource.org/license/mit',
+      sourceUrl: 'https://github.com/icebreaker/floppybird',
+      description:
+        'A clone of Flappy Bird written in 16-bit x86 assembly. The repository builds two things from one ' +
+        'source: a raw-metal boot image for a floppy, and this 8 704-byte .COM that runs under DOS — its own ' +
+        'Makefile starts it with dosbox -conf dosbox.conf build/flpybird.com. Packaged from commit 511ffa5 ' +
+        'with the MIT text; the .tga graphics it draws are the author’s own files from the same repository.',
+      accent: '#ffd166',
+      tags: ['arcade', 'tiny'],
+      rights:
+        'MIT (c) Mihail Szabolcs, who published the source, the .COM build and the sprite data in this ' +
+        'repository under that licence. Served unmodified with the MIT text as LICENSE.TXT.',
+    },
+  },
+  {
+    id: 'nasm-tetris',
+    repo: 'Arkowski24/nasm-tetris',
+    ref: '3fc95987c68e71200538b2f52f1b032e9b15b85f',
+    zip: {
+      files: [
+        { from: 'bin/TETRIS.EXE', as: 'TETRIS.EXE' },
+        { from: 'README.md', as: 'README.TXT' },
+        { from: 'LICENSE', as: 'LICENSE.TXT' },
+      ],
+      dirs: [],
+    },
+    boot: { conf: TETRIS_CONF, entry: 'TETRIS.EXE' },
+    record: {
+      title: 'nasm-tetris',
+      tagline: 'An unofficial Tetris clone in 2 820 bytes',
+      year: null,
+      author: 'Arkadiusz Placha',
+      license: 'MIT',
+      licenseUrl: 'https://opensource.org/license/mit',
+      sourceUrl: 'https://github.com/Arkowski24/nasm-tetris',
+      description:
+        'In the author’s words: an unofficial Tetris clone for DOS, written purely in NASM assembly. The ' +
+        'whole game is the single 2 820-byte TETRIS.EXE in bin/, drawn in text mode, with its assembly ' +
+        'source beside it in the repository. Packaged from commit 3fc9598 with the MIT licence and the ' +
+        'readme. It is a clone — the name belongs to somebody else, and this site does not present it as ' +
+        'the original.',
+      accent: '#8ad6c1',
+      tags: ['puzzle', 'tiny'],
+      rights:
+        'MIT (c) Arkadiusz Placha: his own clone, his own assembly source, published together under that ' +
+        'licence. The MIT text ships inside the bundle as LICENSE.TXT.',
+    },
+  },
+  {
+    id: 'snake-54',
+    repo: 'donno2048/snake',
+    ref: '45b21177a811d62f7300f327cb58a44c52236d29',
+    blobs: [
+      { from: 'demo/snake.com', as: 'SNAKE.COM' },
+      { from: 'LICENSE', as: 'LICENSE.TXT' },
+    ],
+    boot: { conf: SNAKE54_CONF, entry: 'SNAKE.COM' },
+    record: {
+      title: 'Snake (54 bytes)',
+      tagline: 'A whole game in 54 bytes of machine code',
+      year: null,
+      author: 'donno2048',
+      license: 'MIT',
+      licenseUrl: 'https://opensource.org/license/mit',
+      sourceUrl: 'https://github.com/donno2048/snake',
+      description:
+        'A complete snake game in 54 bytes of 16-bit x86 machine code — a code-golf exercise that draws ' +
+        'in VGA mode 13h, reads the arrow keys straight from the keyboard controller at port 60h and ' +
+        'stops on Escape (the pause key pauses). Packaged from commit 45b2117 with the MIT licence; the ' +
+        'assembly it is built from, snake.asm, is in the same repository.',
+      accent: '#7fd1ae',
+      tags: ['arcade', 'tiny'],
+      rights:
+        'MIT, published with the .COM and with the assembly source it is generated from, by its author. ' +
+        'Fifty-four bytes of machine code; there is no third-party data inside it.',
     },
   },
 ];

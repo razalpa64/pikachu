@@ -108,6 +108,114 @@
         "prebuilt": null,
         "sha256": "57069d4f940c1d6746ad0cd1a433a9264a6ceb9a5ddb4ca426d07dc0b3017f8d"
       }
+    },
+    {
+      "title": "Super Vinnie-Pooh",
+      "tagline": "A 1995 platformer, open-sourced by its author",
+      "year": 1995,
+      "author": "Mikhail Bratus (FaMe SoftWare)",
+      "license": "Apache-2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://github.com/D0NM/Vinnie",
+      "description": "A platformer from 1995, sold commercially in Russia as Super Vinnie-Pooh and published by its author — code, graphics, levels — under Apache-2.0 in 2022. Packaged from commit b84f07b with POOH.EXE, the ten .FMS sprite banks, the three .FML graphics and level libraries, its config and the original 1995 readme. The game text is Russian; nothing here was translated or redrawn.",
+      "accent": "#c98bff",
+      "tags": [
+        "platformer",
+        "1995"
+      ],
+      "rights": "Apache-2.0, granted by the game’s author and copyright holder, Mikhail Bratus, who added the licence file to this repository in 2022 next to the source and the assets. The build shipped here is his published POOH.exe plus the data files its code opens; no third-party art or sound.",
+      "id": "vinnie-pooh",
+      "bundle": "bundles/vinnie-pooh.jsdos",
+      "bytes": 2499398,
+      "cover": null,
+      "provenance": {
+        "repo": "D0NM/Vinnie",
+        "commit": "b84f07bd63e0ad7a6e9aebd5d06736c25c38aa7e",
+        "license": "Apache-2.0",
+        "prebuilt": null,
+        "sha256": "8e9c79a39156562608fea1ff37d49debdd996eedd5971af306b74fbd42db9bb7"
+      }
+    },
+    {
+      "title": "Floppybird",
+      "tagline": "Flappy Bird, 8 704 bytes of assembly",
+      "year": null,
+      "author": "Mihail Szabolcs",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/license/mit",
+      "sourceUrl": "https://github.com/icebreaker/floppybird",
+      "description": "A clone of Flappy Bird written in 16-bit x86 assembly. The repository builds two things from one source: a raw-metal boot image for a floppy, and this 8 704-byte .COM that runs under DOS — its own Makefile starts it with dosbox -conf dosbox.conf build/flpybird.com. Packaged from commit 511ffa5 with the MIT text; the .tga graphics it draws are the author’s own files from the same repository.",
+      "accent": "#ffd166",
+      "tags": [
+        "arcade",
+        "tiny"
+      ],
+      "rights": "MIT (c) Mihail Szabolcs, who published the source, the .COM build and the sprite data in this repository under that licence. Served unmodified with the MIT text as LICENSE.TXT.",
+      "id": "floppybird",
+      "bundle": "bundles/floppybird.jsdos",
+      "bytes": 11258,
+      "cover": null,
+      "provenance": {
+        "repo": "icebreaker/floppybird",
+        "commit": "511ffa5f5f7e6d5dbe9c2942557670ae6fc85a53",
+        "license": "MIT",
+        "prebuilt": null,
+        "sha256": "2f64fd4101afcc1ce5e4ea419a3c9a27073985d9d35d6ebe453242b5bb3706b3"
+      }
+    },
+    {
+      "title": "nasm-tetris",
+      "tagline": "An unofficial Tetris clone in 2 820 bytes",
+      "year": null,
+      "author": "Arkadiusz Placha",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/license/mit",
+      "sourceUrl": "https://github.com/Arkowski24/nasm-tetris",
+      "description": "In the author’s words: an unofficial Tetris clone for DOS, written purely in NASM assembly. The whole game is the single 2 820-byte TETRIS.EXE in bin/, drawn in text mode, with its assembly source beside it in the repository. Packaged from commit 3fc9598 with the MIT licence and the readme. It is a clone — the name belongs to somebody else, and this site does not present it as the original.",
+      "accent": "#8ad6c1",
+      "tags": [
+        "puzzle",
+        "tiny"
+      ],
+      "rights": "MIT (c) Arkadiusz Placha: his own clone, his own assembly source, published together under that licence. The MIT text ships inside the bundle as LICENSE.TXT.",
+      "id": "nasm-tetris",
+      "bundle": "bundles/nasm-tetris.jsdos",
+      "bytes": 6348,
+      "cover": null,
+      "provenance": {
+        "repo": "Arkowski24/nasm-tetris",
+        "commit": "3fc95987c68e71200538b2f52f1b032e9b15b85f",
+        "license": "MIT",
+        "prebuilt": null,
+        "sha256": "5414dbe6f89a4a7a17c94ebd323ab223112359c32657b29d023f836f3329245d"
+      }
+    },
+    {
+      "title": "Snake (54 bytes)",
+      "tagline": "A whole game in 54 bytes of machine code",
+      "year": null,
+      "author": "donno2048",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/license/mit",
+      "sourceUrl": "https://github.com/donno2048/snake",
+      "description": "A complete snake game in 54 bytes of 16-bit x86 machine code — a code-golf exercise that draws in VGA mode 13h, reads the arrow keys straight from the keyboard controller at port 60h and stops on Escape (the pause key pauses). Packaged from commit 45b2117 with the MIT licence; the assembly it is built from, snake.asm, is in the same repository.",
+      "accent": "#7fd1ae",
+      "tags": [
+        "arcade",
+        "tiny"
+      ],
+      "rights": "MIT, published with the .COM and with the assembly source it is generated from, by its author. Fifty-four bytes of machine code; there is no third-party data inside it.",
+      "id": "snake-54",
+      "bundle": "bundles/snake-54.jsdos",
+      "bytes": 2515,
+      "cover": null,
+      "provenance": {
+        "repo": "donno2048/snake",
+        "commit": "45b21177a811d62f7300f327cb58a44c52236d29",
+        "license": "MIT",
+        "prebuilt": null,
+        "sha256": "bc5cefbc316bdca717fa2ca2c59e07f8bc0ee54a4ea1004f15cb91a9dc48ea69"
+      }
     }
   ]
 }

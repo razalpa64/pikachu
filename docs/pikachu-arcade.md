@@ -4,14 +4,14 @@ A report on the retrofit, written to be checked rather than admired. Every numbe
 below is produced by a file in this repository or by a command named beside it;
 nothing here is an estimate dressed up as a statistic.
 
-Last updated with the free-software DOS shelf (four games added beside the calibration cartridge).
+Last updated with the free-software DOS shelf: eight licensed games beside the calibration cartridge.
 
 ## The two shelves
 
 | | GBA | DOS |
 |---|---|---|
-| Games a visitor can play | **22** (committed homebrew) | **5** (4 GPL/MIT games + the CC0 calibration cartridge) |
-| Where the files live | `public/retro/roms/` (95 MB, in the repo) | `public/retro/dos/bundles/` (12.9 MB, in the repo) + storage for uploads |
+| Games a visitor can play | **22** (committed homebrew) | **9** (8 licensed games + the CC0 calibration cartridge) |
+| Where the files live | `public/retro/roms/` (95 MB, in the repo) | `public/retro/dos/bundles/` (15.3 MB, in the repo) + storage for uploads |
 | Emulator | EmulatorJS 4.2.3 (MIT), mGBA core, lazy | js-dos 8.5.3 (GPL-2.0), DOSBox core, lazy |
 | Document | `/retro/player.html` | `/retro/dos.html` |
 | Page | `/retro/:id` | `/retro/dos/:id` |
@@ -56,8 +56,15 @@ at the pinned commit, packages them and checks the result, and
 | Celis | GPL-3.0 | `GadZombie/celis` @ `01bea78` | 1 181 383 B |
 | Sadist | GPL-3.0 | `GadZombie/sadist` @ `2372676` | 8 088 373 B |
 | Out of Cash | GPL-3.0 | `warrior-rockk/out-of-cash` @ `8dd5c62` | 4 229 809 B |
+| Super Vinnie-Pooh | Apache-2.0 | `D0NM/Vinnie` @ `b84f07b` | 2 499 398 B |
+| Floppybird | MIT | `icebreaker/floppybird` @ `511ffa5` | 11 259 B |
 | Moth Hunter | MIT | `w84death/x86-assembly` @ `83a8662` | 3 075 B |
+| nasm-tetris | MIT | `Arkowski24/nasm-tetris` @ `3fc9598` | 6 348 B |
+| Snake (54 bytes) | MIT | `donno2048/snake` @ `45b2117` | 2 515 B |
 | Calibration | CC0-1.0 | authored here, `scripts/dos/make-shelf.ts` | 879 B |
+
+16 023 039 bytes of cartridges in total, all committed, all re-derivable with
+`npm run dos:games`.
 
 Two packaging rules are worth writing down, because both were got wrong first:
 
@@ -96,13 +103,32 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
   `pending-rights-review`, exactly like the other 1 485 unresolved titles.
 - **Grand Theft Auto: Vice City (Rockstar, 2002)** — a commercial Windows title
   with no MS-DOS release. It cannot be a DOS cartridge at all.
-- Smaller free-software candidates were checked and dropped for concrete
-  reasons rather than convenience: `mausimus/dos2025`'s committed `BIN/QUIDPROQ.RVD`
-  does not begin with an MZ header (it is not a DOS executable), and
-  `antonijn/dos-game-suite-8086` / `tstamborski/wild-snake-boa-ii` /
-  `dzutrinh/2048` ship their binaries only as GitHub release assets, which this
-  build environment cannot download — so nothing could be verified, and nothing
-  was claimed.
+- **dos.zone / the big browser-DOS arcades** — not mirrored, and not plumbed in.
+  Two reasons, and only the first is technical: the host is unreachable from this
+  build environment, and more importantly a catalogue of ten thousand DOS titles
+  is not a licence to any of them. Most of those libraries are commercial games,
+  "abandonware" or shareware of unknown provenance; copying them into this repo
+  would break the one rule the shelf has. Titles that pass the licence test can
+  be added one at a time, from their authors' own repositories, which is how the
+  eight above got here.
+- Other free-software candidates were checked and dropped for concrete reasons
+  rather than convenience:
+  - `mausimus/dos2025` — the committed `BIN/QUIDPROQ.RVD` starts with `RVD1`,
+    not an `MZ` header: it is not a DOS executable, so it cannot be packaged.
+  - `GadZombie/sadist2` — the repository holds the engine, core data and the
+    English `SADIST2.EXE`, but the `postaci/`, `tereny/`, `tekstury/` and `tla/`
+    content folders its own code opens are not committed (its README points at
+    gadz.pl for a working copy), so a bundle built from it would boot and die.
+  - `warrior-rockk/timmy-time-adventure` — a real GPL-3.0 DOS platformer, but
+    `web/` contains only the DOSBox config and a title image; the game archive is
+    a release asset, and release assets cannot be fetched here.
+  - `antonijn/dos-game-suite-8086`, `tstamborski/wild-snake-boa-ii`,
+    `dzutrinh/2048` — same release-asset problem, so nothing could be verified
+    and nothing was claimed.
+  - `rep-stosw/tube-game-dos` (and `tube64`), `OpenCrystalCaves`,
+    `xms0g/breakout` — either a reverse-engineering of a commercial game, an
+    engine that needs the original commercial data, or source with no committed
+    executable.
 
 ## What is verified, and by what
 
@@ -115,7 +141,7 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | The player document, the 1.4 MB core, the bundle and both manifests are served correctly | `npm run smoke:dos` | **yes, green** |
 | Every bundle's `[autoexec]` starts a program that is really at the archive root | `npm run smoke:dos` (now checks the entry, not just the conf) | **yes, green** |
 | js-dos draws a frame and the calibration bars are in it | `npm run e2e:retro:dos` (Playwright) | **no — no Chromium in this sandbox** |
-| Celis, Sadist, Out of Cash and Moth Hunter actually play | would need a browser and a DOS runtime | **no — and there is no DOSBox in this sandbox to test with either** |
+| Any of the eight games actually plays | would need a browser and a DOS runtime | **no — and there is no DOSBox in this sandbox to test with either** |
 
 `npm test` → 816 tests in 54 files. `tsc -b` clean. `npm run lint` → 0 errors.
 

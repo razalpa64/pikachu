@@ -51,7 +51,9 @@ describe('the zip reader and writer', () => {
     expect(entries).not.toBeNull();
     const names = (entries ?? []).map((e) => e.name);
     expect(names).toContain('.jsdos/dosbox.conf');
-    expect(names).toContain('GAME/CALIB.COM');
+    /* The binary is at the archive root, not in a folder: js-dos mounts the
+       bundle as C:\, so a subdirectory would not be found by the autoexec. */
+    expect(names).toContain('CALIB.COM');
 
     const conf = text(await entry(calibrationBytes, '.jsdos/dosbox.conf')) ?? '';
     expect(conf).toMatch(/\[autoexec\]/);
@@ -59,7 +61,7 @@ describe('the zip reader and writer', () => {
 
     /* The .COM is 179 bytes and is not a ZIP itself — proves we are not handing
        back the whole archive for any name. */
-    const com = await entry(calibrationBytes, 'GAME/CALIB.COM');
+    const com = await entry(calibrationBytes, 'CALIB.COM');
     expect(com?.length).toBe(179);
     expect(com?.[0]).not.toBe(0x50); // not "PK"
   });
@@ -180,17 +182,58 @@ describe('who may host what', () => {
 describe('the committed DOS shelf', () => {
   const shelf = parseDosShelf(shelfRaw);
 
-  it('holds the calibration cartridge and nothing it cannot justify', () => {
-    expect(shelf.games.map((g) => g.id)).toEqual(['pikachu-calibration']);
+  it('holds the games this project can justify, and nothing else', () => {
+    /* Sorted by title, which is the order the manifest is written in. */
+    expect(shelf.games.map((g) => g.title)).toEqual([
+      'Calibration', 'Celis', 'Moth Hunter', 'Out of Cash', 'Sadist',
+    ]);
     for (const game of shelf.games) {
       expect(game.rights.length).toBeGreaterThan(8);
-      expect(game.license).toMatch(/CC0|MIT|GPL/);
+      /* A formal licence, not an aggregator's label — this is the whole point. */
+      expect(game.license).toMatch(/^(CC0|MIT|GPL|ISC|Apache|BSD)/);
       expect(game.bundle).toMatch(/^bundles\/[a-z0-9-]+\.jsdos$/);
       expect(game.sourceUrl.startsWith('https://')).toBe(true);
     }
     expect(dosGameById(shelf.games, 'pikachu-calibration')?.title).toBe('Calibration');
+    expect(dosGameById(shelf.games, 'sadist')?.license).toBe('GPL-3.0');
+    expect(dosGameById(shelf.games, 'moth-hunter')?.license).toBe('MIT');
+    /* The two titles people ask for are not here, and the manifest says so by
+       simply not containing them. */
     expect(dosGameById(shelf.games, 'doom')).toBeNull();
+    expect(dosGameById(shelf.games, 'vice-city')).toBeNull();
     expect(dosGameById(shelf.games, undefined)).toBeNull();
+  });
+
+  it('ships a bundle for every record, at the size the record claims, with a runnable autoexec', async () => {
+    for (const game of shelf.games) {
+      const bytes = new Uint8Array(readFileSync(join(root, 'public/retro/dos', game.bundle)));
+      expect(bytes.length, game.id).toBe(game.bytes);
+
+      const entries = readZipDirectory(bytes);
+      const report = inspectBundle({
+        bytes,
+        entries,
+        conf: text(await entry(bytes, '.jsdos/dosbox.conf')),
+      });
+      expect(report.problems, game.id).toEqual([]);
+
+      /* The program the autoexec names has to exist at the archive root. */
+      const program = (report.autoexec ?? '')
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
+        .filter((line) => /\.(exe|com|bat)$/i.test(line))
+        .pop();
+      expect(program, game.id).toBeTruthy();
+      expect(entries?.some((e) => e.name.toLowerCase() === program!.toLowerCase()), `${game.id}: ${program}`).toBe(true);
+
+      /* A .EXE has to be an MZ executable, not a renamed blob. */
+      if (/\.exe$/i.test(program!)) {
+        const body = await entry(bytes, program!);
+        expect(body?.[0], `${game.id}: ${program}`).toBe(0x4d);
+        expect(body?.[1], `${game.id}: ${program}`).toBe(0x5a);
+      }
+    }
   });
 
   it('drops a seller’s bundle URL, an absolute host path, and a javascript: source', () => {

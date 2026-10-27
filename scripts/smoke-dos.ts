@@ -115,7 +115,21 @@ async function main() {
     const conf = await readZipEntry(body, '.jsdos/dosbox.conf');
     const report = inspectBundle({ bytes: body, entries, conf: conf ? new TextDecoder().decode(conf) : null });
     check(`${game.id}: passes the structural check`, report.ok, report.problems.join(', '));
-    check(`${game.id}: has an [autoexec]`, !!report.autoexec, report.autoexec?.split('\n').slice(-1)[0] ?? '');
+    /* The bundle is unpacked into C:\, so the program the [autoexec] starts has
+       to be at the archive root. A name that only exists in a subdirectory is a
+       black screen with no error — the exact failure this check exists for. */
+    const program = (report.autoexec ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
+      .filter((line) => /\.(exe|com|bat)$/i.test(line))
+      .pop();
+    check(`${game.id}: has an [autoexec]`, !!report.autoexec, program ?? 'no program line');
+    check(
+      `${game.id}: the [autoexec] starts a file that is at the bundle root`,
+      !!program && !!entries?.some((e) => e.name.toLowerCase() === program.toLowerCase()),
+      program ?? 'no program line',
+    );
   }
 
   /* ------------------------------------------------------------ the index */

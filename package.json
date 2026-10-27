@@ -29,6 +29,7 @@
     "admin:doctor": "tsx scripts/admin-doctor.ts",
     "dos:import": "tsx scripts/dos/import.ts",
     "dos:import:plan": "tsx scripts/dos/import.ts --dry-run",
+    "dos:games": "tsx scripts/dos/make-games.ts",
     "dos:shelf": "tsx scripts/dos/make-shelf.ts"
   },
   "dependencies": {

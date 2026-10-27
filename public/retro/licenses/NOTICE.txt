@@ -88,10 +88,42 @@ DOS SHELF
 ---------
 
 The DOS player at /retro/dos.html runs js-dos 8.5.3 (GPL-2.0) with its own
-DOSBox core, both served from public/retro/jsdos/. The only game this site
-itself hosts is "Calibration" (public/retro/dos/bundles/pikachu-calibration.jsdos):
-a 179-byte program written for this project and released CC0 1.0 — public
-domain, no third-party code or data inside it.
+DOSBox core, both served from public/retro/jsdos/. Five bundles ship in
+public/retro/dos/bundles/:
+
+  Calibration       Pikachu Arcade   CC0-1.0
+                    A 179-byte test card written for this project: banner, four
+                    colour bars, exit. No third-party code or data inside it.
+
+  Celis             Grzegorz “GAD” Drozd   GPL-3.0
+                    https://github.com/GadZombie/celis @ 01bea78
+                    The author's own build and data from his repository; the
+                    licence text is inside the bundle as LICENSE.TXT and the
+                    corresponding source is that repository at that commit.
+
+  Sadist            Grzegorz “GAD” Drozd   GPL-3.0
+                    https://github.com/GadZombie/sadist @ 2372676
+                    As above: binaries, data, artwork and Turbo Pascal source are
+                    all published by the author under the GPL.
+
+  Out of Cash       warrior-rockk   GPL-3.0
+                    https://github.com/warrior-rockk/out-of-cash @ 8dd5c62
+                    This is the project's own committed web/out-of-cash.jsdos,
+                    served byte for byte and not repacked. Its source is the same
+                    repository.
+
+  Moth Hunter       Krzysztof Krystian Jankowski   MIT
+                    https://github.com/w84death/x86-assembly @ 83a8662
+                    A 508-byte .COM file from dos/game7/, packaged with the MIT
+                    text as LICENSE.TXT — the notice that licence asks us to keep.
+
+Three of those bundles were assembled by scripts/dos/make-games.ts from the
+files at the commit recorded above and next to each game in the manifest; the
+only thing this site adds is a dosbox.conf and a SOURCE.TXT note. Nothing was
+compiled here, nothing was taken from a ROM site, and no commercial title is
+hosted — Doom and Grand Theft Auto: Vice City in particular are absent because
+both are still sold, their data files are not freely licensed, and Vice City was
+never a DOS game.
 
 Nothing else on the DOS shelf is committed to this repository. The discovery
 index at public/retro/dos/catalog.json is a record of what another catalogue
@@ -100,7 +132,7 @@ labels there describe how those games were sold, not who may redistribute them,
 so those 1,499 records carry no download and no Play button. A title reaches the
 shelf only after an administrator records the evidence for hosting it in the
 database (site_content key dos.perm.<id>) and its .jsdos bundle is uploaded,
-checked and run once. Nothing was copied from a commercial ROM site.
+checked and run once.
 
 A DOS game you own can be played by loading its .jsdos bundle through the admin
 desk only — there is no visitor-facing "drop a file" box for DOS, because a

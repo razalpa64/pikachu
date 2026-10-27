@@ -128,6 +128,22 @@ describe('the DOS player page', () => {
     expect(host.textContent).toContain('js-dos 8.5.3');
   });
 
+  it('shows a packaged game’s licence and source, and still refuses to invent a test', async () => {
+    const game = (shelfJson.games as { id: string; title: string; license: string; sourceUrl: string }[])
+      .find((g) => g.id === 'celis');
+    expect(game, 'the shelf ships a GPL build to check against').toBeTruthy();
+
+    await mountDos(game!.id);
+
+    expect(host.querySelector('h1')?.textContent).toContain(game!.title);
+    expect(host.querySelector('iframe')?.getAttribute('src')).toBe(`/retro/dos.html?game=${game!.id}`);
+    /* The paperwork is the real paperwork: the licence the author granted. */
+    expect(host.textContent).toContain('GPL-3.0');
+    expect(host.textContent).toContain(game!.sourceUrl.replace('https://', ''));
+    /* And no claim that this site played it — there is no such test result. */
+    expect(host.textContent).not.toContain('Tested by Pikachu Arcade');
+  });
+
   it('refuses an id that is not on the shelf, without loading an emulator', async () => {
     await mountDos('doom-shareware');
 
@@ -141,13 +157,19 @@ describe('the DOS player page', () => {
 });
 
 describe('the shelf with the DOS lens open', () => {
-  it('lists the hosted game and never the pending ones', async () => {
+  it('lists every hosted game and never the pending ones', async () => {
     await mountShelf('/retro?platform=dos');
 
     expect(host.textContent).toContain('MS-DOS');
     expect(host.textContent).toContain('Calibration');
+    /* Every cartridge in the manifest is on the page with its own Play button —
+       the count comes from the file, not from a number written here. */
     const play = [...host.querySelectorAll('button')].filter((b) => (b.textContent ?? '').trim() === 'Play');
-    expect(play.length).toBe(1);
+    expect(play.length).toBe(shelfJson.games.length);
+    expect(play.length).toBeGreaterThan(1);
+    for (const game of shelfJson.games as { title: string }[]) {
+      expect(host.textContent).toContain(game.title);
+    }
 
     /* The discovery index is not a visitor surface: it is not requested here,
        not rendered here, and no pending title has a Play button. */
@@ -159,7 +181,7 @@ describe('the shelf with the DOS lens open', () => {
 
     /* The GBA-only furniture stays with the GBA lens. */
     expect(host.textContent).not.toContain('Play a ROM you already own');
-    expect(host.textContent).toContain('Why there is one DOS game');
+    expect(host.textContent).toContain('Why five games');
     /* The honesty block is the DOS one, not the cartridge one. */
     expect(host.textContent).toContain('A label is not a licence');
     expect(host.textContent).not.toContain('Nothing loads until you press Insert');
@@ -169,7 +191,7 @@ describe('the shelf with the DOS lens open', () => {
     await mountShelf('/retro');
 
     expect(host.textContent).toContain('Play a ROM you already own');
-    expect(host.textContent).not.toContain('Why there is one DOS game');
+    expect(host.textContent).not.toContain('Why five games');
     /* The DOS manifest is fetched lazily, so a GBA visit does not pay for it. */
     expect(asked.some((u) => u.includes('/retro/dos/shelf.json'))).toBe(false);
   });

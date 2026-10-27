@@ -1,0 +1,113 @@
+{
+  "generatedBy": "scripts/dos/make-games.ts",
+  "games": [
+    {
+      "title": "Celis",
+      "tagline": "Polish shoot-’em-up, unfinished but playable",
+      "year": 2000,
+      "author": "Grzegorz “GAD” Drozd",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "sourceUrl": "https://github.com/GadZombie/celis",
+      "description": "A side-scrolling shooter for MS-DOS written in Turbo Pascal, which its author compares to Gradius, R-Type and Zybex. The repository labels the build “demo version 0.667” and says the game was never finished but is playable. Packaged from the project’s own files at commit 01bea78; the VGA, memory and Sound Blaster settings come from the DOSBox config the author ships in DOSBox/Celis.conf.",
+      "accent": "#5cc8ff",
+      "tags": [
+        "shooter",
+        "arcade"
+      ],
+      "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.",
+      "id": "celis",
+      "bundle": "bundles/celis.jsdos",
+      "bytes": 1181383,
+      "cover": null,
+      "provenance": {
+        "repo": "GadZombie/celis",
+        "commit": "01bea787b64e0033bc0fcb26784d8a5af55b6c9e",
+        "license": "GPL-3.0",
+        "prebuilt": null,
+        "sha256": "250074958a32f3bbd87acbe15b88ea157684352ab297c57839dfc6048ddefd7a"
+      }
+    },
+    {
+      "title": "Sadist",
+      "tagline": "The author’s own 1998 DOS game",
+      "year": 1998,
+      "author": "Grzegorz “GAD” Drozd",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "sourceUrl": "https://github.com/GadZombie/sadist",
+      "description": "A 1998 DOS game by Grzegorz “GAD” Drozd, who published it — binaries, data, artwork and the Turbo Pascal source — under the GPL. Packaged from commit 2372676 with the files the source opens at runtime: GRAF.DAT, SADIST.DAT, both .CFG files, the character packs in POSTACI/, the terrain packs in TERENY/ and the loose bitmaps and WAV banks lifted out of Data/. Its audio is wired to a Sound Blaster 16 in the bundle’s dosbox.conf.",
+      "accent": "#ff7a6b",
+      "tags": [
+        "action",
+        "1998"
+      ],
+      "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.",
+      "id": "sadist",
+      "bundle": "bundles/sadist.jsdos",
+      "bytes": 8088373,
+      "cover": null,
+      "provenance": {
+        "repo": "GadZombie/sadist",
+        "commit": "237267637e41e3368cf3137dc743e69db280bc83",
+        "license": "GPL-3.0",
+        "prebuilt": null,
+        "sha256": "9c570698c0f291be4d3ccd088e9b6ef6b66e7db3dec6517747510b490026da13"
+      }
+    },
+    {
+      "title": "Out of Cash",
+      "tagline": "A hand-drawn 90s high-school adventure",
+      "year": null,
+      "author": "warrior-rockk",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "sourceUrl": "https://github.com/warrior-rockk/out-of-cash",
+      "description": "A point-and-click graphic adventure: your favourite rock band is in town, the ticket costs money you do not have, and the plan is deception. Written for DOS with DJGPP and Allegro and released under the GPL. This bundle is the project’s own published web/out-of-cash.jsdos, byte for byte from commit 8dd5c62 — not repacked here, so its own dosbox.conf and CWSDPMI are exactly as its author tested them.",
+      "accent": "#ffb347",
+      "tags": [
+        "adventure",
+        "point-and-click"
+      ],
+      "rights": "GPL-3.0, published by the game’s author with its source. The .jsdos bundle is the project’s own committed build, served unmodified; the licence text sits beside this shelf in public/retro/licenses/ and the source is the repository at the commit below.",
+      "id": "out-of-cash",
+      "bundle": "bundles/out-of-cash.jsdos",
+      "bytes": 4229809,
+      "cover": null,
+      "provenance": {
+        "repo": "warrior-rockk/out-of-cash",
+        "commit": "8dd5c620197f4b2f40666a35693f2ab34215d865",
+        "license": "GPL-3.0",
+        "prebuilt": "web/out-of-cash.jsdos",
+        "sha256": "39ca23822eace4bf70778c8ca74a0e9523d6eb6534a020aad59d834560d48428"
+      }
+    },
+    {
+      "title": "Moth Hunter",
+      "tagline": "A 508-byte arcade game for the mouse",
+      "year": null,
+      "author": "Krzysztof Krystian Jankowski",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/license/mit",
+      "sourceUrl": "https://github.com/w84death/x86-assembly",
+      "description": "One .COM file, 508 bytes: it switches the machine to VGA mode 13h, sets up a double buffer, hides the cursor and runs a mouse-aimed shooting loop against alien sprites, with health, hits and a game-over state. Part of x86-assembly, the author’s collection of programs written small on purpose for 8086-class machines. Packaged from dos/game7/game7.com at commit 83a8662, with the MIT licence beside it; the .asm source is in the repository.",
+      "accent": "#9ee37d",
+      "tags": [
+        "arcade",
+        "tiny"
+      ],
+      "rights": "MIT (c) Krzysztof Krystian Jankowski, who published both the .COM build and the assembly source in this repository under that licence. An unmodified copy of the build is packaged here with the MIT text as LICENSE.TXT, which is the notice the licence asks us to keep.",
+      "id": "moth-hunter",
+      "bundle": "bundles/moth-hunter.jsdos",
+      "bytes": 3075,
+      "cover": null,
+      "provenance": {
+        "repo": "w84death/x86-assembly",
+        "commit": "83a8662fec59b66d80940901f0ff739ca5908810",
+        "license": "MIT",
+        "prebuilt": null,
+        "sha256": "57069d4f940c1d6746ad0cd1a433a9264a6ceb9a5ddb4ca426d07dc0b3017f8d"
+      }
+    }
+  ]
+}

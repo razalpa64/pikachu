@@ -89,8 +89,30 @@ series, the second action leaves for the library); HUD accents.
 move; the reveal feedback and the "locked in / waiting" line are now live
 regions; your locked answer exposes `aria-pressed` instead of relying on colour.
 
-**Sketch & Guess** — excluded from the referee contract by design (free-form
-input, no turn owner); no defect found in this pass.
+**Guess & Draw (Sketch & Guess)** — excluded from the referee contract by design
+(free-form input, no turn owner). The board itself was rebuilt after three
+player-visible faults were reproduced in a browser (two players, headless
+Chromium, drawn with a mouse and with touch):
+
+1. **Lines blinked out while you drew them.** A long stroke is flushed to the
+   server mid-draw so the other screen keeps up; the local copy was dropped at
+   that moment and only came back when the echo arrived. Sent-but-not-echoed
+   strokes are now kept in a `pending` layer and dropped exactly as the echo
+   lands (`reconcilePending`).
+2. **The canvas got slower the more you drew.** Every pointer sample repainted
+   the whole history. Committed strokes are now rendered once into an offscreen
+   bitmap keyed by `strokeCacheKey`; a sample costs one blit plus the stroke
+   under the finger.
+3. **A palm or a second finger drew.** One primary pointer owns a stroke; the
+   stroke ends on pointer-up (not pointer-leave) and is thrown away if the
+   browser cancels it. Taps leave a dot instead of nothing.
+
+On a phone the tools are 36 px or more tall, the palette scrolls instead of
+wrapping, and the canvas is scrolled clear of the room's sticky bar so no part of
+the picture is hidden. `src/games/__tests__/sketch-board.test.ts` (16 cases)
+drives real DOM events through the board; `src/games/__tests__/sketch-strokes.test.ts`
+(23 cases) covers the arithmetic; `scripts/e2e/online-sketch.mjs` (31 checks) and
+`tools/verify/sketch7.mjs` (16 checks, CDP touch) prove it end to end.
 
 **Detective Pikachu** — generated cases are still brute-force checked for a
 unique solution before they are shown (existing guarantee); the duplicate result

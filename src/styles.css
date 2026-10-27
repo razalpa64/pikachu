@@ -1768,14 +1768,33 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     var(--color-ink-900);
 }
 
+/* The bezel is the product here: a plastic frame with a lit inner edge, sitting
+   on a darker plinth, so the game reads as a screen inside a machine. Two
+   shadows do it — a bright hairline on top (light from above) and a hard dark
+   line under it (thickness) — plus one long soft shadow for the desk. */
 .dos-monitor {
-  border: 2px solid #3f3a33;
-  border-radius: 14px;
-  background: #2a2723;
+  border: 1px solid #4b463c;
+  border-radius: 18px;
+  background: linear-gradient(#302c26, #26221d);
   box-shadow:
-    0 2px 0 0 #3f3a33,
-    0 26px 55px -34px rgba(0, 0, 0, .9);
+    inset 0 1px 0 rgba(255, 255, 255, .07),
+    inset 0 -1px 0 rgba(0, 0, 0, .5),
+    0 3px 0 0 #14110d,
+    0 30px 60px -32px rgba(0, 0, 0, .95);
   overflow: hidden;
+  /* The whole machine — bezel, picture, controls — has to fit on the screen
+     without scrolling. Because the picture is 4:3 and sized by width, the only
+     lever is the width, so it is derived from the height that is left over: page
+     padding + title bar + control bar (~190 px), or those plus the 172 px pad.
+     On a phone the result is wider than the viewport, so `min()` makes the rule
+     a no-op there and the picture simply fills the width. */
+  width: 100%;
+  max-width: min(100%, calc((100dvh - 190px) * 4 / 3 + 26px));
+  margin-inline: auto;
+}
+
+.dos-monitor:has(.dos-pad) {
+  max-width: min(100%, calc((100dvh - 360px) * 4 / 3 + 26px));
 }
 
 .dos-monitor-top,
@@ -1784,9 +1803,10 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 12px;
-  background: #24211d;
-  border-bottom: 1px solid #3f3a33;
+  padding: 10px 14px;
+  background: linear-gradient(#2b2822, #221f1a);
+  border-bottom: 1px solid #14120f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
 }
 
 .dos-monitor-bottom {
@@ -1794,6 +1814,27 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   border-top: 1px solid #3f3a33;
   flex-wrap: wrap;
 }
+
+.dos-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  margin-right: 2px;
+  min-height: 30px;
+  padding: 0 9px;
+  border-radius: 6px;
+  border: 1px solid #4a443a;
+  background: linear-gradient(#37332c, #2a2620);
+  color: #d8cdb6;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.dos-back:hover { color: var(--color-volt-300); border-color: #6b6250; }
+.dos-back:focus-visible { outline: 2px solid var(--color-volt-400); outline-offset: 2px; }
 
 .dos-monitor-mark {
   color: var(--color-volt-500);
@@ -1837,8 +1878,29 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   width: 100%;
   aspect-ratio: 4 / 3;
   background: #050505;
-  box-shadow: inset 0 0 0 6px #14120f;
+  /* a bevelled opening: hard dark ring, plastic lip, then the glass */
+  box-shadow:
+    inset 0 0 0 2px #0b0a08,
+    inset 0 0 0 9px #1b1815,
+    inset 0 0 0 10px #322d26;
   overflow: hidden;
+}
+
+/* One reflection across the glass. It is decoration, so it never eats a touch:
+   every tap has to reach the emulator underneath. */
+.dos-screen::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  top: 9px;
+  height: 22%;
+  pointer-events: none;
+  z-index: 3;
+  /* a reflection only in the top strip: a full-surface gradient over a live
+     WebGL canvas costs a full-screen blend on every emulator frame, which a
+     software-composited browser cannot keep up with */
+  background: linear-gradient(104deg, rgba(255, 255, 255, .055) 0%, rgba(255, 255, 255, .014) 38%, transparent 64%);
 }
 
 .dos-iframe {
@@ -1856,6 +1918,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
    "still working" and "it stopped, here is why, try again" all live. */
 .dos-screen-panel {
   position: absolute;
+  z-index: 4;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -1968,6 +2031,97 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   .dos-papers { grid-template-columns: 1.1fr 1fr; }
 }
 
+/* ---------------------------------------------------------------- the pad */
+/* Under the picture, on the same plastic. Left thumb on the D-pad, right thumb
+   on the buttons — the two clusters are pushed to opposite edges so a hand on
+   one can never hit the other. */
+.dos-pad {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px 14px;
+  background: linear-gradient(#221f1a, #1a1713);
+  border-top: 1px solid #14120f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.dos-pad-stick {
+  display: grid;
+  grid-template-columns: repeat(3, 46px);
+  grid-template-rows: repeat(3, 46px);
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.dos-pad-up { grid-area: 1 / 2; }
+.dos-pad-left { grid-area: 2 / 1; }
+.dos-pad-right { grid-area: 2 / 3; }
+.dos-pad-down { grid-area: 3 / 2; }
+
+/* The well in the middle of the cross, so the four keys read as one control
+   rather than four loose boxes. */
+.dos-pad-hub {
+  grid-area: 2 / 2;
+  border-radius: 6px;
+  background: #17140f;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .8);
+}
+
+.dos-pad-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(52px, 1fr));
+  gap: 6px;
+  flex: 1 1 auto;
+  max-width: 260px;
+}
+
+.dos-pad-key {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid #4a443a;
+  background: linear-gradient(#38332c, #2a2620);
+  color: #e9dfcb;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  line-height: 1;
+  box-shadow: 0 2px 0 #100e0b, inset 0 1px 0 rgba(255, 255, 255, .07);
+  transition: transform .05s linear, background .08s linear, box-shadow .05s linear;
+}
+.dos-pad-key:active {
+  transform: translateY(2px);
+  background: linear-gradient(#4a4235, #38322a);
+  box-shadow: 0 0 0 #100e0b, inset 0 1px 0 rgba(255, 255, 255, .05), 0 0 0 1px rgba(255, 210, 77, .5);
+  color: var(--color-volt-300);
+}
+.dos-pad-key:focus-visible {
+  outline: 2px solid var(--color-volt-400);
+  outline-offset: 2px;
+}
+
+/* A phone in portrait has room for a wider pad but not for wide labels. */
+@media (max-width: 420px) {
+  .dos-pad { gap: 8px; padding: 10px 10px 12px; }
+  .dos-pad-stick { grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(3, 44px); }
+  .dos-pad-actions { gap: 5px; grid-template-columns: repeat(3, minmax(48px, 1fr)); }
+  .dos-pad-key { font-size: 11px; min-height: 44px; }
+}
+
+/* A short landscape phone cannot afford 150 px of pad under the screen; the
+   keys get shorter, the layout stays. */
+@media (max-height: 460px) {
+  .dos-pad-stick { grid-template-columns: repeat(3, 38px); grid-template-rows: repeat(3, 38px); }
+  .dos-pad-key { min-height: 38px; }
+}
+
 /* Fullscreen: the picture, and the controls that make it escapable. Our own
    full-bleed mode (iOS Safari has no element fullscreen) and the browser's
    real one share this layout, so the exit never depends on which was used. */
@@ -2012,4 +2166,14 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
 .dos-stage[data-full="on"] .dos-monitor-bottom {
   background: #0a0908;
   justify-content: center;
+}
+
+/* Fullscreen is exactly when a phone player needs the pad, so it stays — flat
+   and dark, without the plastic, because there is no bezel on a full-bleed
+   picture. */
+.dos-stage[data-full="on"] .dos-pad {
+  background: #0a0908;
+  border-top: 1px solid #1b1916;
+  justify-content: center;
+  gap: 24px;
 }

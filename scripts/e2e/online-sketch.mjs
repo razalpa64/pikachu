@@ -19,7 +19,14 @@ const until = async (fn, ms = 12000, step = 120) => {
   }
 };
 
-const b = await chromium.launch({ args: ['--no-sandbox', '--disable-gpu'] });
+/* A browser this sandbox can point at, when Playwright cannot download one:
+     PIKACHU_CHROME=/path/to/chromium PIKACHU_LD=/path/to/libdir \
+       node scripts/e2e/online-sketch.mjs */
+const b = await chromium.launch({
+  executablePath: process.env.PIKACHU_CHROME || undefined,
+  env: process.env.PIKACHU_LD ? { ...process.env, LD_LIBRARY_PATH: process.env.PIKACHU_LD } : undefined,
+  args: ['--no-sandbox', '--disable-gpu'],
+});
 const errs = [];
 async function tab(label) {
   const p = await (await b.newContext({ viewport: { width: 1340, height: 950 } })).newPage();
@@ -35,14 +42,16 @@ const host = await tab('host');
 const guest = await tab('guest');
 
 /* ---------- it is offered, and it launches ---------- */
+/* A fixed sleep here was a coin toss on a slow machine: the library is a lazy
+   route and 1.6 s is sometimes not enough for it to paint. Wait for the thing
+   itself instead of for a stopwatch. */
 await host.goto(B + '/library');
-await host.waitForTimeout(1600);
-t('Guess & Draw is listed in the library', /guess & draw/i.test(await txt(host)));
+t('Guess & Draw is listed in the library', await until(async () => /guess & draw/i.test(await txt(host)), 15000));
 
 await host.goto(B + '/together');
-await host.waitForTimeout(1800);
 const pick = host.getByRole('button', { name: /Guess & Draw/i }).first();
-t('Guess & Draw is offered in Play Together', await pick.count() > 0);
+t('Guess & Draw is offered in Play Together', await until(async () => (await pick.count()) > 0, 15000));
+await host.waitForTimeout(400);
 await pick.click();
 await host.waitForTimeout(500);
 await host.getByRole('button', { name: 'Create private room', exact: true }).click();
@@ -87,10 +96,13 @@ t('the mask has one underscore per letter',
   `${hint.replace(/\s/g, '').length} vs ${word.replace(/\s/g, '').length}`);
 
 const leak = await guesser.evaluate(w => {
-  const hay = [document.documentElement.innerHTML];
+  /* Class names are not content: a word like "ring" appears in Tailwind's
+     `ring-2`, and that is not the answer leaking. Strip them before hunting. */
+  const strip = (html) => html.replace(/class="[^"]*"/g, '').replace(/"className":"(?:[^"\\]|\\.)*"/g, '');
+  const hay = [strip(document.documentElement.innerHTML)];
   const walk = (n, d) => {
     if (!n || d > 60) return;
-    try { hay.push(JSON.stringify(n.memoizedProps ?? '')); } catch { /* circular */ }
+    try { hay.push(strip(JSON.stringify(n.memoizedProps ?? ''))); } catch { /* circular */ }
     walk(n.child, d + 1); walk(n.sibling, d + 1);
   };
   const root = document.getElementById('root');
@@ -195,6 +207,13 @@ t('round 2 starts on a clean canvas', await strokes(host) === 0 && await strokes
 t('the round counter advanced', /round 2 of/i.test(await txt(host)));
 
 /* ---------- play the match out to a verdict ---------- */
+// "Rematch?" is a chat quick reply that is on screen from the first second, so
+// the result screen has to be identified by its dialog, not by that word.
+const resultShown = async (p) => {
+  const d = p.locator('[role="dialog"]');
+  if (!(await d.count())) return false;
+  return /rematch|play again/i.test(await d.first().innerText());
+};
 // every round: whoever is the drawer reveals the word, the other types it.
 let rounds = 1;
 let finished = false;
@@ -207,7 +226,7 @@ for (let i = 0; i < 8 && !finished; i++) {
   await g.fill('#sketch-guess', w).catch(() => {});
   await g.press('#sketch-guess', 'Enter').catch(() => {});
   rounds++;
-  finished = await until(async () => /rematch|play again/i.test(await txt(host)), 9000);
+  finished = await until(async () => await resultShown(host), 9000);
 }
 t('a full match plays through to a result screen', finished, `stopped after ${rounds} rounds`);
 
@@ -216,9 +235,9 @@ t('the result screen is a real dialog', await overlay.count() > 0);
 const htext = await txt(host);
 t('the result names a verdict', /you win|you lose|draw|well played|good game/i.test(htext), htext.slice(0, 120).replace(/\n/g, ' | '));
 
-const rematchBtn = host.getByRole('button', { name: /rematch|play again/i }).first();
+const rematchBtn = overlay.getByRole('button', { name: /rematch|play again/i }).first();
 await rematchBtn.click();
-const guestVote = guest.getByRole('button', { name: /rematch|play again/i }).first();
+const guestVote = guest.locator('[role="dialog"]').getByRole('button', { name: /rematch|play again/i }).first();
 t('the other player is asked to confirm the rematch', await until(async () => await guestVote.count() > 0));
 await guestVote.click();
 t('a rematch restarts the game on a clean canvas',

@@ -50,9 +50,9 @@ afterEach(async () => {
   host.remove();
 });
 
-async function mount(el: React.ReactElement) {
+async function mount(el: React.ReactElement, at = '/') {
   await act(async () => {
-    root.render(createElement(MemoryRouter, null,
+    root.render(createElement(MemoryRouter, { initialEntries: [at] }, null,
       createElement(StoreProvider, null, createElement(RoomProvider, null, el))));
   });
 }
@@ -146,6 +146,22 @@ describe('the library', () => {
     expect(countIn('Party')).toBe(GAMES.filter((g) => g.genre === 'party').length);
     // favourites is a real zero, not an empty chip
     expect(countIn('Favourites')).toBe(0);
+  });
+
+  it('brings the applied filter into view, so a deep link is not a mystery', async () => {
+    /* On a phone the rail scrolls; `/library?mode=solo` used to leave the ticked
+       chip off the right edge. */
+    const scrolls: string[] = [];
+    const original = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = function patched(this: Element) {
+      scrolls.push(this.textContent ?? '');
+    } as typeof Element.prototype.scrollIntoView;
+    try {
+      await mount(createElement(Library), '/library?mode=solo');
+      expect(scrolls.some((t) => t.startsWith('Single player')), scrolls.join(' | ')).toBe(true);
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
   });
 
   it('shows a game when it is searched for, and says so when nothing matches', async () => {

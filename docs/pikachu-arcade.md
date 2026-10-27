@@ -164,8 +164,37 @@ archive work, made from pixels rather than from hope.
 Getting there needed a browser this sandbox could not download. The repository's
 own `npm run e2e:retro:dos` now runs against any Chromium build via
 `PIKACHU_CHROME` / `PIKACHU_LD`, and **it passes, on desktop and on a phone
-viewport** — 15 checks, including the colour bars in the framebuffer, a keypress
-leaving the banner, and pause holding the picture still. Two things had to be
+viewport** — 22 checks each, including the colour bars in the framebuffer, a
+keypress leaving the banner, and pause holding the picture still.
+
+### A pad, because a DOS program reads the keyboard
+
+A phone has no arrow keys, and a DOS game does not care about taps: it polls the
+keyboard through the emulated BIOS. The player therefore grew a pad, under the
+picture and inside the same element that goes fullscreen:
+
+* **What it sends.** `{type:'cmd', cmd:'key'}` to `/retro/dos.html` with the key,
+  its `code` and the legacy `keyCode` DOSBox matches on. The player document
+  dispatches a real `KeyboardEvent` on the js-dos canvas — the same path a
+  physical key takes.
+* **What it offers.** Arrow cross, Space, Enter, Esc, Ctrl, Shift, Tab. Holding an
+  arrow repeats `keydown` every 110 ms so a character keeps walking; letting go
+  sends `keyup`. Action keys never repeat (a repeating Enter opens and closes a
+  menu).
+* **Where it is.** Below the canvas, never over it, and it appears unasked on a
+  coarse pointer, a touch screen or a window under 820 px. The bezel also gained
+  a labelled way back to the shelf, because this page hides the site navigation
+  and "Stop" sounds like it throws the game away.
+
+It is proven the only way that counts: `npm run e2e:retro:dos -- --phone` presses
+**nothing but the pad** and checks that the calibration cartridge leaves its
+"press a key" banner and paints its colour bars. Nine jsdom tests
+(`src/components/__tests__/dos-pad.test.ts`) cover the messages, the repeat and
+the release-on-unmount.
+
+What the pad cannot do is type. A text adventure still needs a keyboard, and a
+game that drives a mouse still wants a mouse; the page says so instead of
+implying otherwise. Two things had to be
 fixed in that script to make it honest: reading the canvas with
 `drawImage` returns black because js-dos renders through WebGL (it now decodes a
 real screenshot, PNG and all), and the colour-bar check scanned a *horizontal*
@@ -273,12 +302,14 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | js-dos's `ci-ready`, a canvas and a stray pre-run screen all end in "running" | same file | **yes** |
 | An error from js-dos is repeated to the visitor, with a working retry | `src/screens/__tests__/retro-dos.test.ts` | **yes** |
 | The vendored js-dos still honours `autoStart` / `ci-ready` / `.pre-run-window` | `src/lib/__tests__/dos.test.ts` | **yes** |
-| js-dos draws a frame, the calibration bars are in it, a keypress reaches the program, pause holds the picture | `npm run e2e:retro:dos` (Playwright, headless Chromium) | **yes — 15 checks, desktop and phone** |
+| js-dos draws a frame, the calibration bars are in it, a keypress reaches the program, pause holds the picture | `npm run e2e:retro:dos` (Playwright, headless Chromium) | **yes — 22 checks, desktop and phone** |
+| The on-screen pad alone can drive a DOS program: below the picture, 40 px+ targets, on screen, alive in fullscreen | the same harness with `--phone` (it presses no physical key at all) | **yes** |
+| The pad sends down/up, repeats a held arrow, releases on cancel and on unmount, and stays silent before the machine runs | `src/components/__tests__/dos-pad.test.ts` | **yes** |
 | All nine cartridges boot and draw | the same harness, one cartridge at a time, frames compared before and after input | **yes** |
 | Six of them visibly respond to the keys a player presses | same | **yes** |
 | Sadist and Out of Cash take menu input beyond their first screens | would need a longer scripted run per game | **no** |
 
-`npm test` → 832 tests in 55 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 881 tests in 58 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
 What this report still will not claim is that all nine games are *finishable*, or
 that a human sat and played them end to end. What it can now claim, because the
@@ -291,7 +322,7 @@ press did not get past.
 Reproducing it needs only a browser. `npm run e2e:retro:dos` (add `--phone` for
 the touch viewport) runs against the dev server; if the sandbox cannot download
 Chromium, point `PIKACHU_CHROME` and `PIKACHU_LD` at any Chromium build and the
-same 15 checks run. That is how the DOS shelf went from "structurally correct" to
+same checks run. That is how the DOS shelf went from "structurally correct" to
 "watched working" in one sitting.
 
 ## What the admin desk can do

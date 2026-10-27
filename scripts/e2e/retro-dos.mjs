@@ -57,6 +57,10 @@ const context = await browser.newContext(
     : { viewport: { width: 1280, height: 860 } },
 );
 const page = await context.newPage();
+/* This sandbox renders WebGL in software, and a full-frame screenshot of a live
+   DOSBox surface measured between 3 s and 30 s. Generous timeouts here are about
+   the harness's speed, not the site's. */
+page.setDefaultTimeout(90000);
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e).slice(0, 200)));
 
@@ -164,9 +168,42 @@ function decodePng(buffer) {
   return { width, height, data: out };
 }
 
-/** What the visitor can actually see in the emulator's box, as pixels. */
+/**
+ * What the visitor can actually see in the emulator's box, as pixels.
+ *
+ * A page screenshot clipped to the canvas, rather than `canvas.screenshot()`:
+ * the element form first waits for the box to be "stable", and in a headless
+ * shell where no compositor frame is being produced that wait can sit for the
+ * full 30 s and then throw — a failure in the harness, not in the emulator. The
+ * clip form takes the same pixels without that wait.
+ */
+/**
+ * How different two screenshots are, in the part that matters.
+ *
+ * Samples a grid of pixels and reports the fraction whose RGB moved by more than
+ * a hair, so a resized canvas (a layout change) does not get confused with a
+ * running game (a moving picture).
+ */
+function pictureDiff(a, b) {
+  const stepX = Math.max(1, Math.floor(a.width / 64));
+  const stepY = Math.max(1, Math.floor(a.height / 48));
+  let seen = 0;
+  let changed = 0;
+  for (let y = 0; y < Math.min(a.height, b.height); y += stepY) {
+    for (let x = 0; x < Math.min(a.width, b.width); x += stepX) {
+      const ia = (y * a.width + x) * 4;
+      const ib = (y * b.width + x) * 4;
+      seen += 1;
+      if (Math.abs(a.data[ia] - b.data[ib]) + Math.abs(a.data[ia + 1] - b.data[ib + 1]) + Math.abs(a.data[ia + 2] - b.data[ib + 2]) > 12) changed += 1;
+    }
+  }
+  return { ratio: seen ? changed / seen : 1, seen, changed };
+}
+
 async function look() {
-  return decodePng(await canvas.screenshot());
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('the emulator canvas has no box');
+  return decodePng(await page.screenshot({ clip: box, timeout: 120000 }));
 }
 
 let booted = true;
@@ -182,8 +219,45 @@ check('js-dos drew a canvas', booted);
    exist, and the bars are the proof that a key reached the program. Two claims,
    two checks, and the second one is what says the keyboard is wired up. */
 await page.waitForTimeout(4000);
-await canvas.click({ position: { x: 40, y: 40 } });
-await page.keyboard.press('Space');
+
+/* On a phone the ONLY input used from here on is the on-screen pad: no
+   `keyboard.press`, no clicking the emulator. If the bars appear, the pad's
+   postMessage → KeyboardEvent path really reached DOSBox. */
+const pad = page.locator('[aria-label="On-screen game controls"]');
+const padCount = await pad.count();
+if (PHONE) {
+  check('the pad is on screen on a phone, unasked', padCount === 1 && (await pad.isVisible()));
+  if (padCount) {
+    const geom = await page.evaluate(() => {
+      const group = document.querySelector('[aria-label="On-screen game controls"]');
+      const screen = document.querySelector('.dos-screen');
+      const p = group.getBoundingClientRect();
+      const s = screen.getBoundingClientRect();
+      return {
+        vw: window.innerWidth,
+        scrollW: document.documentElement.scrollWidth,
+        pictureBottom: Math.round(s.bottom),
+        padTop: Math.round(p.top),
+        padH: Math.round(p.height),
+        keys: [...group.querySelectorAll('button')].map((b) => {
+          const r = b.getBoundingClientRect();
+          return { label: b.getAttribute('aria-label'), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right) };
+        }),
+      };
+    });
+    check('the pad sits below the picture, never on top of it', geom.padTop >= geom.pictureBottom - 2,
+      `pad ${geom.padTop} vs picture ${geom.pictureBottom}`);
+    const small = geom.keys.filter((k) => k.h < 40 || k.w < 40);
+    check('every pad key is a thumb-sized target', small.length === 0,
+      small.map((k) => `${k.label} ${k.w}x${k.h}`).join(', '));
+    check('no pad key is off the screen', geom.keys.every((k) => k.right <= geom.vw + 1) && geom.scrollW <= geom.vw + 1,
+      `${geom.keys.filter((k) => k.right > geom.vw + 1).length} off-screen, scrollWidth ${geom.scrollW}`);
+    await pad.getByRole('button', { name: /^Space/ }).tap();
+  }
+} else {
+  await canvas.click({ position: { x: 40, y: 40 } });
+  await page.keyboard.press('Space');
+}
 await page.waitForTimeout(1500);
 
 /* What is on the screen: is it lit, and are the four colour bars there? */
@@ -229,12 +303,17 @@ check('the program painted its four colour bars', bands >= 4, `${bands} distinct
 if (booted) {
   /* A screenshot, for the same reason as above — and compared byte for byte, so
      "still" means still. */
-  const shot = async () => decodePng(await canvas.screenshot()).data.toString('base64');
+  const shot = async () => (await look()).data.toString('base64');
 
   await page.getByRole('button', { name: /^Pause$/ }).click();
-  const paused = await shot();
+  const paused = await look();
   await page.waitForTimeout(700);
-  check('pause holds the picture still', paused === (await shot()));
+  const stillPaused = await look();
+  /* Byte-for-byte would also fail on a one-pixel size change, which is a layout
+     question, not "is the game still running". Compare the picture itself. */
+  const diff = pictureDiff(paused, stillPaused);
+  check('pause holds the picture still', diff.ratio < 0.001,
+    `${(diff.ratio * 100).toFixed(2)}% of samples changed, ${paused.width}x${paused.height} vs ${stillPaused.width}x${stillPaused.height}`);
 
   await page.getByRole('button', { name: /^Resume$/ }).click();
   await page.waitForTimeout(700);
@@ -243,12 +322,55 @@ if (booted) {
   await page.getByRole('button', { name: /^Mute$/ }).click();
   check('mute switches the label', (await page.getByRole('button', { name: /^Unmute$/ }).count()) === 1);
 
+  /* The pad is a desk control on a desktop too: anyone without a keyboard in
+     front of them can use it, and it must come and go without disturbing the
+     picture. */
+  if (!PHONE) {
+    await page.getByRole('button', { name: /^Gamepad$/ }).click();
+    await page.waitForTimeout(250);
+    check('the pad can be opened on a desktop', (await page.locator('[aria-label="On-screen game controls"]').count()) === 1);
+    const fits = await page.evaluate(() => {
+      const m = document.querySelector('.dos-monitor').getBoundingClientRect();
+      return { vh: window.innerHeight, top: Math.round(m.top), bottom: Math.round(m.bottom), scrollY: Math.round(window.scrollY) };
+    });
+    check('the whole machine fits the window, controls included', fits.bottom <= fits.vh + 1, JSON.stringify(fits));
+    /* The machine must survive the pad: if the iframe were re-mounted, the DOS
+       session would restart. Tag it and look for the tag. */
+    await page.evaluate(() => { document.querySelector('iframe').dataset.kept = 'yes'; });
+    await page.getByRole('button', { name: /^Hide pad$/ }).click();
+    await page.waitForTimeout(300);
+    check('and hidden again', (await page.locator('[aria-label="On-screen game controls"]').count()) === 0);
+    check('hiding the pad does not restart the machine',
+      await page.evaluate(() => document.querySelector('iframe')?.dataset.kept === 'yes'));
+    await page.getByRole('button', { name: /^Gamepad$/ }).click();
+    await page.waitForTimeout(200);
+  }
+
   await page.getByRole('button', { name: /^Fullscreen$/ }).click();
   await page.waitForTimeout(400);
   const full = await page.evaluate(() => document.querySelector('.dos-stage')?.getAttribute('data-full'));
   check('fullscreen takes the viewport', full === 'on', String(full));
+  const padInFull = await page.evaluate(() => {
+    const g = document.querySelector('[aria-label="On-screen game controls"]');
+    if (!g) return { there: false };
+    const r = g.getBoundingClientRect();
+    return { there: true, top: Math.round(r.top), bottom: Math.round(r.bottom), vh: window.innerHeight, w: Math.round(r.width) };
+  });
+  check('the pad is still usable in fullscreen', padInFull.there && padInFull.top < padInFull.vh && padInFull.bottom > 0,
+    JSON.stringify(padInFull));
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
+}
+
+/* -------------------------------------------------------------- getting out */
+/* The player page hides the site chrome, so this control is the way back for a
+   phone player who does not want to press Stop. */
+const backCount = await page.getByRole('button', { name: 'Back to the DOS shelf' }).count();
+check('there is a labelled way back to the shelf', backCount === 1);
+if (backCount) {
+  await page.getByRole('button', { name: 'Back to the DOS shelf' }).click();
+  await page.waitForURL(/\/retro/, { timeout: 10000 }).catch(() => {});
+  check('and it lands on the DOS shelf', /platform=dos/.test(page.url()), page.url());
 }
 
 /* ----------------------------------------------------------- an unknown id */

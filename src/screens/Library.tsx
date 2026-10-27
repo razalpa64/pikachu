@@ -72,6 +72,21 @@ export default function Library() {
   const [sort, setSort] = useState<Sort>('featured');
   const filter = (params.get('mode') as Filter) ?? 'all';
 
+  /**
+   * The filter rail scrolls sideways on a phone, which means the chip that is
+   * actually applied can be off-screen — and a link like `/library?mode=solo`
+   * then shows a page filtered to something the visitor cannot see a tick on.
+   * Bring the active chip into view whenever the filter changes (including on
+   * the first render, which is the deep-link case).
+   */
+  const railRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const active = railRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if (active && typeof active.scrollIntoView === 'function') {
+      active.scrollIntoView({ block: 'nearest', inline: 'center' });
+    }
+  }, [filter]);
+
   const setFilter = (f: Filter) => {
     sfx('toggle');
     if (f === 'all') setParams({}, { replace: true });
@@ -150,8 +165,11 @@ export default function Library() {
         </div>
       </div>
 
-      {/* filter rail */}
-      <div className="flex gap-1.5 overflow-x-auto pb-2.5 mb-5 -mx-[var(--shell-pad)] px-[var(--shell-pad)] lg:mx-0 lg:px-0 lg:flex-wrap">
+      {/* filter rail: on a phone it scrolls, and the soft edge on the right is
+          the only thing that says so — without it the last chip looks cut off
+          rather than waiting to be swiped to. */}
+      <div className="relative mb-5">
+      <div ref={railRef} className="flex gap-1.5 overflow-x-auto pb-2.5 -mx-[var(--shell-pad)] px-[var(--shell-pad)] lg:mx-0 lg:px-0 lg:flex-wrap">
         {FILTERS.map((f) => {
           const active = filter === f.id;
           const n = countFor(f.id, progress.favourites);
@@ -165,6 +183,8 @@ export default function Library() {
             </button>
           );
         })}
+      </div>
+        <span aria-hidden className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-[var(--color-ink-900)] to-transparent lg:hidden" />
       </div>
 
       {results.length === 0 ? (

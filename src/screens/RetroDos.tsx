@@ -12,6 +12,7 @@ import {
 } from '../lib/dos';
 import { RETRO_CHANNEL, type PlayerMessage } from '../lib/retro';
 import { Button, EmptyState, Icon } from '../components/ui';
+import DosPad, { type DosKey } from '../components/DosPad';
 import { useStore } from '../lib/store';
 
 /**
@@ -97,6 +98,21 @@ export default function RetroDosPlayer() {
   const [muted, setMuted] = useState(false);
   const [stalled, setStalled] = useState(false);
   const [nativeFull, setNativeFull] = useState(false);
+  /* The pad starts open on anything that has no keyboard under it — a phone or a
+     tablet — and closed on a desktop, where the keyboard is right there. It can
+     be toggled either way. */
+  const [padOpen, setPadOpen] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      /* A narrow window is as good a signal as a coarse pointer: whatever you
+         are holding, there is no room for a keyboard under a 820 px screen. */
+      return window.matchMedia('(pointer: coarse)').matches
+        || navigator.maxTouchPoints > 0
+        || window.innerWidth <= 820;
+    } catch {
+      return false;
+    }
+  });
   const [inPageFull, setInPageFull] = useState(false);
   /* A row that exists but is still a draft. Only an admin can read it at all —
      `listAllGames` is gated by row-level security — so this branch is a preview
@@ -185,12 +201,19 @@ export default function RetroDosPlayer() {
     return () => window.clearTimeout(t);
   }, [phase]);
 
-  const send = useCallback((cmd: string, value?: unknown) => {
+  const send = useCallback((cmd: string, value?: unknown, action?: string) => {
     iframeRef.current?.contentWindow?.postMessage(
-      { channel: RETRO_CHANNEL, type: 'cmd', cmd, value },
+      { channel: RETRO_CHANNEL, type: 'cmd', cmd, value, action },
       window.location.origin,
     );
   }, []);
+
+  /* One key, down or up, for the on-screen pad. It goes through the same channel
+     as pause/mute: the player document owns the keyboard, this page owns the
+     buttons. */
+  const pressKey = useCallback((spec: DosKey, action: 'down' | 'up' | 'tap') => {
+    send('key', { key: spec.key, code: spec.code, keyCode: spec.keyCode }, action);
+  }, [send]);
 
   const onFrameLoad = useCallback(() => {
     if (!remoteBundle || !iframeRef.current?.contentWindow) return;
@@ -295,6 +318,19 @@ export default function RetroDosPlayer() {
         {/* ---------------- the monitor ---------------- */}
         <section aria-label={`${game.title} — DOS emulator`} className="dos-monitor">
           <div className="dos-monitor-top">
+            {/* This page hides the site chrome (a text-mode screen inside a
+                scrolling page is a trap for the arrow keys), which left a phone
+                player with no way out but "Stop" — a button that sounds like it
+                throws the game away. One labelled way back, on the bezel. */}
+            <button
+              type="button"
+              className="dos-back"
+              onClick={() => { sfx('back'); nav('/retro?platform=dos'); }}
+              aria-label="Back to the DOS shelf"
+            >
+              <Icon name="back" size={12} />
+              <span className="hidden sm:inline">Shelf</span>
+            </button>
             <div className="flex items-baseline gap-2.5 min-w-0">
               <span className="dos-monitor-mark" aria-hidden>•</span>
               <h1 className="display text-[15px] sm:text-[17px] text-[#e7dcc8] truncate">{game.title}</h1>
@@ -386,6 +422,13 @@ export default function RetroDosPlayer() {
             )}
           </div>
 
+          {/* Below the picture, in the flow: the pad can never cover a game's
+              own HUD, and it survives fullscreen because it lives in the same
+              element that goes fullscreen. */}
+          {started && padOpen && (
+            <DosPad onKey={pressKey} disabled={phase !== 'running' && phase !== 'paused'} />
+          )}
+
           <div className="dos-monitor-bottom">
             <div className="flex flex-wrap items-center gap-1.5">
               <DeskButton
@@ -408,6 +451,13 @@ export default function RetroDosPlayer() {
                   setMuted((m) => !m);
                   sfx('toggle');
                 }}
+              />
+              <DeskButton
+                label={padOpen ? 'Hide pad' : 'Gamepad'}
+                icon="gamepad"
+                active={padOpen}
+                disabled={!started}
+                onClick={() => { setPadOpen((v) => !v); sfx('toggle'); }}
               />
               <DeskButton
                 label="Fullscreen"
@@ -448,9 +498,10 @@ export default function RetroDosPlayer() {
               ))}
             </dl>
             <p className="text-[11.5px] text-cream-500 mt-3">
-              On a phone, tap the screen once to give it the keyboard focus, then use the on-screen controls js-dos
-              draws. There is no touch gamepad for arbitrary DOS titles — a program that needs a mouse expects a
-              mouse.
+              On a phone, the <strong className="text-cream-300">Gamepad</strong> under the picture sends the arrow
+              keys, Space, Enter, Esc, Ctrl, Shift and Tab straight to the program — hold an arrow to keep moving.
+              What a pad cannot do is type: a text adventure still needs a keyboard, and a game that wants a mouse
+              still wants a mouse.
             </p>
           </section>
 

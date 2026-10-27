@@ -460,7 +460,76 @@
     }, 45000);
   }
 
+  /* ------------------------------------------------------------ the keyboard
+     The desk page has an on-screen gamepad for phones (and for anyone without a
+     keyboard in front of them). It cannot dispatch an event into this document
+     itself — the pad lives in the parent frame — so it posts `{type:'cmd',
+     cmd:'key'}` and this function turns that into a real KeyboardEvent on the
+     element js-dos listens on.
+
+     A DOS program does not read "the page": it polls the keyboard through the
+     browser's event queue, so the event has to exist, bubble, and carry the
+     legacy `keyCode`/`which` fields DOSBox uses to identify a key. Synthetic
+     events are indistinguishable from real ones here (nothing in this path asks
+     `isTrusted`), which is exactly why the pad can work at all. */
+  var KEY_TARGETS = [".jsdos-rso canvas", "#jsdos canvas", "canvas"];
+
+  function keyTarget() {
+    var node = null;
+    for (var i = 0; i < KEY_TARGETS.length && !node; i += 1) {
+      node = host.querySelector(KEY_TARGETS[i]);
+    }
+    return node || host;
+  }
+
+  function keyEvent(type, spec) {
+    var code = typeof spec.keyCode === "number" ? spec.keyCode : 0;
+    var event;
+    try {
+      event = new KeyboardEvent(type, {
+        key: String(spec.key),
+        code: typeof spec.code === "string" ? spec.code : "",
+        keyCode: code,
+        which: code,
+        bubbles: true,
+        cancelable: true,
+        composed: true
+      });
+    } catch (error) {
+      event = document.createEvent("Event");
+      event.initEvent(type, true, true);
+    }
+    /* Chrome honours keyCode in the init dictionary, older engines do not; the
+       own property shadows the prototype getter when the constructor ignored it. */
+    if (event.keyCode !== code) {
+      try {
+        Object.defineProperty(event, "keyCode", { get: function () { return code; } });
+        Object.defineProperty(event, "which", { get: function () { return code; } });
+      } catch (error) {}
+    }
+    return event;
+  }
+
+  function sendKey(msg) {
+    var spec = msg.value;
+    if (!spec || typeof spec.key !== "string" || !spec.key) return;
+    var target = keyTarget();
+    try { if (target.focus) target.focus({ preventScroll: true }); } catch (error) {}
+    var down = msg.action !== "up";
+    try {
+      target.dispatchEvent(keyEvent(down ? "keydown" : "keyup", spec));
+    } catch (error) { /* a dead machine ignores keys; that is not an error */ }
+    if (msg.action === "tap") {
+      window.setTimeout(function () {
+        try { target.dispatchEvent(keyEvent("keyup", spec)); } catch (error) {}
+      }, 60);
+    }
+  }
+
   function command(msg) {
+    /* Keys matter only once there is a machine to receive them: before that the
+       only canvas in here is js-dos's own boot screen. */
+    if (msg.cmd === "key") { if (api) sendKey(msg); return; }
     if (!api) return;
     switch (msg.cmd) {
       case "pause": if (typeof api.setPaused === "function") api.setPaused(true); break;

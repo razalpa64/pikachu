@@ -54,12 +54,19 @@ own watchdog then reported, 25 seconds later, "DOS started, but no screen
 appeared" — blaming the bundle for the site's own 404. The shelf's smoke test had
 been *asserting the broken value*, so it passed.
 
-Fixed: the prefix is one constant, `/retro/jsdos/emulators/`, the player now
+Fixed: the prefix is one constant, `/retro/jsdos/emulators/`, and the player now
 fetches `emulators.js`, `wdosbox.js` and `wdosbox.wasm` through that constant
-before booting and names any missing file instead of blaming the game, and three
-places pin it — a unit test that resolves the prefix against `public/`, the smoke
-test that fetches it over HTTP, and `VENDOR.md`. Bundles also no longer end their
-`[autoexec]` with `exit`: quitting DOS shuts js-dos down, which reads as a crash.
+before booting, naming any missing file instead of blaming the game. The check
+looks at the *body*, not the status, because this dev server answers a missing
+path with `index.html` and a `200` — the silent success that hid the original
+bug (`/retro/jsdos/emulators.js` → `200 · text/html`).
+
+Four things pin it now: a unit test resolving the prefix against `public/` on
+disk, a smoke check fetching the three files over HTTP and asserting their
+content types, a smoke check that the old prefix does *not* serve the loader, and
+`VENDOR.md`, which explains the concatenation to whoever changes the player next.
+Bundles also no longer end their `[autoexec]` with `exit`: quitting DOS shuts
+js-dos down, which reads as a crash.
 
 ## The nine committed DOS cartridges
 

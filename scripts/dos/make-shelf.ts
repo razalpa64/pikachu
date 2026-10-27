@@ -1,24 +1,32 @@
 /**
  * `npm run dos:shelf` — build the calibration bundle and the DOS shelf manifest.
  *
- * The shelf has to contain *something* that is provably ours, or "the DOS player
- * works" would be an untested claim. So this generates one cartridge from first
- * principles: a 16-bit DOS program assembled byte by byte here, wrapped in a
- * `.jsdos` bundle with the `dosbox.conf` the format requires.
+ * Two things end up on the shelf, and they are written by two different scripts:
  *
- * It is not a game. It is the DOS equivalent of a test card: it prints a banner
- * in text mode, then paints four colour bars in mode 13h, then exits on a
- * keypress. That exercises the things an emulator can get wrong — DOS boot,
- * `[autoexec]`, INT 21h, INT 10h, a VGA mode switch, direct writes to `A000:0` —
- * without shipping anybody else's game or claiming anybody else's rights.
+ *   · The **calibration cartridge**, generated here from first principles: a
+ *     16-bit DOS program assembled byte by byte, wrapped in a `.jsdos` bundle
+ *     with the `dosbox.conf` the format requires. It is not a game, it is the DOS
+ *     equivalent of a test card — banner in text mode, four colour bars in mode
+ *     13h, exit on a keypress — and it proves the player boots without shipping
+ *     anybody's game or claiming anybody's rights. It is authored here and
+ *     released CC0.
+ *   · The **free-software games** listed in `scripts/dos/records.json`, which
+ *     `npm run dos:games` writes after it has downloaded and packaged each one
+ *     from its author's repository. This script only reads those records back,
+ *     checks the bundle beside each one is the size the record claims, and puts
+ *     them in the same manifest — so the shelf can be rebuilt with no network.
  *
- * Everything here is authored for this project and released CC0, which is the
- * one kind of permission that needs no verification.
+ * One layout rule matters and was wrong in the first version of this file: js-dos
+ * unpacks a bundle into `C:\`, so an `[autoexec]` line like `CALIB.COM` only
+ * resolves if `CALIB.COM` sits at the archive root. The binary used to be put in
+ * a `GAME/` subdirectory, which the autoexec would never have found; it is at the
+ * root now, and both this script and `scripts/smoke-dos.ts` check the name.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { buildZip } from '../../src/lib/zip';
+import { MAX_BUNDLE_BYTES, inspectBundle, validateDosGame } from '../../src/lib/dos';
+import { buildZip, readZipDirectory, readZipEntry } from '../../src/lib/zip';
 
 /* ------------------------------------------------------------- assembler */
 
@@ -180,13 +188,106 @@ exit
 `;
 
 const SHELF_NOTE =
-  'The DOS shelf here holds only builds this project may host: the calibration cartridge below is ' +
-  'our own work, released CC0. The 1,499 titles in the discovery index are somebody else’s games with ' +
-  'an aggregator’s "Freeware" or "Shareware" label, which is not a redistribution grant — so they are ' +
-  'listed, searchable and linked to their original source, and they have no Play button until an ' +
-  'administrator records evidence on the desk.';
+  'The DOS shelf holds only builds this project may host: four games published by their own authors ' +
+  'under the GPL or MIT, plus our CC0 calibration cartridge. None of them is a commercial title. The ' +
+  '1,499 titles in the discovery index are somebody else’s games with an aggregator’s "Freeware" or ' +
+  '"Shareware" label, which is not a redistribution grant — so they stay in the review queue, ' +
+  'searchable and linked to their original source, with no Play button until an administrator records ' +
+  'evidence on the desk.';
 
-function main() {
+/** The cartridge this script builds, in the shape the shelf manifest expects. */
+function calibrationRecord(programBytes: number, bundleBytes: number) {
+  return {
+    id: 'pikachu-calibration',
+    title: 'Calibration',
+    tagline: 'The player’s own test card',
+    year: 2026,
+    author: 'Pikachu Arcade',
+    license: 'CC0-1.0',
+    licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
+    sourceUrl: 'https://github.com/razalpa64/pikachu',
+    description:
+      `A ${programBytes}-byte program written for this site and assembled byte by byte in ` +
+      '`scripts/dos/make-shelf.ts`. It prints a banner in text mode, paints four colour bars in VGA ' +
+      'mode 13h, then returns to DOS. If the DOS player is working, this runs — which is why it ships: ' +
+      'it is the one cartridge whose behaviour we can describe exactly.',
+    bundle: 'bundles/pikachu-calibration.jsdos',
+    bytes: bundleBytes,
+    cover: null,
+    accent: '#f2c14e',
+    tags: ['test', 'utility'],
+    rights: 'Authored for this project and released CC0 1.0. Contains no third-party code or data.',
+  };
+}
+
+/**
+ * Read the records `npm run dos:games` wrote, and refuse to publish a record the
+ * site would not accept or whose bundle is missing or a different size. A shelf
+ * that silently drops a game is a shelf that lies about what it holds.
+ */
+interface ShelfRow {
+  id: string;
+  title: string;
+  bundle: string;
+  bytes: number;
+}
+
+function readBuiltGames(): ShelfRow[] {
+  const file = resolve('scripts/dos/records.json');
+  if (!existsSync(file)) {
+    process.stdout.write('  no scripts/dos/records.json — run `npm run dos:games` to package the games\n');
+    return [];
+  }
+  const raw = JSON.parse(readFileSync(file, 'utf8')) as { games?: unknown[] };
+  const out: ShelfRow[] = [];
+  for (const item of raw.games ?? []) {
+    const game = validateDosGame(item);
+    if (!game) throw new Error(`records.json holds a record the shelf would reject: ${JSON.stringify(item).slice(0, 120)}`);
+    const bundleFile = resolve('public/retro/dos', game.bundle);
+    if (!existsSync(bundleFile)) throw new Error(`${game.id}: ${game.bundle} is missing — run npm run dos:games`);
+    const onDisk = statSync(bundleFile).size;
+    if (onDisk !== game.bytes) throw new Error(`${game.id}: record says ${game.bytes} bytes, bundle is ${onDisk}`);
+    /* The whole record goes into the manifest, not just its size: this is the
+       authored text (description, rights, licence link) from records.json. */
+    out.push(game as unknown as ShelfRow);
+  }
+  return out;
+}
+
+/** The bundle the manifest advertises has to be one the player will accept. */
+async function checkBundle(id: string, file: string): Promise<string> {
+  const bytes = new Uint8Array(readFileSync(file));
+  if (bytes.length === 0 || bytes.length > MAX_BUNDLE_BYTES) throw new Error(`${id}: bundle size ${bytes.length} is out of bounds`);
+  const entries = readZipDirectory(bytes);
+  const conf = await readZipEntry(bytes, '.jsdos/dosbox.conf');
+  const report = inspectBundle({ bytes, entries, conf: conf ? new TextDecoder().decode(conf) : null });
+  if (!report.ok) throw new Error(`${id}: bundle failed the structural check (${report.problems.join(', ')})`);
+
+  /* The program the autoexec starts must exist at the archive root: js-dos
+     mounts the bundle as C:, so a subdirectory would be a black screen. */
+  const program = (report.autoexec ?? '')
+    .split('\n')
+    .map((line) => line.trim())
+    /* Out of Cash's conf ends with a block of `# Generated using ...` comments,
+       and one of them mentions js-dos.com — strip comments before guessing
+       which line is the program. */
+    .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
+    .filter((line) => /\.(exe|com|bat)$/i.test(line))
+    .pop();
+  const present = program && entries?.some((e) => e.name.toLowerCase() === program.toLowerCase());
+  if (program && !present) {
+    throw new Error(`${id}: [autoexec] starts ${program}, which is not at the bundle root (${entries?.length ?? 0} entries)`);
+  }
+  if (program && /\.exe$/i.test(program)) {
+    const body = await readZipEntry(bytes, program);
+    if (!body || !(body[0] === 0x4d && body[1] === 0x5a)) {
+      throw new Error(`${id}: ${program} has no MZ header — it is not a DOS executable`);
+    }
+  }
+  return `${report.entries} entries · ${program ?? 'no program'}`;
+}
+
+async function main() {
   const bundleDir = resolve('public/retro/dos/bundles');
   mkdirSync(bundleDir, { recursive: true });
 
@@ -198,50 +299,48 @@ function main() {
     'It is a test pattern, not a game.\r\n',
   );
 
+  /* Flat: `.jsdos/` holds the config, everything else lands in C:\ — the same
+     shape as the bundles js-dos itself generates. */
   const bundle = buildZip([
     { name: '.jsdos/dosbox.conf', data: conf },
-    { name: 'GAME/CALIB.COM', data: program },
-    { name: 'GAME/README.TXT', data: readme },
+    { name: 'CALIB.COM', data: program },
+    { name: 'README.TXT', data: readme },
   ]);
 
-  writeFileSync(resolve(bundleDir, 'pikachu-calibration.jsdos'), bundle);
+  const calibrationFile = resolve(bundleDir, 'pikachu-calibration.jsdos');
+  writeFileSync(calibrationFile, bundle);
 
-  const shelf = {
-    version: 1,
-    system: 'MS-DOS',
-    note: SHELF_NOTE,
-    games: [
-      {
-        id: 'pikachu-calibration',
-        title: 'Calibration',
-        tagline: 'The player’s own test card',
-        year: 2026,
-        author: 'Pikachu Arcade',
-        license: 'CC0-1.0',
-        licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',
-        sourceUrl: 'https://github.com/razalpa64/pikachu',
-        description:
-          `A ${program.length}-byte program written for this site and assembled byte by byte in ` + '`scripts/dos/make-shelf.ts`. ' +
-          'It prints a banner in text mode, paints four colour bars in VGA mode 13h, then returns to DOS. ' +
-          'If the DOS player is working, this runs — which is why it ships: it is the one cartridge whose ' +
-          'behaviour we can describe exactly.',
-        bundle: 'bundles/pikachu-calibration.jsdos',
-        bytes: bundle.length,
-        cover: null,
-        accent: '#f2c14e',
-        tags: ['test', 'utility'],
-        rights: 'Authored for this project and released CC0 1.0. Contains no third-party code or data.',
-      },
-    ],
-  };
+  const built = readBuiltGames();
 
-  writeFileSync(resolve('public/retro/dos/shelf.json'), `${JSON.stringify(shelf, null, 2)}\n`);
+  const file = resolve('public/retro/dos/shelf.json');
+  const existing = existsSync(file)
+    ? (JSON.parse(readFileSync(file, 'utf8')) as { games?: ShelfRow[] }).games ?? []
+    : [];
+  const known = new Set(['pikachu-calibration', ...built.map((g) => g.id)]);
+  /* Anything an administrator published earlier is left alone; this script only
+     owns the calibration cartridge and the records npm run dos:games built. */
+  const extras = existing.filter((g) => g && !known.has(g.id));
+
+  const games = [calibrationRecord(program.length, bundle.length), ...built, ...extras];
+  for (const game of games) {
+    if (!game) continue;
+    const verdict = await checkBundle(game.id, resolve('public/retro/dos', game.bundle));
+    process.stdout.write(`  ${game.id.padEnd(24)} ${String(game.bytes).padStart(9)} bytes  ${verdict}\n`);
+  }
+  games.sort((a, b) => (a && b ? a.title.localeCompare(b.title) : 0));
+
+  const shelf = { version: 1, system: 'MS-DOS', note: SHELF_NOTE, games };
+
+  writeFileSync(file, `${JSON.stringify(shelf, null, 2)}\n`);
 
   process.stdout.write(
     `\n  CALIB.COM   ${program.length} bytes\n` +
     `  bundle      ${bundle.length} bytes  → public/retro/dos/bundles/pikachu-calibration.jsdos\n` +
-    `  shelf       1 cartridge → public/retro/dos/shelf.json\n\n`,
+    `  shelf       ${games.length} cartridge(s) → public/retro/dos/shelf.json\n\n`,
   );
 }
 
-main();
+main().catch((error) => {
+  console.error(`\n  ${error instanceof Error ? error.message : String(error)}\n`);
+  process.exit(1);
+});

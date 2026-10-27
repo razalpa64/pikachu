@@ -1248,8 +1248,8 @@ function DosDesk() {
           <p className="text-[13px] text-cream-400 mt-3">Reading…</p>
         ) : rows.length === 0 ? (
           <p className="text-[13px] text-cream-400 mt-3">
-            No DOS rows yet. The calibration cartridge ships with the site in <code className="font-mono text-volt-700">public/retro/dos/</code>,
-            so it is not a row here.
+            No DOS rows yet. The five committed cartridges — four GPL/MIT games and the calibration card — ship with the
+            site in <code className="font-mono text-volt-700">public/retro/dos/</code>, so they are not rows here.
           </p>
         ) : (
           <ul className="mt-3 divide-y divide-ink-600">

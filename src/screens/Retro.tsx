@@ -730,7 +730,7 @@ export default function Retro() {
           <Panel className="p-5 sm:p-6">
             <p className="eyebrow text-volt-700 mb-1.5">The short shelf</p>
             <h2 id="dos-notes" className="display text-[23px] text-cream-100 leading-tight">
-              Why there is one DOS game, and not fifteen hundred
+              Why five games, and not fifteen hundred
             </h2>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
               A catalogue of 1,499 DOS titles is easy to find. A right to redistribute them is not: the labels on
@@ -739,20 +739,30 @@ export default function Retro() {
               title only appears above once a person has written down the evidence and the bundle has been checked.
             </p>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
-              What is on the shelf now is the calibration cartridge: a 179-byte program written for this site,
-              released CC0, whose whole job is to prove the DOS player really boots. It prints a banner, paints four
-              colour bars, and exits.
+              The games that are here were published as free software by the people who made them — two Polish DOS
+              games and a Spanish point-and-click adventure under the GPL, plus a 508-byte arcade game under the MIT
+              licence. Each bundle was assembled from its own author’s repository at the commit printed on its card,
+              with the licence text inside the archive. Doom and Grand Theft Auto: Vice City are not here and will
+              not be: both are still sold, their data files were never freely licensed, and the second one never had
+              a DOS release at all.
+            </p>
+            <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
+              The fifth card is ours: a 179-byte calibration program released CC0, whose whole job is to prove the
+              DOS player really boots. It prints a banner, paints four colour bars, and exits.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <Button
                 size="sm"
-                onClick={() => { const g = dosShelf?.games[0]; if (g) playDos(g); }}
-                disabled={!dosShelf || dosShelf.games.length === 0}
+                onClick={() => { const g = dosShelf?.games.find((game) => game.id === 'pikachu-calibration'); if (g) playDos(g); }}
+                disabled={!dosShelf || !dosShelf.games.some((game) => game.id === 'pikachu-calibration')}
                 icon={<Icon name="play" size={12} />}
               >
-                Play the calibration cartridge
+                Play the test card
               </Button>
-              <span className="text-[11.5px] text-cream-500">Runs in your browser · {dosShelf?.games[0] ? formatBytes(dosShelf.games[0].bytes) : '—'} download</span>
+              <span className="text-[11.5px] text-cream-500">
+                Runs in your browser ·{' '}
+                {formatBytes(dosShelf?.games.find((game) => game.id === 'pikachu-calibration')?.bytes ?? 0)} download
+              </span>
             </div>
             <p className="text-[11px] text-cream-500 mt-3">
               There is no “drop your own DOS game” box: a `.jsdos` bundle is a whole installation, and a file dropped

@@ -4,14 +4,14 @@ A report on the retrofit, written to be checked rather than admired. Every numbe
 below is produced by a file in this repository or by a command named beside it;
 nothing here is an estimate dressed up as a statistic.
 
-Last updated with commit `b3076f2` (phase 6, merged as `dc96dde`).
+Last updated with the free-software DOS shelf (four games added beside the calibration cartridge).
 
 ## The two shelves
 
 | | GBA | DOS |
 |---|---|---|
-| Games a visitor can play | **22** (committed homebrew) | **1** (`pikachu-calibration`, CC0) |
-| Where the files live | `public/retro/roms/` (95 MB, in the repo) | `public/retro/dos/bundles/` (899 B, in the repo) + storage for uploads |
+| Games a visitor can play | **22** (committed homebrew) | **5** (4 GPL/MIT games + the CC0 calibration cartridge) |
+| Where the files live | `public/retro/roms/` (95 MB, in the repo) | `public/retro/dos/bundles/` (12.9 MB, in the repo) + storage for uploads |
 | Emulator | EmulatorJS 4.2.3 (MIT), mGBA core, lazy | js-dos 8.5.3 (GPL-2.0), DOSBox core, lazy |
 | Document | `/retro/player.html` | `/retro/dos.html` |
 | Page | `/retro/:id` | `/retro/dos/:id` |
@@ -43,14 +43,66 @@ own. Five bundles were inspected structurally as a sample (`npm run
 dos:import -- --inspect 5`); all five were valid ZIPs with a `.jsdos/dosbox.conf`.
 That is a statement about the *format*, not about the right to host them.
 
-The only playable DOS title is therefore the one this project owns outright:
+## The five committed DOS cartridges
+
+Nothing in this table came from a ROM site, a "freeware" aggregator or a
+third-party upload. Each game was published by the person who wrote it, in their
+own repository, under the licence shown; `npm run dos:games` downloads the files
+at the pinned commit, packages them and checks the result, and
+`scripts/dos/records.json` records the commit and the bundle's SHA-256.
+
+| Cartridge | Licence | Source (pinned commit) | Bundle |
+|---|---|---|---|
+| Celis | GPL-3.0 | `GadZombie/celis` @ `01bea78` | 1 181 383 B |
+| Sadist | GPL-3.0 | `GadZombie/sadist` @ `2372676` | 8 088 373 B |
+| Out of Cash | GPL-3.0 | `warrior-rockk/out-of-cash` @ `8dd5c62` | 4 229 809 B |
+| Moth Hunter | MIT | `w84death/x86-assembly` @ `83a8662` | 3 075 B |
+| Calibration | CC0-1.0 | authored here, `scripts/dos/make-shelf.ts` | 879 B |
+
+Two packaging rules are worth writing down, because both were got wrong first:
+
+- **js-dos mounts the bundle as `C:\`.** A bundle is a ZIP whose `.jsdos/` folder
+  holds the config and whose every other entry lands in the DOS root, so the
+  program named by `[autoexec]` has to sit at the archive root. The calibration
+  binary was originally placed in `GAME/`, which the autoexec could never have
+  found; it is at the root now, and `make-shelf.ts`, `make-games.ts` and
+  `smoke-dos.ts` all assert that the autoexec line resolves to a real entry.
+- **A build we cannot reproduce is not packaged.** Nothing here is compiled:
+  there is no DOS toolchain in this repository. Where the project publishes its
+  own `.jsdos` (Out of Cash does), that file is shipped byte for byte; elsewhere
+  the author's published binaries and data are copied unmodified and only the
+  `dosbox.conf` and a `SOURCE.TXT` note are added. Each bundle carries its
+  licence text as `LICENSE.TXT`.
 
 ```
-public/retro/dos/bundles/pikachu-calibration.jsdos   899 B  (CC0-1.0)
-  .jsdos/dosbox.conf   244 B   svga_s3 · 16 MB · cycles 8000 · autoexec mounts and runs CALIB.COM
-  GAME/CALIB.COM       179 B   text banner → VGA mode 13h → four colour bands on A000:0 → keypress → back to text
-  GAME/README.TXT      132 B
+celis.jsdos          1 181 383 B   CELIS.EXE · CELIS.DAT · CELIS.CFG · DZWIEK.CFG · CELIS.TXT · USTAW.EXE
+sadist.jsdos         8 088 373 B   SADIST.EXE · GRAF.DAT · SADIST.DAT · 2 × .CFG · POSTACI/ · TERENY/ · WAV/BMP assets
+out-of-cash.jsdos    4 229 809 B   the project's own bundle, unmodified (OUTCASH.EXE + CWSDPMI + *DATA.DAT banks)
+moth-hunter.jsdos        3 075 B   MOTH.COM (508 B) + LICENSE.TXT + SOURCE.TXT
+pikachu-calibration.jsdos  879 B   CALIB.COM (179 B) + README.TXT
 ```
+
+Sadist's data is lifted out of `Data/` and flattened next to the executable
+because its Pascal source opens `graf.dat`, `sadist.dat`, the two `.CFG` files,
+`brzeg1.bmp`, `obiekt<N>.bmp`, `textur<N>.bmp` and its WAV banks as bare names in
+the current directory — the same layout its installer produces. Its `Data/Install/`
+folder, editor tools and the duplicate `.DAT` copies are left out.
+
+## DOS titles that were refused, and why
+
+- **Doom (id Software, 1993)** — the engine source is GPL, the WADs are not, and
+  the game is still sold. There is no free build to host, so the shelf links
+  nothing and the discovery index keeps its record for *Doom* at
+  `pending-rights-review`, exactly like the other 1 485 unresolved titles.
+- **Grand Theft Auto: Vice City (Rockstar, 2002)** — a commercial Windows title
+  with no MS-DOS release. It cannot be a DOS cartridge at all.
+- Smaller free-software candidates were checked and dropped for concrete
+  reasons rather than convenience: `mausimus/dos2025`'s committed `BIN/QUIDPROQ.RVD`
+  does not begin with an MZ header (it is not a DOS executable), and
+  `antonijn/dos-game-suite-8086` / `tstamborski/wild-snake-boa-ii` /
+  `dzutrinh/2048` ship their binaries only as GitHub release assets, which this
+  build environment cannot download — so nothing could be verified, and nothing
+  was claimed.
 
 ## What is verified, and by what
 
@@ -61,9 +113,11 @@ public/retro/dos/bundles/pikachu-calibration.jsdos   899 B  (CC0-1.0)
 | A “Freeware”/“Shareware” label is never treated as permission | same file, `judgeRedistribution` | **yes** |
 | A DOS row cannot carry a GBA path (and vice versa) | `src/lib/__tests__/supabase-schema.test.ts` + PGlite | **yes** |
 | The player document, the 1.4 MB core, the bundle and both manifests are served correctly | `npm run smoke:dos` | **yes, green** |
+| Every bundle's `[autoexec]` starts a program that is really at the archive root | `npm run smoke:dos` (now checks the entry, not just the conf) | **yes, green** |
 | js-dos draws a frame and the calibration bars are in it | `npm run e2e:retro:dos` (Playwright) | **no — no Chromium in this sandbox** |
+| Celis, Sadist, Out of Cash and Moth Hunter actually play | would need a browser and a DOS runtime | **no — and there is no DOSBox in this sandbox to test with either** |
 
-`npm test` → 814 tests in 54 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 816 tests in 54 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
 The one claim this report will not make is “the DOS shelf plays”. The HTTP and
 structural layers are proven; the framebuffer is not. On a machine with a browser,

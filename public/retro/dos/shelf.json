@@ -1,7 +1,7 @@
 {
   "version": 1,
   "system": "MS-DOS",
-  "note": "The DOS shelf here holds only builds this project may host: the calibration cartridge below is our own work, released CC0. The 1,499 titles in the discovery index are somebody else’s games with an aggregator’s \"Freeware\" or \"Shareware\" label, which is not a redistribution grant — so they are listed, searchable and linked to their original source, and they have no Play button until an administrator records evidence on the desk.",
+  "note": "The DOS shelf holds only builds this project may host: four games published by their own authors under the GPL or MIT, plus our CC0 calibration cartridge. None of them is a commercial title. The 1,499 titles in the discovery index are somebody else’s games with an aggregator’s \"Freeware\" or \"Shareware\" label, which is not a redistribution grant — so they stay in the review queue, searchable and linked to their original source, with no Play button until an administrator records evidence on the desk.",
   "games": [
     {
       "id": "pikachu-calibration",
@@ -14,7 +14,7 @@
       "sourceUrl": "https://github.com/razalpa64/pikachu",
       "description": "A 179-byte program written for this site and assembled byte by byte in `scripts/dos/make-shelf.ts`. It prints a banner in text mode, paints four colour bars in VGA mode 13h, then returns to DOS. If the DOS player is working, this runs — which is why it ships: it is the one cartridge whose behaviour we can describe exactly.",
       "bundle": "bundles/pikachu-calibration.jsdos",
-      "bytes": 899,
+      "bytes": 879,
       "cover": null,
       "accent": "#f2c14e",
       "tags": [
@@ -22,6 +22,86 @@
         "utility"
       ],
       "rights": "Authored for this project and released CC0 1.0. Contains no third-party code or data."
+    },
+    {
+      "id": "celis",
+      "title": "Celis",
+      "tagline": "Polish shoot-’em-up, unfinished but playable",
+      "year": 2000,
+      "author": "Grzegorz “GAD” Drozd",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "sourceUrl": "https://github.com/GadZombie/celis",
+      "description": "A side-scrolling shooter for MS-DOS written in Turbo Pascal, which its author compares to Gradius, R-Type and Zybex. The repository labels the build “demo version 0.667” and says the game was never finished but is playable. Packaged from the project’s own files at commit 01bea78; the VGA, memory and Sound Blaster settings come from the DOSBox config the author ships in DOSBox/Celis.conf.",
+      "bundle": "bundles/celis.jsdos",
+      "bytes": 1181383,
+      "cover": null,
+      "accent": "#5cc8ff",
+      "tags": [
+        "shooter",
+        "arcade"
+      ],
+      "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below."
+    },
+    {
+      "id": "moth-hunter",
+      "title": "Moth Hunter",
+      "tagline": "A 508-byte arcade game for the mouse",
+      "year": null,
+      "author": "Krzysztof Krystian Jankowski",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/license/mit",
+      "sourceUrl": "https://github.com/w84death/x86-assembly",
+      "description": "One .COM file, 508 bytes: it switches the machine to VGA mode 13h, sets up a double buffer, hides the cursor and runs a mouse-aimed shooting loop against alien sprites, with health, hits and a game-over state. Part of x86-assembly, the author’s collection of programs written small on purpose for 8086-class machines. Packaged from dos/game7/game7.com at commit 83a8662, with the MIT licence beside it; the .asm source is in the repository.",
+      "bundle": "bundles/moth-hunter.jsdos",
+      "bytes": 3075,
+      "cover": null,
+      "accent": "#9ee37d",
+      "tags": [
+        "arcade",
+        "tiny"
+      ],
+      "rights": "MIT (c) Krzysztof Krystian Jankowski, who published both the .COM build and the assembly source in this repository under that licence. An unmodified copy of the build is packaged here with the MIT text as LICENSE.TXT, which is the notice the licence asks us to keep."
+    },
+    {
+      "id": "out-of-cash",
+      "title": "Out of Cash",
+      "tagline": "A hand-drawn 90s high-school adventure",
+      "year": null,
+      "author": "warrior-rockk",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "sourceUrl": "https://github.com/warrior-rockk/out-of-cash",
+      "description": "A point-and-click graphic adventure: your favourite rock band is in town, the ticket costs money you do not have, and the plan is deception. Written for DOS with DJGPP and Allegro and released under the GPL. This bundle is the project’s own published web/out-of-cash.jsdos, byte for byte from commit 8dd5c62 — not repacked here, so its own dosbox.conf and CWSDPMI are exactly as its author tested them.",
+      "bundle": "bundles/out-of-cash.jsdos",
+      "bytes": 4229809,
+      "cover": null,
+      "accent": "#ffb347",
+      "tags": [
+        "adventure",
+        "point-and-click"
+      ],
+      "rights": "GPL-3.0, published by the game’s author with its source. The .jsdos bundle is the project’s own committed build, served unmodified; the licence text sits beside this shelf in public/retro/licenses/ and the source is the repository at the commit below."
+    },
+    {
+      "id": "sadist",
+      "title": "Sadist",
+      "tagline": "The author’s own 1998 DOS game",
+      "year": 1998,
+      "author": "Grzegorz “GAD” Drozd",
+      "license": "GPL-3.0",
+      "licenseUrl": "https://www.gnu.org/licenses/gpl-3.0.html",
+      "sourceUrl": "https://github.com/GadZombie/sadist",
+      "description": "A 1998 DOS game by Grzegorz “GAD” Drozd, who published it — binaries, data, artwork and the Turbo Pascal source — under the GPL. Packaged from commit 2372676 with the files the source opens at runtime: GRAF.DAT, SADIST.DAT, both .CFG files, the character packs in POSTACI/, the terrain packs in TERENY/ and the loose bitmaps and WAV banks lifted out of Data/. Its audio is wired to a Sound Blaster 16 in the bundle’s dosbox.conf.",
+      "bundle": "bundles/sadist.jsdos",
+      "bytes": 8088373,
+      "cover": null,
+      "accent": "#ff7a6b",
+      "tags": [
+        "action",
+        "1998"
+      ],
+      "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below."
     }
   ]
 }

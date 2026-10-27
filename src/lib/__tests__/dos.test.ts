@@ -59,11 +59,30 @@ describe('the zip reader and writer', () => {
     expect(conf).toMatch(/\[autoexec\]/);
     expect(extractAutoexec(conf)).toContain('CALIB.COM');
 
-    /* The .COM is 179 bytes and is not a ZIP itself — proves we are not handing
-       back the whole archive for any name. */
+    /* The .COM is a few hundred bytes and is not a ZIP itself — proves we are
+       not handing back the whole archive for any name. It is bounded rather than
+       pinned: the program grew when it stopped exiting to the DOS prompt and
+       started looping instead, and a frozen size would only ever fail the build
+       for a legitimate edit. */
     const com = await entry(calibrationBytes, 'CALIB.COM');
-    expect(com?.length).toBe(179);
+    expect(com?.length).toBeGreaterThan(64);
+    expect(com?.length).toBeLessThan(1024);
     expect(com?.[0]).not.toBe(0x50); // not "PK"
+  });
+
+  it('leaves the calibration card running instead of exiting to the DOS prompt', async () => {
+    /* CALIB.COM used to end with INT 21h AH=4Ch. Returning to DOS makes DOSBox
+       clear video mode 13h and draw a bare `C:\>`, so the cartridge whose whole
+       job is to prove the player works finished on a black screen. It now jumps
+       back to its banner, which means the byte sequence 4C 00 (mov ax, 4C00h)
+       must not be in the program. */
+    const com = await entry(calibrationBytes, 'CALIB.COM');
+    expect(com).not.toBeNull();
+    const bytes = com as Uint8Array;
+    for (let i = 0; i + 1 < bytes.length; i += 1) {
+      const exits = bytes[i] === 0xb8 && bytes[i + 1] === 0x00 && bytes[i + 2] === 0x4c;
+      expect(exits, `mov ax, 4C00h at offset ${i}`).toBe(false);
+    }
   });
 
   it('says null for something that is not a zip at all', async () => {
@@ -112,6 +131,21 @@ describe('the DOS player document', () => {
     expect(call).toContain('kiosk: true');
     expect(call).toContain('onEvent');
     expect(html).toContain('"ci-ready"');
+  });
+
+  it('never ships `autolock=true`, which puts a capture overlay over the game', async () => {
+    /* js-dos reads `autolock` out of dosbox.conf and, when it is on, requires a
+       pointer-lock click before the game can be used — it draws a full-screen
+       "Click to capture mouse" card and a sensitivity slider over the picture.
+       DOSBox's own default is true and authors copy their conf from a template,
+       so every bundle generated here turned it off. None of these nine is a
+       mouse-look first-person game; the two adventures move the DOS cursor
+       absolutely, which does not need the lock. */
+    for (const game of parseDosShelf(shelfRaw).games) {
+      const bytes = new Uint8Array(readFileSync(join(root, 'public/retro/dos', game.bundle)));
+      const conf = text(await entry(bytes, '.jsdos/dosbox.conf')) ?? '';
+      expect(conf, game.id).not.toMatch(/autolock\s*=\s*true/i);
+    }
   });
 
   it('never ends an [autoexec] with `exit`, which shuts the emulator down', async () => {

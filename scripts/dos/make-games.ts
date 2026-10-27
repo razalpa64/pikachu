@@ -140,12 +140,24 @@ const GPL3_RIGHTS =
 /* Every generated [autoexec] ends with the program and nothing after it.
    It used to end with `exit`, which quits DOS — and js-dos tears the whole
    session down when DOS quits, so a game that ends (or fails to start) looked
-   like the emulator crashing. Leaving the prompt up keeps the screen alive. */
+   like the emulator crashing. Leaving the prompt up keeps the screen alive.
+
+   `autolock` is false in every conf this repository writes, and that is a UI
+   decision as much as an input one. js-dos turns `autolock=true` into pointer
+   lock, and while capture is on it draws two things over the game: a full-screen
+   "Click to capture mouse" overlay and a sensitivity slider down the left edge.
+   Both are right for a first-person game with mouse-look; neither is right for
+   an arrow-key arcade game, and none of the nine cartridges here is the former —
+   the adventures among them (Celis, Sadist) move the DOS cursor absolutely,
+   which works without the lock. DOSBox's own default is `autolock=true`, and
+   authors usually copy their conf from a template, so it arrives switched on.
+   Dragging the pointer without capture is handled by js-dos's own swipe mapping;
+   the mouse is not disabled, it is simply not trapped. */
 
 const CELIS_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 sensitivity=100
 waitonerror=true
 usescancodes=true
@@ -195,7 +207,7 @@ CELIS.EXE
 const SADIST_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 sensitivity=100
 waitonerror=true
 
@@ -244,7 +256,7 @@ SADIST.EXE
 const MOTH_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 waitonerror=true
 
 [dosbox]
@@ -278,7 +290,7 @@ MOTH.COM
 const VINNIE_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 waitonerror=true
 
 [dosbox]
@@ -321,7 +333,7 @@ POOH.EXE
 const BIRD_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 waitonerror=true
 
 [dosbox]
@@ -355,7 +367,7 @@ FLPYBIRD.COM
 const TETRIS_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 waitonerror=true
 
 [dosbox]
@@ -389,7 +401,7 @@ TETRIS.EXE
 const SNAKE54_CONF = `[sdl]
 fullscreen=false
 fulldouble=false
-autolock=true
+autolock=false
 waitonerror=true
 
 [dosbox]
@@ -715,8 +727,11 @@ function sourceNote(title: Title): string {
     'project did not publish a .jsdos bundle of its own) a dosbox.conf that starts the',
     'game on its own. The corresponding source is the repository above at that commit.',
     '',
-    'This build has not been played by the maintainers in a browser: see',
-    'docs/pikachu-arcade.md for what has been checked and what has not.',
+    'Every cartridge on the shelf was launched in a headless browser during',
+    'development: each one booted and drew its own screen, and whether it was',
+    'also seen taking keyboard input is recorded, game by game, in',
+    'docs/pikachu-arcade.md. That file is the honest record of what was',
+    'checked and what was not; no game here has been played to completion.',
     '',
   ].join('\n');
 }

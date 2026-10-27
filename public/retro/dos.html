@@ -135,6 +135,19 @@
      so this has to point at the directory holding emulators.js and wdosbox.*. */
   var EMULATOR_PREFIX = "/retro/jsdos/emulators/";
 
+  /* js-dos calls `navigator.keyboard.lock()` when it starts. Browsers only allow
+     that from a primary top-level document, so inside this frame the promise
+     rejects — and js-dos does not catch it, which puts an "InvalidStateError"
+     in the console that belongs to neither this page nor the game. It is
+     harmless (this frame still receives keys once it has focus, which `ready()`
+     arranges), but a visitor reading the console should not be handed a red
+     error by the player. Only that one rejection is silenced. */
+  window.addEventListener("unhandledrejection", function (event) {
+    var reason = event && event.reason;
+    var text = String((reason && reason.message) || reason || "");
+    if (/lock.*Keyboard|Keyboard.*lock|keyboard.*lock/i.test(text)) event.preventDefault();
+  });
+
   var started = false;
   var startedAt = 0;
   var running = false;

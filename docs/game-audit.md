@@ -135,10 +135,12 @@ accessible name; "Close" on the result dialog is intentionally *not* "Library".
 
 ## Known limits
 
-There is no browser in this environment, so "it renders and responds" is proven
-in jsdom and by build, not by screenshot. The contrast numbers are computed, the
-hit areas are computed from the CSS, and the referee behaviour is executed — but
-a final eyeball on a real phone is still worth doing.
+"It renders and responds" below is proven in jsdom and by build, not by
+screenshot. The contrast numbers are computed, the hit areas are computed from
+the CSS, and the referee behaviour is executed — but a final eyeball on a real
+phone is still worth doing. (A headless browser was later wired up for the DOS
+shelf — see `docs/pikachu-arcade.md` — and that pass found real bugs the jsdom
+tests could not; the same treatment has not yet been given to these screens.)
 
 ---
 

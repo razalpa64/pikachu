@@ -374,7 +374,7 @@ if (backCount) {
 }
 
 /* ----------------------------------------------------------- an unknown id */
-await page.goto(`${BASE}/retro/dos/doom-shareware`, { waitUntil: 'networkidle' });
+await page.goto(`${BASE}/retro/dos/vice-city-2002`, { waitUntil: 'networkidle' });
 check('an unpublished id gets a sentence, not a black screen', (await page.getByText('No such game on the DOS shelf').count()) === 1);
 check('and no emulator is mounted for it', (await page.locator('iframe').count()) === 0);
 

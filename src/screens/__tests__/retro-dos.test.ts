@@ -191,7 +191,7 @@ describe('the DOS player page', () => {
   });
 
   it('refuses an id that is not on the shelf, without loading an emulator', async () => {
-    await mountDos('doom-shareware');
+    await mountDos('vice-city-2002');
 
     expect(host.querySelector('iframe')).toBeNull();
     expect(host.textContent).toContain('No such game on the DOS shelf');

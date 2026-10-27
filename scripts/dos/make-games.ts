@@ -37,7 +37,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-import { inspectBundle } from '../../src/lib/dos';
+import { autoexecProgram, inspectBundle } from '../../src/lib/dos';
 import { buildZip, readZipDirectory, readZipEntry } from '../../src/lib/zip';
 
 /* --------------------------------------------------------------- plumbing */
@@ -110,11 +110,27 @@ interface Title {
   /** Copy whole-tree files out of a codeload zip. */
   zip?: { files: { from: string; as: string }[]; dirs: DirRule[] };
   /** Or take a handful of blobs (big repositories). */
-  blobs?: { from: string; as: string }[];
+  blobs?: { from: string; as: string; sha256?: string }[];
+  /**
+   * Or open a zip that is hosted in somebody's repository and take named files
+   * out of it. A shareware release is published as one archive; the mirror keeps
+   * the archive, not its parts, so this is the only way to get the release's own
+   * DOOM.EXE and DOOM1.WAD without unpacking anything by hand.
+   */
+  archives?: { from: string; entries: { path: string; as: string; sha256?: string }[] }[];
   /** Or ship the project's own published bundle, untouched. */
   prebuilt?: string;
   /** Only for bundles we build: the conf and the program its autoexec starts. */
   boot?: { conf: string; entry: string };
+  /** A committed screenshot of the running game, used as its card cover. */
+  cover?: string | null;
+  /**
+   * Where the game files came from, when it is not the author's own repository.
+   * The default note in `sourceNote` claims the bundles are the project's own
+   * files under a free licence; that is true of every title above and false for
+   * a vendor's shareware release, so the note has to be able to say so.
+   */
+  origin?: 'author' | 'vendor-shareware';
   record: {
     title: string;
     tagline: string;
@@ -251,6 +267,61 @@ umb=true
 mount c .
 c:
 SADIST.EXE
+`;
+
+/* DOOM's own setup asks for 8 MB of EMS and VGA; 16 MB of machine and a fixed
+   20 000 cycles is what keeps its timed code steady in a browser. Sound is a
+   Sound Blaster 16, the card SETUP defaults to, so the shotgun has a report. */
+const DOOM_CONF = `[sdl]
+fullscreen=false
+fulldouble=false
+autolock=false
+waitonerror=true
+
+[dosbox]
+machine=svga_s3
+memsize=16
+
+[render]
+frameskip=0
+aspect=true
+
+[cpu]
+core=dynamic
+cputype=auto
+cycles=fixed 20000
+cycleup=500
+cycledown=20
+
+[mixer]
+nosound=false
+rate=44100
+blocksize=1024
+prebuffer=20
+
+[sblaster]
+sbtype=sb16
+sbbase=220
+irq=7
+dma=1
+sbmixer=true
+oplmode=auto
+oplemu=default
+
+[dos]
+xms=true
+ems=true
+umb=true
+
+[autoexec]
+@echo off
+mount c .
+c:
+rem Straight into Knee-Deep in the Dead, mission 1, on the middle skill: the
+rem menu is four screens of red-on-red on a phone, and the point of pressing
+rem Play on a shelf is to be in the game. "Hurt me plenty" is DOOM's own name
+rem for skill 3, the difficulty id called the default.
+DOOM.EXE -warp 1 1 -skill 3
 `;
 
 const MOTH_CONF = `[sdl]
@@ -708,11 +779,72 @@ const TITLES: Title[] = [
         'Fifty-four bytes of machine code; there is no third-party data inside it.',
     },
   },
+  /* ------------------------------------------------------------------ DOOM */
+  {
+    /* The shareware episode, and the one title on this shelf whose files are a
+     * vendor's rather than an author's. The basis is not a label and not a
+     * guess:
+     *
+     *   · John Carmack, 23 October 1999: "The DOOM shareware wad is freely
+     *     distributable." Debian quotes that sentence in the copyright file of
+     *     its non-free `doom-wad-shareware` package and has shipped the file on
+     *     that basis for twenty-five years; RPM Fusion does the same in
+     *     `doom-shareware`, with `License: Distributable`.
+     *   · The bytes are checked, not trusted: DOOM1.WAD's SHA-256 is pinned
+     *     below to the official 4,196,020-byte release, so a mirror that swapped
+     *     in a patched or registered WAD fails the build instead of shipping.
+     *   · The registered episodes and DOOM II are commercial and are not here.
+     *     Nothing on this shelf is sold, gated, or charged for.
+     */
+    id: 'doom-shareware',
+    repo: 'JuansesDev/AerionOs',
+    ref: 'f759adad3d9571f9c755e9d7fb5216cfd55c97bd',
+    origin: 'vendor-shareware',
+    cover: 'covers/doom-shareware.png',
+    archives: [{
+      /* The mirror holds the release as it was published: one archive. Its parts
+         are taken by name, and both executables are pinned by checksum, so a
+         different build cannot slip in under the same file name. */
+      from: 'public/roms/doom19s/DOOMS_19_COMBINED.zip',
+      entries: [
+        { path: 'DOOM.EXE', as: 'DOOM.EXE', sha256: 'b8020523561a5ad9706e009a52d61c578f37faafd85ac471962308406292ce27' },
+        { path: 'DOOM1.WAD', as: 'DOOM1.WAD', sha256: '1d7d43be501e67d927e415e0b8f3e29c3bf33075e859721816f652a526cac771' },
+        { path: 'README.TXT', as: 'README.TXT', sha256: '17878ebe5ca179de7ec2cc90bbabbc922ab69924118be168a25f8d317f65a2ff' },
+        { path: 'SETUP.EXE', as: 'SETUP.EXE', sha256: 'c9d328bff268854414feae5459870aac6f779e55a9cbf4568a83fef9b7be6e15' },
+      ],
+    }],
+    boot: { conf: DOOM_CONF, entry: 'DOOM.EXE' },
+    record: {
+      title: 'DOOM',
+      tagline: 'Shareware episode one, unmodified',
+      year: 1993,
+      author: 'id Software',
+      license: 'Distributable (id shareware terms)',
+      licenseUrl: 'https://www.doomworld.com/idgames/idstuff/doom/doom19s',
+      sourceUrl: 'https://www.doomworld.com/idgames/idstuff/doom/doom19s',
+      description:
+        'Episode one, Knee-Deep in the Dead, exactly as id shipped it in 1994: DOOM.EXE v1.9 and ' +
+        'DOOM1.WAD, byte for byte, with the README that came in the archive. The IWAD is checked ' +
+        'against the SHA-256 of the official 4,196,020-byte shareware file every time the bundle is ' +
+        'built, so what runs here is id\u2019s own release and not a repack. Arrow keys move and turn, ' +
+        'Ctrl fires, Space opens doors, F1 shows the key card.',
+      accent: '#c0392b',
+      tags: ['shooter', 'classic'],
+      /* 400 characters is the shelf's limit for this field, and the citation has
+         to survive it: the permission is an email, not a licence grant. */
+      rights:
+        'id Software\u2019s shareware release. John Carmack, 23 Oct 1999: "The DOOM shareware wad is ' +
+        'freely distributable." Debian ships these files as doom-wad-shareware on that basis; RPM ' +
+        'Fusion as doom-shareware, License: Distributable. Unmodified, no charge, registered ' +
+        'episodes excluded. DOOM is a trademark of id Software; this site is not affiliated.',
+    },
+  },
 ];
 
 /* ------------------------------------------------------------- packaging */
 
 function sourceNote(title: Title): string {
+  const vendor = title.origin === 'vendor-shareware';
   return [
     `${title.record.title} — packaged for the Pikachu Arcade DOS shelf.`,
     '',
@@ -722,10 +854,21 @@ function sourceNote(title: Title): string {
     `  author    ${title.record.author}`,
     '  emulator  js-dos 8.5.3 (GPL-2.0) with its DOSBox core',
     '',
-    'The game files in this bundle are the project’s own published files at the commit',
-    'above, unmodified. Pikachu Arcade added this note, the licence text, and (where the',
-    'project did not publish a .jsdos bundle of its own) a dosbox.conf that starts the',
-    'game on its own. The corresponding source is the repository above at that commit.',
+    vendor
+      ? 'The game files in this bundle are the vendor’s own shareware release, unmodified'
+      : 'The game files in this bundle are the project’s own published files at the commit',
+    vendor
+      ? '— not a repack, not a rip, and not the registered episodes. The copy above is the'
+      : 'above, unmodified. Pikachu Arcade added this note, the licence text, and (where the',
+    vendor
+      ? 'mirror the files were fetched from. Pikachu Arcade added this note and a dosbox.conf'
+      : 'project did not publish a .jsdos bundle of its own) a dosbox.conf that starts the',
+    vendor
+      ? 'that starts the game on its own. See the rights field of the shelf record for the'
+      : 'game on its own. The corresponding source is the repository above at that commit.',
+    ...(vendor
+      ? ['basis on which it is redistributed.', '']
+      : []),
     '',
     'Every cartridge on the shelf was launched in a headless browser during',
     'development: each one booted and drew its own screen, and whether it was',
@@ -804,8 +947,29 @@ async function buildBundle(title: Title): Promise<{ bytes: Uint8Array; entry: st
     }
   }
 
+  for (const pack of title.archives ?? []) {
+    const archive = await blob(title.repo, title.ref, pack.from);
+    for (const entry of pack.entries) {
+      const data = await readZipEntry(archive, entry.path);
+      if (!data) throw new Error(`${title.id}: ${entry.path} is not inside ${pack.from}`);
+      if (entry.sha256 && sha256(data) !== entry.sha256) {
+        throw new Error(`${title.id}: ${entry.path} is not the file its checksum describes`);
+      }
+      if (taken.has(entry.as.toLowerCase())) continue;
+      taken.add(entry.as.toLowerCase());
+      files.push({ name: entry.as, data });
+    }
+  }
+
   for (const file of title.blobs ?? []) {
     const data = await blob(title.repo, title.ref, file.from);
+    /* Where the publisher states a checksum, the download has to match it. A
+       shareware release is identified by its bytes; if the mirror silently
+       swapped in a different build (a patched WAD, a registered one), that is
+       exactly the thing this shelf must not ship. */
+    if (file.sha256 && sha256(data) !== file.sha256) {
+      throw new Error(`${title.id}: ${file.from} is not the file its checksum describes`);
+    }
     if (taken.has(file.as.toLowerCase())) continue;
     taken.add(file.as.toLowerCase());
     files.push({ name: file.as, data });
@@ -832,12 +996,9 @@ async function verify(id: string, bytes: Uint8Array, entry: string | null): Prom
   if (entry && report.autoexec) {
     /* The run line has to name a program that is actually at the archive root,
        because the bundle is mounted as C: — a typo here is a black screen. */
-    const program = report.autoexec
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
-      .filter((line) => /\.(exe|com|bat)$/i.test(line))
-      .pop();
+    /* A line may carry arguments — DOOM is started straight into a level — so the
+       program is the first word of the last line that runs something. */
+    const program = autoexecProgram(report.autoexec)?.file;
     if (!program) throw new Error(`${id}: [autoexec] never starts a program`);
     const present = entries?.some((e) => e.name.toLowerCase() === program.toLowerCase());
     if (!present) throw new Error(`${id}: [autoexec] runs ${program}, which is not at the archive root`);
@@ -881,7 +1042,10 @@ async function main() {
       id: title.id,
       bundle: `bundles/${title.id}.jsdos`,
       bytes: bytes.length,
-      cover: null,
+      /* A cover captured from the running game by `npm run dos:covers`, if one
+         has been captured yet. The card falls back to a typographic plate when
+         this is null, which is honest rather than a broken image. */
+      cover: title.cover ?? (existsSync(resolve('public/retro/dos/covers', `${title.id}.png`)) ? `covers/${title.id}.png` : null),
       /* Not part of the shelf record the site validates; kept here so a
          maintainer can tell whether a bundle changed under them. */
       provenance: {

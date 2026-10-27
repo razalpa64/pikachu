@@ -200,16 +200,19 @@ fixed in that script to make it honest: reading the canvas with
 real screenshot, PNG and all), and the colour-bar check scanned a *horizontal*
 line through vertically-stacked bars, so it could only ever see one colour.
 
-## The nine committed DOS cartridges
+## The ten committed DOS cartridges
 
 Nothing in this table came from a ROM site, a "freeware" aggregator or a
-third-party upload. Each game was published by the person who wrote it, in their
-own repository, under the licence shown; `npm run dos:games` downloads the files
-at the pinned commit, packages them and checks the result, and
-`scripts/dos/records.json` records the commit and the bundle's SHA-256.
+third-party upload. Eight of the nine games were published by the person who
+wrote them, in their own repository, under the licence shown; DOOM is the one
+vendor shareware release, taken from the published archive unmodified and
+identified by checksum. `npm run dos:games` downloads the files at the pinned
+commit, packages them and checks the result, and `scripts/dos/records.json`
+records the commit and the bundle's SHA-256.
 
 | Cartridge | Licence | Source (pinned commit) | Bundle |
 |---|---|---|---|
+| DOOM (shareware ep. 1) | Distributable — id's shareware terms | `JuansesDev/AerionOs` @ `f759ada`, archive `DOOMS_19_COMBINED.zip`, WAD pinned by SHA-256 | 4 975 510 B |
 | Celis | GPL-3.0 | `GadZombie/celis` @ `01bea78` | 1 181 383 B |
 | Sadist | GPL-3.0 | `GadZombie/sadist` @ `2372676` | 8 088 373 B |
 | Out of Cash | GPL-3.0 | `warrior-rockk/out-of-cash` @ `8dd5c62` | 4 229 809 B |
@@ -220,8 +223,10 @@ at the pinned commit, packages them and checks the result, and
 | Snake (54 bytes) | MIT | `donno2048/snake` @ `45b2117` | 2 515 B |
 | Calibration | CC0-1.0 | authored here, `scripts/dos/make-shelf.ts` | 879 B |
 
-16 023 039 bytes of cartridges in total, all committed, all re-derivable with
-`npm run dos:games`.
+21 012 988 bytes of cartridges in total, all committed, all re-derivable with
+`npm run dos:games`. Each card also carries a cover captured from the running
+game by `npm run dos:covers` — a real frame of that DOSBox session, not a
+mock-up — which replaced the typographic plates that stood in for artwork.
 
 Two packaging rules are worth writing down, because both were got wrong first:
 
@@ -231,6 +236,19 @@ Two packaging rules are worth writing down, because both were got wrong first:
   binary was originally placed in `GAME/`, which the autoexec could never have
   found; it is at the root now, and `make-shelf.ts`, `make-games.ts` and
   `smoke-dos.ts` all assert that the autoexec line resolves to a real entry.
+- **A streamed ZIP is not a walk from the top of the file.** `readZipEntry` used
+  to step through local headers one after another, trusting each one's size
+  fields. That is wrong for any archive written to a stream — which includes a
+  `.jsdos` produced by js-dos's own bundler, and the vendor archive DOOM came in —
+  because a streamed file leaves those fields zero and puts the sizes in a
+  trailing data descriptor. The reader stopped at the first such entry and
+  reported every later file as missing. It now jumps to the offset the central
+  directory records, which is what that directory is for; a test pins it.
+- **An `[autoexec]` line is a program *and its switches*.** DOOM boots with
+  `DOOM.EXE -warp 1 1 -skill 3`, and three scripts matched the whole line against
+  `/\.(exe|com|bat)$/`, concluding the bundle "never starts a program" and
+  failing a build that was in fact correct. `autoexecProgram()` is now the one
+  place that answers the question, and it also drops DOS `rem` comments.
 - **A build we cannot reproduce is not packaged.** Nothing here is compiled:
   there is no DOS toolchain in this repository. Where the project publishes its
   own `.jsdos` (Out of Cash does), that file is shipped byte for byte; elsewhere
@@ -254,10 +272,21 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 
 ## DOS titles that were refused, and why
 
-- **Doom (id Software, 1993)** — the engine source is GPL, the WADs are not, and
-  the game is still sold. There is no free build to host, so the shelf links
-  nothing and the discovery index keeps its record for *Doom* at
-  `pending-rights-review`, exactly like the other 1 485 unresolved titles.
+- **Doom (id Software, 1993)** — *added, with a different basis than the rest of
+  the shelf.* The registered episodes and DOOM II are commercial and are **not**
+  here. What is here is the 1994 shareware release — episode one, *Knee-Deep in
+  the Dead*, DOOM.EXE v1.9 and DOOM1.WAD — under id's own shareware terms, on the
+  basis John Carmack put in writing on 23 October 1999: *"The DOOM shareware wad
+  is freely distributable."* Debian has shipped exactly these files as
+  `doom-wad-shareware` ever since, quoting that sentence in its copyright file,
+  and RPM Fusion ships them as `doom-shareware` with `License: Distributable`.
+  Three things make that a record rather than a rumour, and all three are in the
+  build script: the release is taken as the vendor's own archive and never
+  repacked; DOOM1.WAD is pinned to the SHA-256 of the official 4,196,020-byte file
+  (`1d7d43be…c771`), so a mirror that swapped in a patched or registered WAD
+  fails the build; and the card says all of it, licence line and source included.
+  The site charges nothing for it, and DOOM's trademark notice sits in the
+  record's `rights` text.
 - **Grand Theft Auto: Vice City (Rockstar, 2002)** — a commercial Windows title
   with no MS-DOS release. It cannot be a DOS cartridge at all.
 - **dos.zone / the big browser-DOS arcades** — not mirrored, and not plumbed in.
@@ -292,6 +321,10 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | Claim | Proof | Ran here? |
 |---|---|---|
 | The shelf pages render and never show a pending title | `src/screens/__tests__/retro-dos.test.ts` (jsdom, real components) | **yes** |
+| Every hosted bundle's `[autoexec]` starts its program, arguments and all, and a `.EXE` really has an `MZ` header | `src/lib/__tests__/dos.test.ts` | **yes** |
+| A streamed ZIP (js-dos's own bundles) can be read past its first entry | `src/lib/__tests__/dos.test.ts` | **yes** |
+| DOOM is the shareware release and says so: licence line, the Carmack sentence, and a WAD checksum pinned in the build script | `src/lib/__tests__/dos.test.ts` | **yes** |
+| DOOM boots into *Knee-Deep in the Dead* and takes the keyboard: walked into the level, turned, fired | `npm run e2e:retro:dos` runs the shelf; this cartridge was played by hand in the same harness and photographed frame by frame | **yes — screenshots, not a scripted check** |
 | A `.jsdos` bundle is a ZIP with `dosbox.conf`, no traversal, no bomb | `src/lib/__tests__/dos.test.ts` | **yes** |
 | A “Freeware”/“Shareware” label is never treated as permission | same file, `judgeRedistribution` | **yes** |
 | A DOS row cannot carry a GBA path (and vice versa) | `src/lib/__tests__/supabase-schema.test.ts` + PGlite | **yes** |
@@ -309,7 +342,7 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | Six of them visibly respond to the keys a player presses | same | **yes** |
 | Sadist and Out of Cash take menu input beyond their first screens | would need a longer scripted run per game | **no** |
 
-`npm test` → 884 tests in 58 files. `tsc -b` clean. `npm run lint` → 0 errors.
+`npm test` → 886 tests in 58 files. `tsc -b` clean. `npm run lint` → 0 errors.
 
 What this report still will not claim is that all nine games are *finishable*, or
 that a human sat and played them end to end. What it can now claim, because the

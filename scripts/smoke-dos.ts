@@ -22,6 +22,7 @@
  */
 import {
   MAX_BUNDLE_BYTES,
+  autoexecProgram,
   inspectBundle,
   parseDosCatalog,
   parseDosShelf,
@@ -191,12 +192,7 @@ async function main() {
     /* The bundle is unpacked into C:\, so the program the [autoexec] starts has
        to be at the archive root. A name that only exists in a subdirectory is a
        black screen with no error — the exact failure this check exists for. */
-    const program = (report.autoexec ?? '')
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line && !line.startsWith('#') && !line.startsWith(';'))
-      .filter((line) => /\.(exe|com|bat)$/i.test(line))
-      .pop();
+    const program = autoexecProgram(report.autoexec)?.file;
     check(`${game.id}: has an [autoexec]`, !!report.autoexec, program ?? 'no program line');
     check(
       `${game.id}: the [autoexec] starts a file that is at the bundle root`,

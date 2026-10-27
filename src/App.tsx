@@ -24,6 +24,10 @@ const Feedback = lazy(() => import('./screens/Feedback'));
 const Privacy = lazy(() => import('./screens/Privacy'));
 const Retro = lazy(() => import('./screens/Retro'));
 const RetroPlayer = lazy(() => import('./screens/RetroPlayer'));
+/* The second platform. Its own document because js-dos and EmulatorJS are
+   different machines with different bundles — sharing a page would mean shipping
+   both runtimes to everybody. */
+const RetroDosPlayer = lazy(() => import('./screens/RetroDos'));
 /* Not in the nav, not in the sitemap, noindex — and empty until the server says
    the signed-in account is on the admin roster. */
 const Admin = lazy(() => import('./screens/Admin'));
@@ -71,6 +75,9 @@ function Shell() {
             <Route path="/solo/:slug" element={<Solo />} />
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/retro" element={<Retro />} />
+            {/* `/retro/dos` is a platform lens on the one shelf, not a second shelf. */}
+            <Route path="/retro/dos" element={<Navigate to="/retro?platform=dos" replace />} />
+            <Route path="/retro/dos/:id" element={<RetroDosPlayer />} />
             <Route path="/retro/:id" element={<RetroPlayer />} />
             <Route path="/music" element={<Music />} />
             <Route path="/achievements" element={<Achievements />} />

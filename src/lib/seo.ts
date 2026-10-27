@@ -312,9 +312,9 @@ const STATIC_PAGES: Record<string, PageCopy> = {
       'Every trophy you have collected across the arcade, how it was earned, and what is still waiting to be unlocked.',
   },
   '/retro': {
-    title: 'Retro Arcade — Game Boy Advance in Your Browser',
+    title: 'Retro Arcade — Game Boy Advance and DOS in Your Browser',
     description:
-      'Play freely redistributable Game Boy Advance homebrew in the browser: Alien Invasion, Cyber Citadel and Simple Frogger, with sound, save states and fullscreen. No BIOS, no account, no commercial ROMs.',
+      'Play freely redistributable Game Boy Advance homebrew and a tested MS-DOS corner in the browser, with sound, save states and fullscreen. No BIOS, no account, no commercial ROMs.',
     jsonLd: [
       {
         '@type': 'CollectionPage',
@@ -385,9 +385,18 @@ export function seoForPath(pathname: string): SeoMeta {
     };
   }
 
-  /* A cartridge player is an app view, not a landing page: it renders nothing
-     until ~1.5 MB of emulator has downloaded, so it should not compete for a
-     search result with the shelf that explains it. */
+  /* A player is an app view, not a landing page: it renders nothing until the
+     emulator has downloaded, so it should not compete for a search result with
+     the shelf that explains it. */
+  if (/^\/retro\/dos\/.+/.test(path)) {
+    return {
+      ...base,
+      title: 'DOS Player — Retro Arcade',
+      description: 'An MS-DOS game running in the browser on js-dos.',
+      robots: NOINDEX,
+      jsonLd: [],
+    };
+  }
   if (/^\/retro\/.+/.test(path)) {
     const known = RETRO_TITLES.find((g) => path === `/retro/${g.id}`);
     return {

@@ -164,14 +164,50 @@
    * game for the site's own 404; naming the file is honest and faster.
    */
   function preflightCore() {
-    return Promise.all(["emulators.js", "wdosbox.js", "wdosbox.wasm"].map(function (name) {
-      return fetch(EMULATOR_PREFIX + name, { method: "GET", headers: { range: "bytes=0-0" } })
-        .then(function (res) {
-          if (res.ok || res.status === 206) return true;
-          throw new Error("core:" + name + ":" + res.status);
-        })
+    /* A wrong path does not always answer 404. A dev server (and some static
+       hosts) will answer *any* missing path with the app's index.html and a 200,
+       so "the request succeeded" is not the same as "the file is there". Each
+       core file is therefore checked for what it is: JavaScript that is not an
+       HTML document, and a wasm module that starts with the wasm magic. */
+    var files = [
+      { name: "emulators.js", kind: "js" },
+      { name: "wdosbox.js", kind: "js" },
+      { name: "wdosbox.wasm", kind: "wasm" }
+    ];
+
+    function verify(name, kind, res) {
+      if (!res.ok && res.status !== 206) throw new Error("core:" + name + ":" + res.status);
+
+      if (kind === "wasm") {
+        var type = res.headers.get("content-type") || "";
+        if (/application\/wasm/i.test(type)) return true;
+        /* No wasm MIME type: read the magic number instead of trusting the URL. */
+        return res.arrayBuffer().then(function (buffer) {
+          var head = new Uint8Array(buffer.slice(0, 4));
+          if (head.length < 4 || head[0] !== 0 || head[1] !== 0x61 || head[2] !== 0x73 || head[3] !== 0x6d) {
+            throw new Error("core:" + name + ":not-wasm");
+          }
+          return true;
+        });
+      }
+
+      return res.text().then(function (body) {
+        var head = body.slice(0, 200).trim().toLowerCase();
+        if (!head || head.indexOf("<!doctype") === 0 || head.indexOf("<html") === 0) {
+          throw new Error("core:" + name + ":html");
+        }
+        if (name === "emulators.js" && body.indexOf("pathPrefix") === -1) {
+          throw new Error("core:" + name + ":wrong-file");
+        }
+        return true;
+      });
+    }
+
+    return Promise.all(files.map(function (file) {
+      return fetch(EMULATOR_PREFIX + file.name, { cache: "force-cache" })
+        .then(function (res) { return verify(file.name, file.kind, res); })
         .catch(function (error) {
-          throw (/^core:/.test(String(error && error.message)) ? error : new Error("core:" + name + ":network"));
+          throw (/^core:/.test(String(error && error.message)) ? error : new Error("core:" + file.name + ":network"));
         });
     }));
   }
@@ -209,11 +245,17 @@
       .then(function () {
         return preflightCore().catch(function (error) {
           var parts = String((error && error.message) || error).split(":");
+          var why = parts[2] === "html"
+            ? "the server answered with an HTML page instead of the file"
+            : parts[2] === "not-wasm"
+              ? "that file is not a WebAssembly module"
+              : parts[2] === "wrong-file"
+                ? "the file it returned is not the emulator loader"
+                : "the request failed (" + (parts[2] || "network") + ")";
           fail(
             "The emulator's own files are missing.",
-            "This page asked for " + EMULATOR_PREFIX + parts[1] +
-              " and did not get it (" + parts[2] + "). That is a problem with the site, not the game; " +
-              "the bundle has not been blamed for it.",
+            "This page asked for " + EMULATOR_PREFIX + parts[1] + " and " + why +
+              ". That is a problem with the site, not the game; the bundle has not been blamed for it.",
           );
           post({ type: "status", status: "error" });
           throw new Error("core-missing");

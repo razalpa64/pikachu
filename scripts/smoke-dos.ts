@@ -72,11 +72,35 @@ async function main() {
     check('the core path it uses is the one js-dos needs', html.includes('pathPrefix: EMULATOR_PREFIX'));
     check('it no longer pins the broken prefix', !html.includes('pathPrefix: "/retro/jsdos/"'));
 
-    /* And fetch what js-dos will actually ask for, through that exact prefix. */
+    /* And fetch what js-dos will actually ask for, through that exact prefix.
+       A dev server answers a missing path with index.html and a 200, so the
+       body — not just the status — decides whether the file is really there. */
     for (const name of ['emulators.js', 'wdosbox.js', 'wdosbox.wasm']) {
       const { res, body } = await bytes(`${prefix}${name}`);
-      check(`core file is served: ${name}`, res.ok && body.length > 0, `${res.status} · ${body.length} bytes`);
+      const type = res.headers.get('content-type') ?? '';
+      const isHtml = /text\/html/i.test(type);
+      check(
+        `core file is served: ${name}`,
+        res.ok && body.length > 1000 && !isHtml,
+        `${res.status} · ${body.length} bytes · ${type || 'no type'}`,
+      );
     }
+    const wasm = await bytes(`${prefix}wdosbox.wasm`);
+    check(
+      'the wasm core really is WebAssembly',
+      wasm.body[0] === 0 && wasm.body[1] === 0x61 && wasm.body[2] === 0x73 && wasm.body[3] === 0x6d,
+      [...wasm.body.slice(0, 4)].join(' '),
+    );
+
+    /* The old, wrong prefix must not resolve to the loader by accident: if a
+       host answers it with HTML, that is the silent 200 that hid this bug. */
+    const wrong = await bytes('/retro/jsdos/emulators.js');
+    const wrongText = new TextDecoder().decode(wrong.body.slice(0, 400)).toLowerCase();
+    check(
+      'the old prefix does not serve the real loader',
+      !wrong.ok || !wrongText.includes('pathprefix'),
+      `${wrong.res.status} · ${wrong.res.headers.get('content-type') ?? 'no type'}`,
+    );
     check('it asks for the small DOSBox backend', html.includes('backend: "dosbox"'));
     /* The allowlist is the thing that stops a crafted message booting anything
        else; assert it is in the document that shipped. */

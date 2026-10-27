@@ -55,7 +55,21 @@ export default function Profile() {
             </h1>
             {identity.greeting
               ? <p className="text-[12.5px] text-cream-400 mt-1.5 italic">“{identity.greeting}”</p>
-              : <p className="text-[12.5px] text-cream-400 mt-1.5">Add a name and a lobby tagline on the right — they are what your rival sees.</p>}
+              /* "on the right" was desktop geometry leaking into copy: on a
+                 phone the editor is below, on a wide screen beside. The button
+                 does the pointing, wherever it happens to be. */
+              : <p className="text-[12.5px] text-cream-400 mt-1.5">
+                  No name yet — and a name and a tagline are what your rival sees.
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      document.getElementById('identity')?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                      document.getElementById('display-name')?.focus({ preventScroll: true });
+                    }}
+                    className="font-bold text-blush-600 underline decoration-blush-300 underline-offset-2"
+                  >Set them</button>
+                </p>}
             <div className="mt-3 max-w-[420px]">
               <div className="flex justify-between text-[10px] uppercase tracking-wider font-bold text-cream-400 mb-1">
                 <span>Level {lvl.level}</span><span className="tabnum">{progress.xp - lvl.floor} / {lvl.ceil - lvl.floor}</span>
@@ -127,19 +141,20 @@ export default function Profile() {
         </div>
 
         {/* editor */}
-        <div className="space-y-5">
+        <div className="space-y-5" id="identity">
           <div>
             <SectionTitle eyebrow="Edit" title="Your card" />
             <Panel className="p-4 mt-3.5 space-y-4">
               <label className="block">
                 <span className="eyebrow block mb-1.5">Display name</span>
-                <input value={name} onChange={(e) => setName(e.target.value)} maxLength={18}
-                  className="w-full bg-ink-800 border border-ink-600 px-3 py-2 text-[14px] text-cream-100 focus:border-volt-400 outline-none notch-sm" />
+                <input id="display-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={18}
+                  autoComplete="nickname" enterKeyHint="done"
+                  className="w-full bg-ink-800 border border-ink-600 px-3 py-2.5 text-[16px] sm:text-[14px] text-cream-100 focus:border-volt-400 outline-none notch-sm" />
               </label>
               <label className="block">
                 <span className="eyebrow block mb-1.5">Lobby tagline</span>
                 <input value={greeting} onChange={(e) => setGreeting(e.target.value)} maxLength={60}
-                  className="w-full bg-ink-800 border border-ink-600 px-3 py-2 text-[13px] text-cream-200 focus:border-volt-400 outline-none notch-sm" />
+                  className="w-full bg-ink-800 border border-ink-600 px-3 py-2.5 text-[16px] sm:text-[13px] text-cream-200 focus:border-volt-400 outline-none notch-sm" />
               </label>
               <div>
                 <span className="eyebrow block mb-2">Avatar</span>

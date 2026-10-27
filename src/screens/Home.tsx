@@ -64,7 +64,9 @@ export default function Home() {
     <div>
       <HomeHero />
 
-      <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-8 flex flex-col gap-10">
+      {/* A phone gets tighter rhythm (5/6 instead of 8/10): the gaps between
+          shelves were 40 px of nothing on a screen 844 px tall. */}
+      <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-5 sm:py-8 flex flex-col gap-6 sm:gap-10">
         {/* ============================ YOUR TABLE ============================ */}
         {(room || recents.length > 0) && (
           <section aria-labelledby="table-h">

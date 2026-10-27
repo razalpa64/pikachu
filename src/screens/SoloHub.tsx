@@ -39,13 +39,16 @@ export default function SoloHub() {
       <section className="relative overflow-hidden panel panel-notch mb-7">
         <div className="absolute inset-0 opacity-[0.38]" aria-hidden><GameArtwork artKey={resume?.artKey ?? 'snake'} /></div>
         <div className="absolute inset-0 bg-gradient-to-r from-[#fff8ec] via-[#fff8ec]/90 to-[#fff8ec]/40" aria-hidden />
-        <div className="relative p-6 sm:p-8 flex items-center gap-7 flex-wrap">
-          <div className="min-w-[260px] flex-1">
+        <div className="relative p-4 sm:p-8 flex items-center gap-7 flex-wrap">
+          <div className="min-w-0 flex-1">
             <p className="eyebrow text-blush-600 mb-1.5">Just you · {games.length} games</p>
             <h1 className="display text-[clamp(27px,5vw,46px)] text-cream-100 leading-[1.02]">
               Solo<br /><span className="text-blush-600">adventures</span>
             </h1>
-            <p className="text-[13px] text-cream-400 mt-3 max-w-[470px]">
+            {/* On a phone this is three lines of prose between you and the games;
+                the same claim is on the About page and in the library. It stays
+                from sm up, where there is room to actually read it. */}
+            <p className="text-[13px] text-cream-400 mt-3 max-w-[470px] hidden sm:block">
               Every opponent here is a real algorithm running on your own machine — alpha-beta search, probability targeting, pathfinding — never a scripted pretend player. Five difficulty tiers, all offline, all instant.
             </p>
             <div className="flex gap-3 mt-4 flex-wrap items-center">

@@ -23,6 +23,7 @@
     "seo": "tsx scripts/seo.ts",
     "prebuild": "npm run seo",
     "e2e:retro": "node scripts/e2e/retro.mjs",
+    "e2e:shell": "node scripts/e2e/mobile-shell.mjs",
     "e2e:retro:dos": "node scripts/e2e/retro-dos.mjs",
     "retro:import": "tsx scripts/retro/import.ts",
     "retro:import:plan": "tsx scripts/retro/import.ts --dry-run",

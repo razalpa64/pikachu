@@ -185,7 +185,8 @@ describe('the committed DOS shelf', () => {
   it('holds the games this project can justify, and nothing else', () => {
     /* Sorted by title, which is the order the manifest is written in. */
     expect(shelf.games.map((g) => g.title)).toEqual([
-      'Calibration', 'Celis', 'Moth Hunter', 'Out of Cash', 'Sadist',
+      'Calibration', 'Celis', 'Floppybird', 'Moth Hunter', 'nasm-tetris',
+      'Out of Cash', 'Sadist', 'Snake (54 bytes)', 'Super Vinnie-Pooh',
     ]);
     for (const game of shelf.games) {
       expect(game.rights.length).toBeGreaterThan(8);

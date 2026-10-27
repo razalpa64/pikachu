@@ -88,7 +88,7 @@ DOS SHELF
 ---------
 
 The DOS player at /retro/dos.html runs js-dos 8.5.3 (GPL-2.0) with its own
-DOSBox core, both served from public/retro/jsdos/. Five bundles ship in
+DOSBox core, both served from public/retro/jsdos/. Nine bundles ship in
 public/retro/dos/bundles/:
 
   Calibration       Pikachu Arcade   CC0-1.0
@@ -117,13 +117,36 @@ public/retro/dos/bundles/:
                     A 508-byte .COM file from dos/game7/, packaged with the MIT
                     text as LICENSE.TXT — the notice that licence asks us to keep.
 
-Three of those bundles were assembled by scripts/dos/make-games.ts from the
+  Super Vinnie-Pooh Mikhail Bratus (FaMe SoftWare)  Apache-2.0
+                    https://github.com/D0NM/Vinnie @ b84f07b
+                    A 1995 Russian platformer, open-sourced by its author in
+                    2022: POOH.EXE, its .FMS sprite banks, its .FML level data
+                    and the original readme.
+
+  Floppybird        Mihail Szabolcs   MIT
+                    https://github.com/icebreaker/floppybird @ 511ffa5
+                    An 8 704-byte DOS .COM built from the same assembly as the
+                    author's raw-metal floppy image.
+
+  nasm-tetris       Arkadiusz Placha   MIT
+                    https://github.com/Arkowski24/nasm-tetris @ 3fc9598
+                    The author's own unofficial Tetris clone, 2 820 bytes, with
+                    its assembly source in the repository. Not the original game,
+                    and not presented as it.
+
+  Snake (54 bytes)  donno2048   MIT
+                    https://github.com/donno2048/snake @ 45b2117
+                    54 bytes of machine code and nothing else.
+
+Seven of those bundles were assembled by scripts/dos/make-games.ts from the
 files at the commit recorded above and next to each game in the manifest; the
 only thing this site adds is a dosbox.conf and a SOURCE.TXT note. Nothing was
 compiled here, nothing was taken from a ROM site, and no commercial title is
 hosted — Doom and Grand Theft Auto: Vice City in particular are absent because
 both are still sold, their data files are not freely licensed, and Vice City was
-never a DOS game.
+never a DOS game. This shelf is also not a mirror of any of the browser-DOS
+arcades: their catalogues are largely commercial or "abandonware", and a
+catalogue entry is not a licence.
 
 Nothing else on the DOS shelf is committed to this repository. The discovery
 index at public/retro/dos/catalog.json is a record of what another catalogue

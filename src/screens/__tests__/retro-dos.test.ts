@@ -181,7 +181,7 @@ describe('the shelf with the DOS lens open', () => {
 
     /* The GBA-only furniture stays with the GBA lens. */
     expect(host.textContent).not.toContain('Play a ROM you already own');
-    expect(host.textContent).toContain('Why five games');
+    expect(host.textContent).toContain('Why a shelf this short');
     /* The honesty block is the DOS one, not the cartridge one. */
     expect(host.textContent).toContain('A label is not a licence');
     expect(host.textContent).not.toContain('Nothing loads until you press Insert');
@@ -191,7 +191,7 @@ describe('the shelf with the DOS lens open', () => {
     await mountShelf('/retro');
 
     expect(host.textContent).toContain('Play a ROM you already own');
-    expect(host.textContent).not.toContain('Why five games');
+    expect(host.textContent).not.toContain('Why a shelf this short');
     /* The DOS manifest is fetched lazily, so a GBA visit does not pay for it. */
     expect(asked.some((u) => u.includes('/retro/dos/shelf.json'))).toBe(false);
   });

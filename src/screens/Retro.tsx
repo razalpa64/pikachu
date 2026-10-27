@@ -730,7 +730,7 @@ export default function Retro() {
           <Panel className="p-5 sm:p-6">
             <p className="eyebrow text-volt-700 mb-1.5">The short shelf</p>
             <h2 id="dos-notes" className="display text-[23px] text-cream-100 leading-tight">
-              Why five games, and not fifteen hundred
+              Why a shelf this short, and not fifteen hundred
             </h2>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
               A catalogue of 1,499 DOS titles is easy to find. A right to redistribute them is not: the labels on
@@ -739,16 +739,16 @@ export default function Retro() {
               title only appears above once a person has written down the evidence and the bundle has been checked.
             </p>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
-              The games that are here were published as free software by the people who made them — two Polish DOS
-              games and a Spanish point-and-click adventure under the GPL, plus a 508-byte arcade game under the MIT
-              licence. Each bundle was assembled from its own author’s repository at the commit printed on its card,
-              with the licence text inside the archive. Doom and Grand Theft Auto: Vice City are not here and will
-              not be: both are still sold, their data files were never freely licensed, and the second one never had
-              a DOS release at all.
+              Every game here was published as free software by the person who made it — GPL, MIT or Apache-2.0,
+              each taken from its own author’s repository at the commit printed on its card, with the licence text
+              inside the archive. That is also why this is not a mirror of the big browser-DOS arcades: those
+              catalogue thousands of titles, and almost none of them ship with a right to redistribute.
             </p>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
-              The fifth card is ours: a 179-byte calibration program released CC0, whose whole job is to prove the
-              DOS player really boots. It prints a banner, paints four colour bars, and exits.
+              Doom and Grand Theft Auto: Vice City are not here and will not be: both are still sold, their data
+              files were never freely licensed, and Vice City never had a DOS release at all. The shortest card on
+              the shelf is ours — a 179-byte calibration program released CC0, whose whole job is to prove the DOS
+              player really boots.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <Button

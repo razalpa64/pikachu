@@ -1745,3 +1745,191 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   .gb-stage[data-full="on"] .gb-dpad { width: clamp(78px, min(13.5vw, 28dvh), 150px); }
   .gb-stage[data-full="on"] .gb-face { width: clamp(84px, min(15vw, 27dvh), 170px); }
 }
+
+/* =====================================================================
+   THE DOS DESK — /retro/dos/:id
+
+   A 1990s machine, drawn the way this site draws everything else: flat
+   panels, hard borders, one accent, no gradient pretending to be light and
+   no glow pretending to be a screen. The only decoration that earns its
+   place is the bezel around the picture, because that is what stops the
+   emulator looking like a video embedded in a blog post.
+
+   Sizing rule: the monitor's picture is 4:3 — the shape of every VGA mode a
+   bundle can boot into — so the emulator is letterboxed (by itself) rather
+   than stretched by us. The monitor grows with the viewport but never past
+   the height that would push the keyboard notes off the fold.
+   ===================================================================== */
+
+.dos-stage {
+  min-height: 100dvh;
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgba(255, 210, 77, .05), transparent 70%),
+    var(--color-ink-900);
+}
+
+.dos-monitor {
+  border: 2px solid #3f3a33;
+  border-radius: 14px;
+  background: #2a2723;
+  box-shadow:
+    0 2px 0 0 #3f3a33,
+    0 26px 55px -34px rgba(0, 0, 0, .9);
+  overflow: hidden;
+}
+
+.dos-monitor-top,
+.dos-monitor-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  background: #24211d;
+  border-bottom: 1px solid #3f3a33;
+}
+
+.dos-monitor-bottom {
+  border-bottom: 0;
+  border-top: 1px solid #3f3a33;
+  flex-wrap: wrap;
+}
+
+.dos-monitor-mark {
+  color: var(--color-volt-500);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.dos-monitor-sub {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  color: #8d8375;
+}
+
+.dos-monitor-hint {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: #8d8375;
+}
+
+/* One LED, and it means something: amber while the machine boots, green when
+   it is running, pink while paused, red when it stopped. Same palette as the
+   GBA shell's power lamp, so the two players read as one product. */
+.dos-led {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6b6257;
+  box-shadow: 0 0 0 2px #1b1916;
+}
+.dos-led[data-state="booting"],
+.dos-led[data-state="loading"] { background: #f2b23c; }
+.dos-led[data-state="running"] { background: #6fcfa6; }
+.dos-led[data-state="paused"] { background: #ffadc6; }
+.dos-led[data-state="error"] { background: #ef6a7f; }
+
+.dos-screen {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: #050505;
+  box-shadow: inset 0 0 0 6px #14120f;
+  overflow: hidden;
+}
+
+.dos-iframe {
+  position: absolute;
+  inset: 6px;
+  width: calc(100% - 12px);
+  height: calc(100% - 12px);
+  border: 0;
+  display: block;
+  background: #050505;
+}
+
+.dos-screen-note {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  transform: translateX(-50%);
+  max-width: min(88%, 46ch);
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(18, 16, 13, .82);
+  color: #e7dcc8;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  text-align: center;
+  pointer-events: none;
+}
+
+.dos-papers {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.dos-papers-hidden { display: none; }
+
+.dos-footnote {
+  margin-top: 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-cream-500);
+  max-width: 84ch;
+}
+
+@media (min-width: 900px) {
+  .dos-papers { grid-template-columns: 1.1fr 1fr; }
+}
+
+/* Fullscreen: the picture, and the controls that make it escapable. Our own
+   full-bleed mode (iOS Safari has no element fullscreen) and the browser's
+   real one share this layout, so the exit never depends on which was used. */
+.dos-stage[data-full="on"] {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  align-items: center;
+  padding: 0;
+  overflow: auto;
+  background: #0a0908;
+}
+
+.dos-stage[data-full="on"] .dos-desk {
+  width: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+.dos-stage[data-full="on"] .dos-monitor {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.dos-stage[data-full="on"] .dos-monitor-top { background: #0a0908; }
+
+.dos-stage[data-full="on"] .dos-screen {
+  flex: 1;
+  min-height: 0;
+  aspect-ratio: auto;
+  box-shadow: none;
+}
+
+.dos-stage[data-full="on"] .dos-iframe { inset: 0; width: 100%; height: 100%; }
+
+.dos-stage[data-full="on"] .dos-monitor-bottom {
+  background: #0a0908;
+  justify-content: center;
+}

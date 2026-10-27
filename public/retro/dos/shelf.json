@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "system": "MS-DOS",
+  "note": "The DOS shelf here holds only builds this project may host: the calibration cartridge below is our own work, released CC0. The 1,499 titles in the discovery index are somebody else’s games with an aggregator’s \"Freeware\" or \"Shareware\" label, which is not a redistribution grant — so they are listed, searchable and linked to their original source, and they have no Play button until an administrator records evidence on the desk.",
+  "games": [
+    {
+      "id": "pikachu-calibration",
+      "title": "Calibration",
+      "tagline": "The player’s own test card",
+      "year": 2026,
+      "author": "Pikachu Arcade",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceUrl": "https://github.com/razalpa64/pikachu",
+      "description": "A 179-byte program written for this site and assembled byte by byte in `scripts/dos/make-shelf.ts`. It prints a banner in text mode, paints four colour bars in VGA mode 13h, then returns to DOS. If the DOS player is working, this runs — which is why it ships: it is the one cartridge whose behaviour we can describe exactly.",
+      "bundle": "bundles/pikachu-calibration.jsdos",
+      "bytes": 899,
+      "cover": null,
+      "accent": "#f2c14e",
+      "tags": [
+        "test",
+        "utility"
+      ],
+      "rights": "Authored for this project and released CC0 1.0. Contains no third-party code or data."
+    }
+  ]
+}

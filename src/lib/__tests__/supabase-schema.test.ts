@@ -24,6 +24,7 @@ const MIGRATIONS = [
   '0003_feedback.sql',
   '0004_admin.sql',
   '0005_friends_and_safety.sql',
+  '0006_dos.sql',
 ];
 
 /** The parts of a Supabase project that the migrations assume already exist. */
@@ -412,6 +413,56 @@ describe('uploaded cartridges', () => {
     const left = await asUser(ADMIN_ID, () => db.query<{ n: number }>(
       'select count(*)::int as n from public.retro_games'));
     expect(left.rows[0].n).toBe(1);
+  });
+});
+
+describe('two platforms on one shelf (0006)', () => {
+  /* The admin layer above proves who may write. This proves that *what* they
+     write cannot smuggle a DOS bundle into a GBA row or vice versa: the player
+     picks an emulator from `platform`, so a mismatch would hand a .jsdos archive
+     to an emulator that expects a cartridge header. */
+  const insert = (over: Record<string, unknown> = {}) => {
+    const row = {
+      id: 'doomed', platform: 'dos', title: 'Doomed', author: 'Someone', license: 'MIT',
+      license_url: 'https://example.com/L', source_url: 'https://example.com/S',
+      bytes: 40 * 1024 * 1024, rom_path: 'doomed/game.jsdos', cover_path: 'doomed/cover.png',
+      status: 'draft', accent: '#f2c14e', year: 1993, ...over,
+    };
+    return asUser(ADMIN_ID, () => db.query(
+      `insert into public.retro_games
+         (id, platform, title, author, license, license_url, source_url, bytes, rom_path, cover_path, status, accent, year)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [row.id, row.platform, row.title, row.author, row.license, row.license_url, row.source_url,
+        row.bytes, row.rom_path, row.cover_path, row.status, row.accent, row.year],
+    ));
+  };
+
+  it('stores a DOS bundle with the paths DOS actually uses', async () => {
+    await expect(insert()).resolves.toBeTruthy();
+    const row = await asUser(ADMIN_ID, () => db.query<{ platform: string; rom_path: string }>(
+      `select platform, rom_path from public.retro_games where id = 'doomed'`));
+    expect(row.rows[0]).toEqual({ platform: 'dos', rom_path: 'doomed/game.jsdos' });
+  });
+
+  it('refuses the wrong container for the platform', async () => {
+    for (const over of [
+      { rom_path: 'doomed/rom.gba' },                          // DOS row, GBA path
+      { platform: 'gba' },                                     // GBA row, DOS path
+      { platform: 'gba', rom_path: 'doomed/rom.gba', bytes: 40 * 1024 * 1024 }, // GBA over 32 MB
+      { platform: 'windows' },                                 // not a platform we host
+      { bytes: 49 * 1024 * 1024 },                             // past the DOS ceiling
+    ]) {
+      await expect(insert({ id: 'doomed-two', ...over }), JSON.stringify(over))
+        .rejects.toThrow(/check constraint|violates|invalid input/i);
+    }
+  });
+
+  it('keeps a draft DOS bundle off the public shelf, like any other draft', async () => {
+    const anon = await asUser(null, () => db.query<{ id: string }>('select id from public.retro_games'), 'anon');
+    /* The published cartridges from the suites above are still visible; the draft
+       DOS bundle is not, which is the only claim this test makes. */
+    expect(anon.rows.map((r) => r.id)).not.toContain('doomed');
+    await asUser(ADMIN_ID, () => db.query(`delete from public.retro_games where id = 'doomed'`));
   });
 });
 

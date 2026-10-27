@@ -18,13 +18,18 @@
     "smoke": "tsx scripts/smoke.ts && tsx scripts/smoke-cards.ts && tsx scripts/smoke-quiz.ts && tsx scripts/smoke-online-lifecycle.ts && tsx scripts/smoke-matchmaking.ts && tsx scripts/smoke-friends.ts",
     "smoke:newgames": "tsx scripts/smoke-newgames.ts",
     "smoke:newest": "tsx scripts/smoke-wyr-wordbomb.ts",
+    "smoke:dos": "tsx scripts/smoke-dos.ts",
     "typecheck": "tsc -b",
     "seo": "tsx scripts/seo.ts",
     "prebuild": "npm run seo",
     "e2e:retro": "node scripts/e2e/retro.mjs",
+    "e2e:retro:dos": "node scripts/e2e/retro-dos.mjs",
     "retro:import": "tsx scripts/retro/import.ts",
     "retro:import:plan": "tsx scripts/retro/import.ts --dry-run",
-    "admin:doctor": "tsx scripts/admin-doctor.ts"
+    "admin:doctor": "tsx scripts/admin-doctor.ts",
+    "dos:import": "tsx scripts/dos/import.ts",
+    "dos:import:plan": "tsx scripts/dos/import.ts --dry-run",
+    "dos:shelf": "tsx scripts/dos/make-shelf.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.109.0",

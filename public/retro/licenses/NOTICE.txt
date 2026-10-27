@@ -53,6 +53,13 @@ LICENCE TEXTS
   LICENSE-EmulatorJS.txt (in public/retro/data/)
                    The emulator runtime, EmulatorJS 4.2.3, MIT.
 
+  js-dos 8.5.3 (in public/retro/jsdos/)
+                   The MS-DOS emulator runtime, GPL-2.0. It is served verbatim
+                   from this folder and is not modified by this site; see
+                   public/retro/jsdos/VENDOR.md for the file list, the upstream
+                   tag and how to upgrade it. Its DOSBox core (wdosbox.wasm) is
+                   part of the same release under the same licence.
+
 The MIT-licensed cartridges keep their copyright notice in the list above and in
 the manifest; that is the notice the MIT licence asks us to preserve.
 
@@ -75,3 +82,26 @@ the "your own cartridge" card. That file is read by your browser for the 156-byt
 cartridge header, handed to the emulator as an in-memory blob, and discarded when
 the tab closes — it is never uploaded, never stored and never shared. Please only
 load ROMs you are legally allowed to play; this site hosts none of them for you.
+
+
+DOS SHELF
+---------
+
+The DOS player at /retro/dos.html runs js-dos 8.5.3 (GPL-2.0) with its own
+DOSBox core, both served from public/retro/jsdos/. The only game this site
+itself hosts is "Calibration" (public/retro/dos/bundles/pikachu-calibration.jsdos):
+a 179-byte program written for this project and released CC0 1.0 — public
+domain, no third-party code or data inside it.
+
+Nothing else on the DOS shelf is committed to this repository. The discovery
+index at public/retro/dos/catalog.json is a record of what another catalogue
+contains, with each title's original source URL: the "Freeware" and "Shareware"
+labels there describe how those games were sold, not who may redistribute them,
+so those 1,499 records carry no download and no Play button. A title reaches the
+shelf only after an administrator records the evidence for hosting it in the
+database (site_content key dos.perm.<id>) and its .jsdos bundle is uploaded,
+checked and run once. Nothing was copied from a commercial ROM site.
+
+A DOS game you own can be played by loading its .jsdos bundle through the admin
+desk only — there is no visitor-facing "drop a file" box for DOS, because a
+bundle is a whole installation and this site will not run one it has not checked.

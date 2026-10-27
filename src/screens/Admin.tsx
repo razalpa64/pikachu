@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   SITE_CONTENT_KEYS,
   adminConfigured,
+  recordDosDecision,
+  uploadDosGame,
   adminReadiness,
   probeAdmin,
   deleteGame,
@@ -20,6 +22,21 @@ import {
 } from '../lib/admin';
 import { describeAuthError, notOnRosterProblem, type AdminAuthProblem, type RawAuthError } from '../lib/adminAuth';
 import { cartridgeKind, resetRetroLibrary } from '../lib/retro';
+import {
+  BUNDLE_MESSAGE,
+  MAX_BUNDLE_BYTES,
+  STAGE_LABEL,
+  countStages,
+  genresOf,
+  inspectBundle,
+  loadDosIndex,
+  resetDosShelf,
+  searchIndex,
+  type DosCandidate,
+  type DosCatalog,
+  type DosStage,
+} from '../lib/dos';
+import { readZipDirectory, readZipEntry } from '../lib/zip';
 import { resetSiteContent } from '../lib/content';
 import { signInWithEmail, signOut, supabase } from '../lib/supabase';
 import { Button, ConfirmDialog, CopyField, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
@@ -36,7 +53,7 @@ import { useStore } from '../lib/store';
  */
 
 type Phase = 'checking' | 'offline' | 'locked' | 'broken' | 'denied' | 'ready';
-type Tab = 'shelf' | 'copy';
+type Tab = 'shelf' | 'dos' | 'copy';
 
 const LICENCES = ['MIT', 'GPL-3.0-only', 'GPL-3.0-or-later', 'MPL-2.0', 'Zlib', 'BSD-2-Clause', 'Apache-2.0', 'CC-BY-4.0'];
 
@@ -193,12 +210,13 @@ export default function Admin() {
         onChange={(v) => setTab(v as Tab)}
         label="Admin section"
         options={[
-          { value: 'shelf', label: 'Retro shelf' },
+          { value: 'shelf', label: 'GBA shelf' },
+          { value: 'dos', label: 'DOS desk' },
           { value: 'copy', label: 'Site copy' },
         ]}
       />
 
-      {tab === 'shelf' ? <ShelfDesk /> : <CopyDesk />}
+      {tab === 'shelf' ? <ShelfDesk /> : tab === 'dos' ? <DosDesk /> : <CopyDesk />}
     </div>
   );
 }
@@ -720,6 +738,580 @@ function ShelfDesk() {
           }
         }}
       />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- DOS desk */
+
+/**
+ * The second platform's desk.
+ *
+ * Three things live here, and they are deliberately separate:
+ *
+ *   1. **The review queue** — 1,499 discovery records read from
+ *      `/retro/dos/catalog.json`. Each one carries the label its source gave it
+ *      ("Freeware", "Shareware") and nothing more; approval means an admin wrote
+ *      down what the right to redistribute rests on, and that is stored in
+ *      `site_content` under `dos.perm.<id>` so it survives a redeploy and is
+ *      readable by anyone who audits the database.
+ *   2. **The upload form** — a `.jsdos` bundle, checked in the browser against
+ *      the same structural rules the shelf applies, then stored and inserted as a
+ *      `platform: 'dos'` row.
+ *   3. **The DOS rows** — publish/unpublish/delete, so taking a game down is a
+ *      button and not a maintenance window.
+ *
+ * What is *not* here: a "download everything" button. The importer script is a
+ * developer tool on purpose — it takes an id allowlist, and it cannot mark a game
+ * playable without a bundle it fetched itself.
+ */
+type Decision = { decision: 'approved' | 'blocked'; evidence: string; at: string };
+
+function parseDecisions(rows: Record<string, string>): Record<string, Decision> {
+  const out: Record<string, Decision> = {};
+  for (const [key, value] of Object.entries(rows)) {
+    if (!key.startsWith('dos.perm.')) continue;
+    try {
+      const parsed = JSON.parse(value) as Decision;
+      if (parsed && (parsed.decision === 'approved' || parsed.decision === 'blocked')) {
+        out[key.slice('dos.perm.'.length)] = parsed;
+      }
+    } catch {
+      /* A hand-edited row that is not JSON is simply not a decision. */
+    }
+  }
+  return out;
+}
+
+function DosDesk() {
+  const { toast } = useStore();
+  const nav = useNavigate();
+  const [rows, setRows] = useState<RetroRow[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [index, setIndex] = useState<DosCatalog | null>(null);
+  const [indexError, setIndexError] = useState<string | null>(null);
+  const [decisions, setDecisions] = useState<Record<string, Decision>>({});
+  const [query, setQuery] = useState('');
+  const [genre, setGenre] = useState<string | null>(null);
+  const [only, setOnly] = useState<'all' | 'pending' | 'approved' | 'blocked'>('all');
+  const [showAll, setShowAll] = useState(false);
+  const [reviewing, setReviewing] = useState<{ id: string; decision: 'approved' | 'blocked' } | null>(null);
+  const [evidence, setEvidence] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+
+  const [draft, setDraft] = useState<UploadDraft>(emptyDraft);
+  const [file, setFile] = useState<File | null>(null);
+  const [fileNote, setFileNote] = useState<string | null>(null);
+  const [report, setReport] = useState<ReturnType<typeof inspectBundle> | null>(null);
+  const [attested, setAttested] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const all = await listAllGames();
+      setRows(all.filter((r) => r.platform === 'dos'));
+      setLoadError(null);
+    } catch (e) {
+      setRows([]);
+      setLoadError(e instanceof Error ? e.message : 'Could not read the DOS rows.');
+    }
+  }, []);
+
+  useEffect(() => { void refresh(); }, [refresh]);
+
+  /* The index is 536 KB of JSON. It is fetched only when this tab is opened, and
+     never on a visitor's path. */
+  useEffect(() => {
+    let alive = true;
+    loadDosIndex()
+      .then((catalog) => { if (alive) setIndex(catalog); })
+      .catch(() => { if (alive) setIndexError('The discovery index at /retro/dos/catalog.json did not load.'); });
+    loadSiteContent()
+      .then((values) => { if (alive) setDecisions(parseDecisions(values)); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  const counts = useMemo(() => countStages(index?.entries ?? []), [index]);
+  const genres = useMemo(() => genresOf(index?.entries ?? []).slice(0, 14), [index]);
+
+  const decisionOf = (id: string): Decision['decision'] | 'pending' => decisions[id]?.decision ?? 'pending';
+
+  const results = useMemo(() => {
+    const base = searchIndex(index?.entries ?? [], query, genre);
+    return base.filter((entry) => {
+      if (only === 'all') return true;
+      const d = decisions[entry.id]?.decision ?? 'pending';
+      return d === only;
+    });
+  }, [index, query, genre, only, decisions]);
+
+  const shown = showAll ? results : results.slice(0, 40);
+
+  const decide = async (id: string, decision: 'approved' | 'blocked', text: string) => {
+    setBusy(id);
+    try {
+      await recordDosDecision({ id, decision, evidence: text });
+      setDecisions((prev) => ({ ...prev, [id]: { decision, evidence: text, at: new Date().toISOString() } }));
+      setReviewing(null);
+      setEvidence('');
+      toast({
+        kind: 'success',
+        title: decision === 'approved' ? 'Permission recorded' : 'Refused',
+        body:
+          decision === 'approved'
+            ? `${id} may now be hosted — the next step is a bundle and a test run, which is a separate decision.`
+            : `${id} stays out of every shelf. The evidence you wrote is kept with the refusal.`,
+      });
+    } catch (e) {
+      toast({ kind: 'error', title: 'Could not record that', body: e instanceof Error ? e.message : '' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const takeFile = async (picked: File | undefined) => {
+    setFileNote(null);
+    setReport(null);
+    if (!picked) { setFile(null); return; }
+    if (picked.size > MAX_BUNDLE_BYTES) {
+      setFile(null);
+      setFileNote(`That file is ${kb(picked.size)}. Bundles are capped at ${MAX_BUNDLE_BYTES / (1024 * 1024)} MB.`);
+      return;
+    }
+    const bytes = new Uint8Array(await picked.arrayBuffer());
+    const zipEntries = readZipDirectory(bytes);
+    const confBytes = zipEntries ? await readZipEntry(bytes, '.jsdos/dosbox.conf') : null;
+    const result = inspectBundle({
+      bytes,
+      entries: zipEntries,
+      conf: confBytes ? new TextDecoder().decode(confBytes) : null,
+    });
+    setReport(result);
+    if (!result.ok) {
+      setFile(null);
+      setFileNote(BUNDLE_MESSAGE[result.problems[0]]);
+      return;
+    }
+    setFile(picked);
+    setDraft((d) => ({
+      ...d,
+      bytes: picked.size,
+      title: d.title || picked.name.replace(/\.jsdos$/i, '').replace(/[-_]+/g, ' ').trim(),
+    }));
+  };
+
+  const problems = useMemo(
+    () => validateUpload({ ...draft, bytes: file?.size ?? 0 }, { takenIds: (rows ?? []).map((r) => r.id), platform: 'dos' }),
+    [draft, file, rows],
+  );
+  const begun = Boolean(file || draft.title.trim() || draft.author.trim());
+
+  const publish = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!file) { toast({ kind: 'error', title: 'Pick a .jsdos bundle first' }); return; }
+    if (!attested) { toast({ kind: 'error', title: 'Confirm the rights statement' }); return; }
+    setBusy('upload');
+    try {
+      const { id, autoexec } = await uploadDosGame({
+        draft: { ...draft, bytes: file.size },
+        file,
+        takenIds: (rows ?? []).map((r) => r.id),
+      });
+      resetDosShelf();
+      toast({
+        kind: 'success',
+        title: 'Published to the DOS shelf',
+        body: autoexec ? `${id} · runs: ${autoexec.split('\n').slice(-1)[0]}` : `${id} is on the shelf.`,
+      });
+      setDraft(emptyDraft());
+      setFile(null);
+      setReport(null);
+      setAttested(false);
+      await refresh();
+    } catch (err) {
+      toast({ kind: 'error', title: 'Upload failed', body: err instanceof Error ? err.message : 'Unknown error' });
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const stageOf = (entry: DosCandidate): DosStage => entry.stage;
+
+  return (
+    <div className="mt-4 space-y-5">
+      {/* ---------------- the queue ---------------- */}
+      <Panel className="p-4">
+        <SectionTitle eyebrow="Review queue" title="Discovery records waiting for a decision" />
+        <p className="text-[12px] text-cream-400 mt-1 max-w-[78ch]">
+          Read from <code className="font-mono text-volt-700">public/retro/dos/catalog.json</code> — a record of what a
+          source repository contains, not a library. “Freeware” and “Shareware” are how those games were sold; they are
+          not a grant to redistribute. Only a decision written here moves a title toward the shelf, and the evidence
+          you type is stored with your name attached.
+        </p>
+
+        {indexError ? (
+          <p role="alert" className="text-[12.5px] font-bold text-blush-600 mt-3">{indexError}</p>
+        ) : !index ? (
+          <p className="text-[13px] text-cream-400 mt-3">Reading the index…</p>
+        ) : (
+          <>
+            <div className="flex flex-wrap gap-2 mt-3">
+              {(['discovered', 'metadata-only', 'pending-rights-review', 'permission-approved', 'ready-for-testing', 'playable', 'failed', 'disabled'] as DosStage[])
+                .filter((stage) => (counts[stage] ?? 0) > 0)
+                .map((stage) => (
+                  <Stat key={stage} label={STAGE_LABEL[stage]} value={counts[stage] ?? 0} />
+                ))}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search the index by title, genre or year…"
+                aria-label="Search the DOS discovery index"
+                className={`${inputClass} flex-1`}
+              />
+              <select
+                value={genre ?? ''}
+                onChange={(e) => setGenre(e.target.value || null)}
+                aria-label="Filter by genre"
+                className={`${inputClass} sm:w-[190px]`}
+              >
+                <option value="">Every genre</option>
+                {genres.map((g) => <option key={g.genre} value={g.genre}>{g.genre} ({g.count})</option>)}
+              </select>
+              <select
+                value={only}
+                onChange={(e) => setOnly(e.target.value as typeof only)}
+                aria-label="Filter by decision"
+                className={`${inputClass} sm:w-[170px]`}
+              >
+                <option value="all">Any decision</option>
+                <option value="pending">Undecided</option>
+                <option value="approved">Approved</option>
+                <option value="blocked">Refused</option>
+              </select>
+            </div>
+
+            <p className="text-[11.5px] text-cream-500 mt-2">
+              {results.length} of {index.entries.length} records match · showing {shown.length}
+              {index.generatedAt ? ` · index built ${index.generatedAt.slice(0, 10)}` : ''}
+            </p>
+
+            {/* The discovery half of "Sync games" is a maintainer script, not a
+                button: it clones nothing, downloads nothing, and can only add an
+                index row. Saying so here is cheaper than a server that pretends
+                to sync. */}
+            <div className="mt-2 rounded-lg border border-ink-600 bg-ink-900/60 p-2.5">
+              <p className="text-[11.5px] text-cream-400">
+                Discovery is re-run with{' '}
+                <code className="font-mono text-volt-700">npm run dos:import</code> (plan only:{' '}
+                <code className="font-mono text-volt-700">npm run dos:import:plan</code>);
+                it writes <code className="font-mono text-volt-700">public/retro/dos/catalog.json</code> and
+                downloads nothing.
+                {index.source ? (
+                  <>
+                    {' '}Source: <span className="text-cream-300">{index.source.repo}</span>
+                    {index.source.commit ? <span className="text-cream-500"> @ {index.source.commit.slice(0, 12)}</span> : null}.
+                  </>
+                ) : null}
+              </p>
+              <p className="text-[11px] text-cream-500 mt-1">
+                A sync can add or rename an index record. It cannot approve one, publish one, or replace a bundle:
+                those are the decisions above and the uploads below.
+              </p>
+            </div>
+
+            <ul className="mt-2 divide-y divide-ink-600 max-h-[520px] overflow-auto pr-1">
+              {shown.map((entry) => {
+                const decision = decisionOf(entry.id);
+                const stage = stageOf(entry);
+                return (
+                  <li key={entry.id} className="py-2.5">
+                    <div className="flex flex-wrap items-start gap-2">
+                      <div className="min-w-[220px] flex-1">
+                        <p className="text-[13px] font-bold text-cream-100">
+                          {entry.title}
+                          {entry.year ? <span className="text-cream-500 font-normal"> · {entry.year}</span> : null}
+                        </p>
+                        <p className="text-[11.5px] text-cream-500 break-all">
+                          {entry.id} · {entry.genre} · source says <em>{entry.sourceLicense}</em> ·{' '}
+                          <a href={entry.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-volt-700 hover:underline">
+                            original source
+                          </a>
+                        </p>
+                        <p className="text-[11px] mt-0.5">
+                          <span className="font-bold uppercase tracking-wide text-cream-400">{STAGE_LABEL[stage]}</span>
+                          {' · '}
+                          <span className={
+                            decision === 'approved' ? 'text-leaf-400 font-bold'
+                              : decision === 'blocked' ? 'text-blush-600 font-bold'
+                                : 'text-cream-400'
+                          }>
+                            {decision === 'approved' ? 'permission recorded' : decision === 'blocked' ? 'refused' : 'no permission evidence'}
+                          </span>
+                          {decisions[entry.id]?.evidence ? (
+                            <span className="text-cream-500"> — {decisions[entry.id].evidence.slice(0, 90)}</span>
+                          ) : null}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy === entry.id}
+                          onClick={() => { setReviewing({ id: entry.id, decision: 'approved' }); setEvidence(decisions[entry.id]?.evidence ?? ''); }}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={busy === entry.id}
+                          onClick={() => { setReviewing({ id: entry.id, decision: 'blocked' }); setEvidence(''); }}
+                        >
+                          Refuse
+                        </Button>
+                      </div>
+                    </div>
+
+                    {reviewing?.id === entry.id && (
+                      <div className="mt-2 rounded-lg border border-ink-500 bg-ink-900/70 p-2.5">
+                        <Field
+                          label={reviewing.decision === 'approved' ? 'What the permission rests on' : 'Why it is refused'}
+                          hint={
+                            reviewing.decision === 'approved'
+                              ? 'A URL, a quote from the author, a dated email — at least 12 characters. This is stored verbatim.'
+                              : 'Optional, but useful later: “shareware, no redistribution grant”, “commercial title”.'
+                          }
+                        >
+                          <textarea
+                            className={`${inputClass} min-h-[64px]`}
+                            value={evidence}
+                            maxLength={300}
+                            onChange={(e) => setEvidence(e.target.value)}
+                          />
+                        </Field>
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            disabled={reviewing.decision === 'approved' && evidence.trim().length < 12}
+                            onClick={() => { void decide(entry.id, reviewing.decision, evidence.trim()); }}
+                          >
+                            {busy === entry.id ? 'Saving…' : reviewing.decision === 'approved' ? 'Record permission' : 'Record refusal'}
+                          </Button>
+                          <Button size="sm" variant="ghost" onClick={() => setReviewing(null)}>Cancel</Button>
+                        </div>
+                        {reviewing.decision === 'approved' && (
+                          <p className="text-[11px] text-cream-500 mt-2">
+                            This records the right to host. It does not host anything and it does not make a Play button:
+                            the bundle still has to be uploaded below, checked, and run once.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+              {shown.length === 0 && (
+                <li className="py-4 text-[13px] text-cream-400">Nothing in the index matches that.</li>
+              )}
+            </ul>
+            {results.length > shown.length && (
+              <Button size="sm" variant="ghost" className="mt-2" onClick={() => setShowAll(true)}>
+                Show all {results.length}
+              </Button>
+            )}
+          </>
+        )}
+      </Panel>
+
+      {/* ---------------- upload ---------------- */}
+      <Panel className="p-4">
+        <SectionTitle eyebrow="Publish" title="Upload a .jsdos bundle" />
+        <p className="text-[12px] text-cream-400 mt-1 max-w-[78ch]">
+          A bundle is a ZIP whose <code className="font-mono text-volt-700">.jsdos/dosbox.conf</code> tells js-dos how to
+          boot it. The file is checked here for the same things the shelf checks — it is a ZIP, the config is present, no
+          entry escapes the archive — and then stored as{' '}
+          <code className="font-mono text-volt-700">&lt;id&gt;/game.jsdos</code> with a <code className="font-mono text-volt-700">platform&nbsp;=&nbsp;dos</code> row.
+        </p>
+
+        <form onSubmit={publish} className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <Field label="Bundle" hint=".jsdos, up to 48 MB, containing .jsdos/dosbox.conf.">
+              <input
+                type="file"
+                accept=".jsdos,application/zip"
+                onChange={(e) => { void takeFile(e.target.files?.[0]); e.currentTarget.value = ''; }}
+                className="mt-1 block w-full text-[12.5px] text-cream-300 file:mr-3 file:rounded-md file:border-0 file:bg-volt-400 file:px-3 file:py-1.5 file:text-[12px] file:font-bold file:text-ink-950"
+              />
+            </Field>
+            {report?.ok && file && (
+              <div className="mt-2 rounded-lg border border-ink-600 bg-ink-900/60 p-2.5">
+                <p className="text-[11.5px] text-cream-300">
+                  {file.name} · {kb(file.size)} · {report.entries} entries · <span className="text-leaf-400 font-bold">dosbox.conf found</span>
+                </p>
+                {report.autoexec && (
+                  <pre className="mt-1.5 text-[11px] text-cream-400 whitespace-pre-wrap font-mono">{report.autoexec}</pre>
+                )}
+              </div>
+            )}
+            {fileNote && <p role="alert" className="text-[12px] font-bold text-blush-600 mt-1">{fileNote}</p>}
+          </div>
+
+          <Field label="Title">
+            <input className={inputClass} value={draft.title} maxLength={60} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+          </Field>
+          <Field label="Author / studio">
+            <input className={inputClass} value={draft.author} maxLength={60} onChange={(e) => setDraft({ ...draft, author: e.target.value })} />
+          </Field>
+
+          <Field label="Tagline" hint="One line on the card. 80 characters.">
+            <input className={inputClass} value={draft.tagline} maxLength={80} onChange={(e) => setDraft({ ...draft, tagline: e.target.value })} />
+          </Field>
+          <Field label="Tags" hint="Comma separated: puzzle, arcade, action…">
+            <input
+              className={inputClass}
+              value={draft.tags.join(', ')}
+              onChange={(e) => setDraft({ ...draft, tags: e.target.value.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 6) })}
+            />
+          </Field>
+
+          <Field label="Description" hint="600 characters.">
+            <textarea className={`${inputClass} min-h-[84px]`} value={draft.description} maxLength={600} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
+          </Field>
+          <div className="space-y-3">
+            <Field label="Licence" hint="Only redistributable licences are accepted.">
+              <select className={inputClass} value={draft.license} onChange={(e) => setDraft({ ...draft, license: e.target.value })}>
+                {LICENCES.map((l) => <option key={l} value={l}>{l}</option>)}
+                <option value="BSD-3-Clause">BSD-3-Clause</option>
+                <option value="CC0-1.0">CC0-1.0</option>
+              </select>
+            </Field>
+            <Field label="Year (optional)">
+              <input
+                className={inputClass}
+                inputMode="numeric"
+                value={draft.year ?? ''}
+                onChange={(e) => setDraft({ ...draft, year: e.target.value ? Number(e.target.value) : null })}
+              />
+            </Field>
+          </div>
+
+          <Field label="Licence link" hint="https:// — where the licence text lives.">
+            <input className={inputClass} value={draft.licenseUrl} onChange={(e) => setDraft({ ...draft, licenseUrl: e.target.value })} placeholder="https://creativecommons.org/publicdomain/zero/1.0/" />
+          </Field>
+          <Field label="Source link" hint="https:// — the original release, not a mirror.">
+            <input className={inputClass} value={draft.sourceUrl} onChange={(e) => setDraft({ ...draft, sourceUrl: e.target.value })} placeholder="https://example.com/the-game" />
+          </Field>
+
+          <div className="sm:col-span-2">
+            <Field label="Why it may be hosted" hint="Required for DOS. Say what the right rests on — “author released it CC0 in 2019”, “written for this site”.">
+              <input className={inputClass} value={draft.rightsNote} maxLength={400} onChange={(e) => setDraft({ ...draft, rightsNote: e.target.value })} />
+            </Field>
+          </div>
+
+          <div className="sm:col-span-2 rounded-lg border border-ink-600 bg-ink-900/60 p-3">
+            <Toggle
+              checked={attested}
+              onChange={setAttested}
+              label="I have the right to redistribute this bundle, and it is not a commercial title"
+            />
+            <p className="text-[11.5px] text-cream-500 mt-2">
+              A DOS game that was sold commercially is refused here even when an aggregator labels it “freeware”:
+              that label describes how it was distributed in 1993, not who may serve it today. Uploading a bundle
+              nobody can verify is also how a dead Play button gets made.
+            </p>
+          </div>
+
+          {begun && problems.length > 0 && (
+            <ul className="sm:col-span-2 text-[12px] text-cream-400 space-y-1" aria-live="polite">
+              {problems.map((p) => <li key={p}>• {p}</li>)}
+            </ul>
+          )}
+
+          <div className="sm:col-span-2 flex items-center gap-3">
+            <Button type="submit" disabled={busy === 'upload' || problems.length > 0 || !attested || !file}>
+              {busy === 'upload' ? 'Uploading…' : 'Publish to the DOS shelf'}
+            </Button>
+            <span className="text-[11.5px] text-cream-500">{file ? `${kb(file.size)} · ${slugify(draft.title)}` : 'No bundle chosen'}</span>
+          </div>
+        </form>
+      </Panel>
+
+      {/* ---------------- the rows ---------------- */}
+      <Panel className="p-4">
+        <SectionTitle eyebrow="Manage" title="DOS games this site hosts" />
+        {loadError && <p role="alert" className="text-[12.5px] font-bold text-blush-600 mt-2">{loadError}</p>}
+        {rows === null ? (
+          <p className="text-[13px] text-cream-400 mt-3">Reading…</p>
+        ) : rows.length === 0 ? (
+          <p className="text-[13px] text-cream-400 mt-3">
+            No DOS rows yet. The calibration cartridge ships with the site in <code className="font-mono text-volt-700">public/retro/dos/</code>,
+            so it is not a row here.
+          </p>
+        ) : (
+          <ul className="mt-3 divide-y divide-ink-600">
+            {rows.map((row) => (
+              <li key={row.id} className="py-3 flex flex-wrap items-start gap-3">
+                <div className="min-w-[220px] flex-1">
+                  <p className="text-[13.5px] font-bold text-cream-100">
+                    {row.title}{' '}
+                    <span className={`ml-1 text-[10.5px] font-bold uppercase tracking-wide ${row.status === 'published' ? 'text-volt-700' : 'text-cream-500'}`}>
+                      {row.status}
+                    </span>
+                  </p>
+                  <p className="text-[11.5px] text-cream-500 break-all">
+                    {row.id} · {row.author} · {kb(row.bytes)} · {row.license} · {row.rom_path}
+                  </p>
+                  <p className="text-[12px] text-cream-400 mt-1 max-w-[60ch]">{row.rights_note || 'No rights note recorded.'}</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => nav(`/retro/dos/${row.id}`)} icon={<Icon name="play" size={12} />}>
+                    Test player
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      try {
+                        await setGameStatus(row.id, row.status === 'published' ? 'draft' : 'published');
+                        resetDosShelf();
+                        await refresh();
+                      } catch (e) {
+                        toast({ kind: 'error', title: 'Could not change that', body: e instanceof Error ? e.message : '' });
+                      }
+                    }}
+                  >
+                    {row.status === 'published' ? 'Unpublish' : 'Publish'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      try {
+                        await deleteGame(row.id);
+                        resetDosShelf();
+                        await refresh();
+                      } catch (e) {
+                        toast({ kind: 'error', title: 'Could not delete', body: e instanceof Error ? e.message : '' });
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex gap-3 mt-3 flex-wrap">
+          <Stat label="DOS rows" value={rows?.length ?? '—'} />
+          <Stat label="Published" value={rows?.filter((r) => r.status === 'published').length ?? '—'} />
+          <Stat label="Bytes" value={rows ? kb(rows.reduce((n, r) => n + r.bytes, 0)) : '—'} />
+        </div>
+      </Panel>
     </div>
   );
 }

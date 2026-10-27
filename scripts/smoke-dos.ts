@@ -85,6 +85,17 @@ async function main() {
         `${res.status} · ${body.length} bytes · ${type || 'no type'}`,
       );
     }
+    /* libzip is on the boot path as well: js-dos mounts a .jsdos archive with
+       it, and a missing reader is indistinguishable from a broken game. */
+    for (const extra of ['wlibzip.js', 'wlibzip.wasm']) {
+      const res = await bytes(`${prefix}${extra}`);
+      const head = new TextDecoder().decode(res.body.slice(0, 200)).toLowerCase();
+      const ok = extra.endsWith('.wasm')
+        ? res.body[0] === 0 && res.body[1] === 0x61 && res.body[2] === 0x73 && res.body[3] === 0x6d
+        : res.res.ok && !head.includes('<!doctype html');
+      check(`the zip reader is served: ${extra}`, ok, `${res.res.status} · ${res.body.length} bytes`);
+    }
+
     const wasm = await bytes(`${prefix}wdosbox.wasm`);
     check(
       'the wasm core really is WebAssembly',
@@ -102,6 +113,30 @@ async function main() {
       `${wrong.res.status} · ${wrong.res.headers.get('content-type') ?? 'no type'}`,
     );
     check('it asks for the small DOSBox backend', html.includes('backend: "dosbox"'));
+
+    /* The second DOS bug: without `autoStart`, js-dos finishes loading the
+       bundle and then sits on its own pre-run screen — a Play button, no canvas,
+       no error — so the screen stayed black and the old watchdog blamed the
+       bundle. js-dos defaults `autoStart` to false, so this is not cosmetic: it
+       is the option that makes the machine start at all. */
+    check(
+      'it tells js-dos to start the machine by itself',
+      /autoStart:\s*true/.test(html) && /countDownStart:\s*0/.test(html),
+      html.includes('autoStart: true') ? 'autoStart: true' : 'autoStart missing',
+    );
+    check(
+      'it runs js-dos in kiosk mode with no second set of chrome',
+      /kiosk:\s*true/.test(html) && /theme:\s*"dark"/.test(html),
+    );
+    check(
+      'it listens to js-dos’s own ci-ready event',
+      html.includes('"ci-ready"') && html.includes('onEvent'),
+    );
+    /* The player must not call the library without options again. */
+    check(
+      'window.Dos is called with an options object',
+      /window\.Dos\(host,\s*\{/.test(html),
+    );
     /* The allowlist is the thing that stops a crafted message booting anything
        else; assert it is in the document that shipped. */
     check('it refuses anything but a .jsdos URL', html.includes('.jsdos') && html.includes('safeUrl'));

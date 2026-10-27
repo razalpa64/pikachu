@@ -144,6 +144,52 @@ describe('the DOS player page', () => {
     expect(host.textContent).not.toContain('Tested by Pikachu Arcade');
   });
 
+  it('repeats the player’s own error and offers a retry that remounts it', async () => {
+    await mountDos('pikachu-calibration');
+    const before = host.querySelector('iframe');
+    expect(before).not.toBeNull();
+
+    /* What the player document posts when js-dos fails. The desk page must show
+       the player's own words — "the emulator stopped" alone tells nobody what
+       to do — and must offer a way out that is not a reload. */
+    await act(async () => {
+      window.dispatchEvent(new MessageEvent('message', {
+        origin: window.location.origin,
+        data: {
+          channel: 'pikachu-retro',
+          type: 'error',
+          message: 'The emulator never started.',
+          detail: 'js-dos loaded but produced no screen and no message.',
+        },
+      }));
+    });
+
+    const panel = host.querySelector('.dos-screen-panel');
+    expect(panel, 'the failure is shown inside the monitor').not.toBeNull();
+    expect(panel!.getAttribute('data-state')).toBe('error');
+    expect(host.textContent).toContain('The emulator never started.');
+    expect(host.textContent).toContain('js-dos loaded but produced no screen');
+
+    const retry = [...host.querySelectorAll('button')].find((b) => (b.textContent ?? '').includes('Try again'));
+    expect(retry, 'a retry is offered').toBeTruthy();
+    await act(async () => { retry!.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
+
+    const after = host.querySelector('iframe');
+    expect(after, 'the player document is remounted').not.toBeNull();
+    expect(after).not.toBe(before);
+    /* And the error card is gone: a fresh attempt starts from a clean card. */
+    expect(host.querySelector('.dos-screen-panel')?.getAttribute('data-state')).toBe('busy');
+  });
+
+  it('says what is happening while the machine is still warming up', async () => {
+    await mountDos('pikachu-calibration');
+    const panel = host.querySelector('.dos-screen-panel');
+    expect(panel?.getAttribute('data-state')).toBe('busy');
+    expect(host.textContent).toContain('Warming up the monitor');
+    /* The visitor is told the thing that takes the time. */
+    expect(host.textContent).toMatch(/core|bundle|Unpacking/i);
+  });
+
   it('refuses an id that is not on the shelf, without loading an emulator', async () => {
     await mountDos('doom-shareware');
 

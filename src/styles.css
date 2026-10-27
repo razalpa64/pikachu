@@ -1851,21 +1851,101 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   background: #050505;
 }
 
-.dos-screen-note {
+/* The state card inside the bezel. Centred, on its own dark plate, so it never
+   floats as a stray pill over a black rectangle: this is where "warming up",
+   "still working" and "it stopped, here is why, try again" all live. */
+.dos-screen-panel {
   position: absolute;
   left: 50%;
-  top: 10px;
-  transform: translateX(-50%);
-  max-width: min(88%, 46ch);
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: rgba(18, 16, 13, .82);
-  color: #e7dcc8;
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: .03em;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(88%, 44ch);
+  padding: 16px 18px;
+  border-radius: 12px;
+  border: 1px solid #2a2f38;
+  background: rgba(13, 16, 21, .94);
   text-align: center;
-  pointer-events: none;
+  box-shadow: 0 22px 44px -30px #000;
+}
+
+.dos-screen-panel[data-state="error"] { border-color: #5c2b30; }
+
+.dos-screen-panel-title {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f4f0e6;
+  letter-spacing: .01em;
+}
+
+.dos-screen-panel[data-state="error"] .dos-screen-panel-title { color: #ffb4a8; }
+
+.dos-screen-panel-line {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #939daf;
+  max-width: 40ch;
+}
+
+.dos-screen-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.dos-screen-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 11px;
+  border-radius: 8px;
+  border: 1px solid var(--color-volt-500);
+  background: rgba(242, 193, 78, .14);
+  color: var(--color-volt-300, #f6d98a);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+
+.dos-screen-panel-btn:hover { background: rgba(242, 193, 78, .26); }
+
+.dos-screen-panel-btn.ghost {
+  border-color: #3a414d;
+  background: transparent;
+  color: #b8c0cd;
+}
+
+.dos-screen-panel-btn.ghost:hover { background: rgba(255, 255, 255, .06); }
+
+.dos-screen-panel-btn:focus-visible {
+  outline: 2px solid var(--color-volt-400, #ffd24d);
+  outline-offset: 2px;
+}
+
+/* Three dots, not a bar: a bar implies measurable progress, and during a wasm
+   unpack there is none to report. */
+.dos-screen-panel-spinner {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 2px solid #2b333f;
+  border-top-color: #f2c14e;
+  animation: dos-spin .9s linear infinite;
+}
+
+@keyframes dos-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dos-screen-panel-spinner { animation: none; border-top-color: #2b333f; border-left-color: #f2c14e; }
 }
 
 .dos-papers {

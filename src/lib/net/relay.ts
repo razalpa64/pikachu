@@ -41,6 +41,12 @@ export class Relay {
      millisecond after the page loads should not be swallowed; the outbox is
      dropped on close, so a reconnect never replays a stale "find me a game". */
   private outbox: ClientMsg[] = [];
+  /* Has *this* socket been welcomed? Nothing that needs an identity may be sent
+     before the relay has answered our hello — see `send`. */
+  private welcomed = false;
+  /** how many times we have re-asked after a transient auth failure */
+  private helloRetries = 0;
+  private helloTimer: number | null = null;
 
   conn: ConnState = 'idle';
   rtt: number | null = null;
@@ -98,26 +104,25 @@ export class Relay {
 
     ws.onopen = () => {
       this.attempts = 0;
+      this.welcomed = false;
       this.setConn('online');
-      this.send({
-        t: 'hello', ...this.identity, resumeCode: this.resumeCode ?? undefined,
-        ...(this.token ? { token: this.token } : {}),
-        ...(this.blocks.length ? { blocks: this.blocks } : {}),
-      });
-      for (const msg of this.outbox.splice(0, this.outbox.length)) {
-        if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
-      }
+      this.pushHello();
       this.pingTimer = window.setInterval(() => this.send({ t: 'ping', ts: Date.now() }), 8000);
     };
     ws.onmessage = (ev) => {
       let msg: ServerMsg;
       try { msg = JSON.parse(ev.data); } catch { return; }
       switch (msg.t) {
-        case 'welcome':
+        case 'welcome': {
+          this.welcomed = true;
+          this.helloRetries = 0;
+          if (this.helloTimer) { clearTimeout(this.helloTimer); this.helloTimer = null; }
           this.events.welcome?.({
             playerId: msg.playerId, verified: msg.verified, handle: msg.handle ?? null,
           });
+          this.flush();
           break;
+        }
         case 'invite': this.events.invite?.(msg); break;
         case 'inviteClosed': this.events.inviteClosed?.(msg); break;
         case 'pong':
@@ -139,7 +144,10 @@ export class Relay {
         case 'finished': this.events.finished?.(msg); break;
         case 'chat': this.events.chat?.(msg); break;
         case 'typing': this.events.typing?.(msg); break;
-        case 'error': this.events.error?.(msg); break;
+        case 'error':
+          this.recover(msg);
+          this.events.error?.(msg);
+          break;
         case 'nudge': this.events.nudge?.(msg); break;
         case 'presence': this.events.presence?.(msg.presence); break;
         case 'queue': this.events.queue?.(msg.queue); break;
@@ -148,7 +156,11 @@ export class Relay {
     };
     ws.onclose = () => {
       if (this.pingTimer) { clearInterval(this.pingTimer); this.pingTimer = null; }
+      if (this.helloTimer) { clearTimeout(this.helloTimer); this.helloTimer = null; }
+      // the held messages belong to the socket that died: a reconnect must not
+      // replay a stale "find me a game" minutes later
       this.outbox = [];
+      this.welcomed = false;
       this.ws = null;
       if (this.closedByUs) { this.setConn('idle'); return; }
       this.scheduleRetry();
@@ -164,10 +176,66 @@ export class Relay {
   }
 
   send(msg: ClientMsg) {
-    if (this.ws?.readyState === WebSocket.OPEN) { this.ws.send(JSON.stringify(msg)); return; }
-    if (msg.t === 'ping') return;
-    /* Held (a few at most) until the socket opens, then sent once. */
+    if (msg.t === 'ping') {
+      if (this.ws?.readyState === WebSocket.OPEN && this.welcomed) this.ws.send(JSON.stringify(msg));
+      return;
+    }
+    if (this.ws?.readyState === WebSocket.OPEN && this.welcomed) {
+      this.ws.send(JSON.stringify(msg));
+      return;
+    }
+    /* Held (a few at most) until the relay has accepted our hello, then sent
+       once, in order. Waiting for `open` was not enough: `open` only means the
+       TCP handshake finished. A `create` or `join` sent in that window — or after
+       a hello the relay refused — is answered "Say hello first." and the button
+       looks broken. */
     if (this.outbox.length < 8) this.outbox.push(msg);
+  }
+
+  /** Release everything that was waiting for an identity. */
+  private flush() {
+    if (this.ws?.readyState !== WebSocket.OPEN || !this.welcomed) return;
+    for (const msg of this.outbox.splice(0, this.outbox.length)) {
+      if (this.ws?.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  /**
+   * The relay says our socket has a problem; fix what can be fixed without the
+   * player having to reload the page.
+   *
+   *  • `auth_invalid` — the token we presented is dead. Drop it and say hello
+   *    again as a guest: the relay now always answers a hello with an identity,
+   *    so this is belt-and-braces against a server that refused outright.
+   *  • `auth_unavailable` — the auth server is having a bad minute. Keep the
+   *    token (it is probably fine) and ask again shortly; three attempts, then
+   *    stop, so a longer outage is reported instead of a reconnect loop.
+   *  • `no_identity` — the relay lost our hello (a restart, a race in an older
+   *    build). Say it again so the next tap works.
+   */
+  private recover(msg: { code: string }) {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    if (msg.code === 'auth_invalid') {
+      if (this.token === null && this.welcomed) return;
+      this.token = null;
+      this.welcomed = false;
+      this.rehello();
+      return;
+    }
+    if (msg.code === 'auth_unavailable') {
+      if (this.helloRetries >= 3 || this.helloTimer) return;
+      this.helloRetries += 1;
+      this.helloTimer = window.setTimeout(() => {
+        this.helloTimer = null;
+        this.welcomed = false;
+        this.rehello();
+      }, 2500 * this.helloRetries);
+      return;
+    }
+    /* The relay says it has no identity for this socket. Re-announce: a hello is
+       idempotent, and whatever caused the mismatch (a restart, a race, an older
+       server) is cheaper to fix than to explain. */
+    if (msg.code === 'no_identity') { this.welcomed = false; this.rehello(); }
   }
 
   /** "Find me an opponent." The server pairs us and opens the room itself. */
@@ -201,11 +269,19 @@ export class Relay {
 
   private rehello() {
     if (this.ws?.readyState !== WebSocket.OPEN) return;
-    this.send({
+    /* A fresh hello is answered with a fresh welcome; until that lands the
+       socket has no identity as far as `send` is concerned, so anything tapped
+       meanwhile waits rather than being rejected. */
+    this.welcomed = false;
+    this.pushHello();
+  }
+
+  private pushHello() {
+    this.ws!.send(JSON.stringify({
       t: 'hello', ...this.identity, resumeCode: this.resumeCode ?? undefined,
       ...(this.token ? { token: this.token } : {}),
       ...(this.blocks.length ? { blocks: this.blocks } : {}),
-    });
+    }));
   }
 
   /** Ask a friend to play, over the relay — no code to copy. */

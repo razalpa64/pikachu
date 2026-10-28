@@ -490,12 +490,11 @@ export default function Retro() {
             </h1>
             <p className="text-[13.5px] text-cream-500 mt-2 max-w-[64ch]">
               {platform === 'dos'
-                /* Two kinds of title sit on this shelf now, and the sentence has
-                   to cover both: author-published free software, and id's
-                   shareware episode of DOOM, whose permission is written down
-                   rather than licensed. Saying only the first would be a lie
-                   about the second. */
-                ? 'Real MS-DOS games running in your browser on js-dos. Every title says why it may be here: most are published by their authors under the GPL or MIT, and one is a vendor shareware release redistributed with written permission. Each card carries its licence and its source.'
+                /* Two kinds of title sit on this shelf, and the sentence has to
+                   cover both: author-published free software, and the 1990s
+                   shareware releases that their publishers wrote may be copied.
+                   Saying only the first would be a lie about the other eleven. */
+                ? 'Real MS-DOS games running in your browser on js-dos. Every title says why it may be here: nine are published by their authors under the GPL or MIT, and eleven are the publishers\u2019 own shareware releases — Wolfenstein 3D, Duke Nukem 3D, DOOM — redistributed under the notice that ships inside them. Each card carries its licence and its source.'
                 : copy('retro.lede', RETRO_LEDE)}
             </p>
           </div>
@@ -744,16 +743,18 @@ export default function Retro() {
               title only appears above once a person has written down the evidence and the bundle has been checked.
             </p>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
-              Every game here was published as free software by the person who made it — GPL, MIT or Apache-2.0,
+              Nine games here were published as free software by the people who made them — GPL, MIT or Apache-2.0,
               each taken from its own author’s repository at the commit printed on its card, with the licence text
-              inside the archive. That is also why this is not a mirror of the big browser-DOS arcades: those
-              catalogue thousands of titles, and almost none of them ship with a right to redistribute.
+              inside the archive. The other eleven are the 1990s shareware releases — Apogee’s Wolfenstein 3D and
+              Duke Nukem 3D, id’s DOOM, Keen and Heretic, Epic’s Jazz Jackrabbit — and the permission is their own: a
+              VENDOR.DOC or LICENSE.DOC telling every reader they may copy and pass the game on without charge. Those
+              files ship inside the cartridge, unedited, and only the shareware edition is here.
             </p>
             <p className="text-[13px] text-cream-400 mt-2 max-w-[56ch] leading-relaxed">
-              Doom and Grand Theft Auto: Vice City are not here and will not be: both are still sold, their data
-              files were never freely licensed, and Vice City never had a DOS release at all. The shortest card on
-              the shelf is ours — a 179-byte calibration program released CC0, whose whole job is to prove the DOS
-              player really boots.
+              What is not here is the rest of those games: Wolfenstein’s episodes two to six, Duke’s other three,
+              DOOM II and the registered Heretic episodes were sold and still are. Grand Theft Auto: Vice City has no
+              DOS release at all. The shortest card on the shelf is ours — a 361-byte calibration program released
+              CC0, whose whole job is to prove the DOS player really boots.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-2.5">
               <Button

@@ -78,7 +78,13 @@ if (pendingTitle) {
   check('no pending title is on the shelf page', (await page.getByText(pendingTitle, { exact: false }).count()) === 0, pendingTitle);
 }
 
-await page.getByRole('button', { name: 'Play', exact: true }).first().click();
+/* The test card, not the first card. The shelf is sorted by title, so "the first
+   Play button" was the calibration program only while it was alphabetically
+   first; adding nine games whose names start with B moved the click onto Blake
+   Stone and this suite started asserting the calibration colour bars on a
+   corridor in 2140. The card is found by its own title instead. */
+const testCard = page.locator('article').filter({ has: page.getByRole('heading', { name: 'Calibration' }) });
+await testCard.getByRole('button', { name: 'Play', exact: true }).click();
 await page.waitForURL(/\/retro\/dos\//, { timeout: 5000 });
 check('Play opens the DOS player', /\/retro\/dos\/pikachu-calibration$/.test(page.url()), page.url());
 

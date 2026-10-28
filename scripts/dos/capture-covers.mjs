@@ -169,6 +169,28 @@ const LAUNCH = {
 };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/**
+ * How to reach each machine's own screen.
+ *
+ * A capture is a frame of the running game, so the frame to take is the one the
+ * game itself wants to show — its title art where it has one, its menu where it
+ * does not. The times are what these ten builds take on a software-rendered
+ * headless Chromium; a slower host just catches an earlier frame, never a wrong
+ * one, because every frame here is drawn by the game.
+ */
+const DRIVE = {
+  'wolfenstein-3d-shareware': { keys: ['Enter', 'Enter'], gap: 4500, tail: 3000 },
+  'commander-keen-4-shareware': { keys: ['Enter', 'Enter'], gap: 4500, tail: 2000 },
+  'jazz-jackrabbit-shareware': { tail: 5000 },
+  'duke-nukem-3d-shareware': { tail: 12000 },
+  'heretic-shareware': { tail: 8000 },
+  'rise-of-the-triad-shareware': { tail: 10000 },
+  'blake-stone-shareware': { tail: 11000 },
+  'raptor-shareware': { tail: 10000 },
+  'hocus-pocus-shareware': { keys: ['Enter'], gap: 4000, tail: 1500 },
+  'jill-of-the-jungle-shareware': { tail: 13000 },
+};
+
 
 async function main() {
   const shelf = JSON.parse(readFileSync(SHELF, 'utf8'));
@@ -192,7 +214,17 @@ async function main() {
     }
     /* js-dos draws the DOSBox banner first and the program after; give the
        machine the same half-minute a person would give it, then capture. */
-    await sleep(18000);
+    const plan = DRIVE[game.id] ?? {};
+    await sleep(12000);
+    /* Two of these titles sit behind their own "press a key" screen and one
+       behind an Apogee logo, so a person waiting on the card would see nothing
+       but a memory check. A key or two — the same key a person would press —
+       puts the running game on its own title screen. */
+    for (const key of plan.keys ?? []) {
+      await page.keyboard.press(key);
+      await sleep(plan.gap ?? 4000);
+    }
+    await sleep(plan.tail ?? 6000);
     let shot;
     try {
       shot = await canvas.screenshot({ timeout: 60000, animations: 'disabled' });

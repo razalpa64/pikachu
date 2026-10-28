@@ -218,6 +218,276 @@
       }
     },
     {
+      "title": "Wolfenstein 3D",
+      "tagline": "Episode one, the one that started it all",
+      "year": 1992,
+      "author": "id Software, published by Apogee",
+      "license": "Distributable (Apogee shareware terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Wolfenstein%203d",
+      "description": "Castle Wolfenstein, in first person, in 1992, and the reason a generation of PCs got a sound card. This is v1.4 shareware: episode one, Escape from Wolfenstein, with the guard chatter, the dogs and the blue stone walls. Push forward with the up arrow, Ctrl fires, Space opens doors and Esc brings up the menu; the whole file set is the publisher’s distribution copy, unmodified, and still 1.7 MB.",
+      "accent": "#8a6d3b",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "id Software’s 1992 shareware episode, distributed by Apogee, who encouraged readers to copy and pass it on without charge. Shareware edition only — episodes two to six were sold. Files unmodified, no charge, archive pinned by digest. Wolfenstein is a trademark of id Software; this site is not affiliated.",
+      "id": "wolfenstein-3d-shareware",
+      "bundle": "bundles/wolfenstein-3d-shareware.jsdos",
+      "bytes": 1733689,
+      "cover": "covers/wolfenstein-3d-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Apogee shareware terms)",
+        "prebuilt": null,
+        "sha256": "3d9bf9ba8bd61bcecabccd6f87e1490e1ddafa1d2ed1db02fd9ac3585795fda0"
+      }
+    },
+    {
+      "title": "Commander Keen 4",
+      "tagline": "Goodbye Galaxy, episode one",
+      "year": 1991,
+      "author": "id Software, published by Apogee",
+      "license": "Distributable (Apogee shareware terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Commander%20Keen%204",
+      "description": "Secret of the Oracle: eight-year-old Billy Blaze lands on Gnosticus IV, meets the Oracle and sets off to rescue the Council Members. id’s smooth-scrolling EGA platformer is 805 KB of cartridges and dopefish, and this is the shareware episode in full, not a demo. Arrows walk, Ctrl jumps, Enter uses a door, and the VENDOR.DOC that permits copying is inside the cartridge along with the game.",
+      "accent": "#3f7dbb",
+      "tags": [
+        "platformer",
+        "classic"
+      ],
+      "rights": "id Software’s shareware episode, licensed for distribution by Apogee, whose VENDOR.DOC in this bundle says everyone \"can -- and is encouraged! -- to copy, upload and generally pass around this Program without charging for it\". Unmodified, no charge. Commander Keen is a trademark of id Software; this site is not affiliated.",
+      "id": "commander-keen-4-shareware",
+      "bundle": "bundles/commander-keen-4-shareware.jsdos",
+      "bytes": 804787,
+      "cover": "covers/commander-keen-4-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Apogee shareware terms)",
+        "prebuilt": null,
+        "sha256": "185b37e6910b0210ec5e4e1710a48ab0f9872d4085b33f3494a7ba65b5c9e25a"
+      }
+    },
+    {
+      "title": "Jazz Jackrabbit",
+      "tagline": "Epic’s green rabbit, episode one",
+      "year": 1994,
+      "author": "Epic MegaGames",
+      "license": "Distributable (Epic shareware terms)",
+      "licenseUrl": "https://www.epicgames.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Jazz%20Jackrabbit",
+      "description": "A 256-colour VGA platformer with a soundtrack by Robert A. Allen and Alexander Brandon, running at a speed that made 1994 hardware look slow. This is the shareware episode, Turtle Terror, with its own menu, its own demos and 84 files of MOD music and sprite banks, exactly as Epic packaged it. Arrows run and jump up, Ctrl fires, Enter confirms. Epic’s LICENSE.DOC, which permits the copying, ships inside the cartridge.",
+      "accent": "#2f9e63",
+      "tags": [
+        "platformer",
+        "classic"
+      ],
+      "rights": "Epic MegaGames shareware episode one of six. Epic’s LICENSE.DOC in this bundle permits and encourages redistribution by BBS and online service provided no files are altered or removed, which is why the release ships complete and unmodified, at no charge. Jazz Jackrabbit is a trademark of Epic Games; this site is not affiliated.",
+      "id": "jazz-jackrabbit-shareware",
+      "bundle": "bundles/jazz-jackrabbit-shareware.jsdos",
+      "bytes": 3350858,
+      "cover": "covers/jazz-jackrabbit-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Epic shareware terms)",
+        "prebuilt": null,
+        "sha256": "0654e802db65157f6e099b09ea33ee486c50567930ac6681d8abc4600272cab1"
+      }
+    },
+    {
+      "title": "Duke Nukem 3D",
+      "tagline": "L.A. Meltdown, shareware episode",
+      "year": 1996,
+      "author": "3D Realms",
+      "license": "Distributable (3D Realms terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Duke%20Nukem%203D",
+      "description": "The Build engine, a strip club, a shrink ray and a Duke who will not shut up: the 1996 shareware release, v1.3D, all 12.9 MB of DUKE3D.GRP included. This is episode one, L.A. Meltdown, the one everybody actually played. Arrows move and turn, Ctrl fires, Space jumps, and the in-game help is on F1. 3D Realms’ LICENSE.DOC is in the cartridge and asks only that copies be given away free.",
+      "accent": "#b03a2e",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "3D Realms’ 1996 shareware release, episode one of four. Its LICENSE.DOC, shipped here, grants \"LIMITED DISTRIBUTION RIGHTS\": individuals \"can -- and are encouraged! -- to give away copies of the Game without charge\". Registered episodes are not present. Duke Nukem is a trademark of Gearbox; this site is not affiliated.",
+      "id": "duke-nukem-3d-shareware",
+      "bundle": "bundles/duke-nukem-3d-shareware.jsdos",
+      "bytes": 12880586,
+      "cover": "covers/duke-nukem-3d-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (3D Realms terms)",
+        "prebuilt": null,
+        "sha256": "8ac872fd5bf412edce17d5131260693355289c168ec8b30f7eba62a9c03ac86b"
+      }
+    },
+    {
+      "title": "Heretic",
+      "tagline": "City of the Damned, shareware episode",
+      "year": 1994,
+      "author": "Raven Software, published by id Software",
+      "license": "Distributable (id shareware terms)",
+      "licenseUrl": "https://www.idsoftware.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Heretic",
+      "description": "Raven took the DOOM engine, replaced the space station with a cathedral and gave the player a crossbow that freezes people. This is the shareware episode, City of the Damned, with HERETIC1.WAD and the release’s own LICENSE.DOC. It launches straight into the first level because id’s engine understands -warp; arrows move, Ctrl fires, Space opens doors, and F1 shows the keys.",
+      "accent": "#6c5b7b",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "id Software’s shareware release of Heretic, licensed by its own LICENSE.DOC, which covers \"the shareware version or episode one\" and is shipped unmodified in this bundle. VENDOR.DOC routes retail resale through GT Interactive and exempts BBS and FTP distribution. No charge for this copy; registered episodes absent.",
+      "id": "heretic-shareware",
+      "bundle": "bundles/heretic-shareware.jsdos",
+      "bytes": 6123427,
+      "cover": "covers/heretic-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (id shareware terms)",
+        "prebuilt": null,
+        "sha256": "b05b9b2102bc6eaf52fead8fd1c3053f393628f498fc9edc4a4edffa62f90da3"
+      }
+    },
+    {
+      "title": "Rise of the Triad",
+      "tagline": "Dark War, shareware episode",
+      "year": 1995,
+      "author": "Apogee Software",
+      "license": "Distributable (Apogee shareware terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Rise%20of%20the%20Triad",
+      "description": "The loudest game Apogee ever shipped: monks, missile launchers, a score counter lifted from pinball and an episode that ends with you flying a hang glider. ROTT’s shareware build is episode one, and its VENDOR.DOC is emphatic about what that means — \"No right is given by this Vendor.Doc to copy, use or distribute any other version\". Arrows move, Ctrl fires, Space jumps, Enter confirms.",
+      "accent": "#c27c1a",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "Apogee’s shareware release, marked \"Shareware\" and containing \"episode #1\" as its VENDOR.DOC requires; that document also states everyone is encouraged to pass it around without charge. Unmodified, complete, no fee. Registered episodes are not here. Rise of the Triad is a trademark of its owners; this site is not affiliated.",
+      "id": "rise-of-the-triad-shareware",
+      "bundle": "bundles/rise-of-the-triad-shareware.jsdos",
+      "bytes": 8161060,
+      "cover": "covers/rise-of-the-triad-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Apogee shareware terms)",
+        "prebuilt": null,
+        "sha256": "4b6000f5a08f4b722e5690448978140d2e2cac252d77a404a2e0dcf9502f7ade"
+      }
+    },
+    {
+      "title": "Blake Stone",
+      "tagline": "Aliens of Gold, shareware release",
+      "year": 1993,
+      "author": "Jam Productions, published by Apogee",
+      "license": "Distributable (Apogee shareware terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Blake%20Stone",
+      "description": "A British agent, a lunar base and the last game Apogee shipped on the Wolfenstein engine — with ceilings and floors, animated walls and an informant who sells you hints for credits. The shareware release runs the first floors of Aliens of Gold. Arrows move, Ctrl fires, Space opens doors, and the VENDOR.DOC granting the copying is inside the cartridge rather than paraphrased on a card.",
+      "accent": "#4f7f8c",
+      "tags": [
+        "shooter",
+        "classic"
+      ],
+      "rights": "Jam Productions’ shareware release, licensed for distribution by Apogee: its VENDOR.DOC, shipped unmodified in this bundle, encourages everyone to \"copy, upload and generally pass around this Program without charging for it\". No charge, no registered content. Blake Stone is a trademark of its owners; this site is not affiliated.",
+      "id": "blake-stone-shareware",
+      "bundle": "bundles/blake-stone-shareware.jsdos",
+      "bytes": 3661631,
+      "cover": "covers/blake-stone-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Apogee shareware terms)",
+        "prebuilt": null,
+        "sha256": "a3c33438b12c7d0f8c74a0c43930d98846df295156aebf36f4c04d5a83157b42"
+      }
+    },
+    {
+      "title": "Raptor",
+      "tagline": "Call of the Shadows, shareware release",
+      "year": 1994,
+      "author": "Cygnus Studios, published by Apogee",
+      "license": "Distributable (Apogee shareware terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Raptor%20Call%20of%20the%20Shadows",
+      "description": "The vertical shooter that sold a million shareware copies: a mercenary pilot buying better guns between waves of tanks, gunboats and things with too many engines. Apogee shipped it on three disks with a shop, a soundtrack and 5 MB of artwork, all of which is here. Arrows fly, Ctrl fires, Alt fires a missile, Enter confirms a menu entry.",
+      "accent": "#7d3c98",
+      "tags": [
+        "shooter",
+        "arcade"
+      ],
+      "rights": "Cygnus Studios’ shareware release, distributed by Apogee. Its VENDOR.DOC in this bundle reads: everyone \"can -- and is encouraged! -- to copy, upload and generally pass around this Program without charging for it\". Shipped complete and unmodified, at no charge. Raptor is a trademark of its owners; this site is not affiliated.",
+      "id": "raptor-shareware",
+      "bundle": "bundles/raptor-shareware.jsdos",
+      "bytes": 5180868,
+      "cover": "covers/raptor-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Apogee shareware terms)",
+        "prebuilt": null,
+        "sha256": "c3109ad976a1b48a0143603fa45c998c3c383bec4ed3954911003f1afbbcae02"
+      }
+    },
+    {
+      "title": "Hocus Pocus",
+      "tagline": "Apogee’s VGA platformer, shareware levels",
+      "year": 1994,
+      "author": "Moonlite Software, published by Apogee",
+      "license": "Distributable (Apogee shareware terms)",
+      "licenseUrl": "https://www.3drealms.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Hocus%20Pocus",
+      "description": "A wizard’s apprentice collects crystals across 320×200 VGA levels while a soundtrack by the Fat Man plays behind him. Moonlite’s game was the first Apogee platformer with a scrolling background and a shop, and the shareware release is the opening levels in full. Arrows walk, Ctrl jumps, Space casts, Enter picks a menu entry.",
+      "accent": "#2e86c1",
+      "tags": [
+        "platformer",
+        "classic"
+      ],
+      "rights": "Moonlite Software’s shareware release, distributed by Apogee, whose VENDOR.DOC ships in this bundle and encourages everyone to copy and pass the program around without charge. Files unmodified, no charge, no registered levels. Hocus Pocus is a trademark of its owners; this site is not affiliated.",
+      "id": "hocus-pocus-shareware",
+      "bundle": "bundles/hocus-pocus-shareware.jsdos",
+      "bytes": 3570227,
+      "cover": "covers/hocus-pocus-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Apogee shareware terms)",
+        "prebuilt": null,
+        "sha256": "f08b061e84fb80e28b60f048d7c2bed3ce0f857fd15f9487d4ad9f8c079f49d2"
+      }
+    },
+    {
+      "title": "Jill of the Jungle",
+      "tagline": "Epic’s platformer, episode one",
+      "year": 1992,
+      "author": "Epic MegaGames",
+      "license": "Distributable (Epic shareware terms)",
+      "licenseUrl": "https://www.epicgames.com/",
+      "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Jill%20of%20the%20Jungle",
+      "description": "Tim Sweeney wrote the engine, Allen Pilgrim drew the jungle, and Jill jumped through it in 16 colours with a knife and a key. Episode one is 1.1 MB and loads instantly, which is how a whole generation met Epic before Jazz and Unreal. Arrows move, Ctrl jumps, Space uses a weapon, and Epic’s LICENSE.DOC — the permission to copy — is inside the cartridge.",
+      "accent": "#27ae60",
+      "tags": [
+        "platformer",
+        "classic"
+      ],
+      "rights": "Epic MegaGames shareware episode one. Epic’s LICENSE.DOC in this bundle says readers are \"permitted, and encouraged, to make and distribute copies of the Program to their friends, family members and co-workers without charge\". Unmodified, no fee, no registered episodes. Jill of the Jungle is a trademark of Epic Games.",
+      "id": "jill-of-the-jungle-shareware",
+      "bundle": "bundles/jill-of-the-jungle-shareware.jsdos",
+      "bytes": 1148200,
+      "cover": "covers/jill-of-the-jungle-shareware.png",
+      "provenance": {
+        "repo": "flynnsbit/DOS_Shareware_MyMenu",
+        "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
+        "license": "Distributable (Epic shareware terms)",
+        "prebuilt": null,
+        "sha256": "30fdeb6777e98c8f55e1a379d7361c1a2db7a5f10aa2dc7a2f6d3786084dd19e"
+      }
+    },
+    {
       "title": "DOOM",
       "tagline": "Shareware episode one, unmodified",
       "year": 1993,

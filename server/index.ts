@@ -695,29 +695,50 @@ async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
              base64 until somebody with the key says otherwise. A verified player
              gets an account-derived id, so the id cannot be typed by somebody
              else — which is the whole point of a friend list. */
+          /* Sent after the welcome, never instead of it: a client that is told
+             its token died has to be able to keep playing as the guest it
+             already is, and it needs an identity to do that. */
+          let authNotice: { code: string; message: string; recovery?: string } | null = null;
+
           if (msg.token) {
             const result = await verifyAccessToken(String(msg.token));
-            if (!result.ok) {
-              if (result.reason === 'unavailable') {
-                /* Not the player's fault, and not evidence they are lying.
-                   Refusing beats silently downgrading them to a guest, because a
-                   guest is outside every block list. The client retries. */
-                return fail(ws, 'auth_unavailable', 'Could not confirm your account just now.',
-                  'The sign-in service did not answer. Try again in a moment.');
-              }
-              return fail(ws, 'auth_invalid', 'Your session has expired.',
-                'Sign in again to play with friends.');
+            if (!result.ok && result.reason === 'unavailable') {
+              /* Not the player's fault, and not evidence they are lying.
+                 Refusing beats silently downgrading them to a guest, because a
+                 guest is outside every block list. The client retries its hello
+                 rather than being left without one. */
+              return fail(ws, 'auth_unavailable', 'Could not confirm your account just now.',
+                'The sign-in service did not answer. Try again in a moment.');
             }
-            const account = result.user;
-            meta.accountId = account.id;
-            accounts.set(account.id, account.id);
-            /* One player per account: the id is the account, so two tabs of the
-               same person are two sockets of one player, as they should be. */
-            meta.playerId = `u:${account.id}`;
-            meta.handle = account.handle;
-            rememberBlocks(blocksByAccount, account.id, sanitizeBlocks(msg.blocks));
-            meta.blocks = sanitizeBlocks(msg.blocks);
-            accounts.set(meta.playerId, account.id);
+            if (!result.ok) {
+              /* The token is definitively dead (expired, revoked, or signed with
+                 nothing we know). This used to `return` here, which left the
+                 socket with NO identity at all: the next `create` or `join` on it
+                 answered "Say hello first." for ever, and only a page reload got
+                 the player out. A dead token is worth no more than the guest id
+                 the client already sent, so take that id, then tell the client so
+                 it can sign out and stop presenting the token. Nothing is
+                 downgraded: there was no verified account to downgrade from. */
+              meta.playerId = msg.playerId;
+              meta.accountId = null;
+              meta.blocks = sanitizeBlocks(msg.blocks);
+              authNotice = {
+                code: 'auth_invalid',
+                message: 'Your session has expired.',
+                recovery: 'You are playing as a guest. Sign in again to keep your friends and blocks.',
+              };
+            } else {
+              const account = result.user;
+              meta.accountId = account.id;
+              accounts.set(account.id, account.id);
+              /* One player per account: the id is the account, so two tabs of the
+                 same person are two sockets of one player, as they should be. */
+              meta.playerId = `u:${account.id}`;
+              meta.handle = account.handle;
+              rememberBlocks(blocksByAccount, account.id, sanitizeBlocks(msg.blocks));
+              meta.blocks = sanitizeBlocks(msg.blocks);
+              accounts.set(meta.playerId, account.id);
+            }
           } else {
             meta.playerId = msg.playerId;
             meta.accountId = null;
@@ -740,6 +761,7 @@ async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
             verified: Boolean(meta.accountId), handle: meta.handle,
           });
           send(ws, { t: 'presence', presence: presenceNow() });
+          if (authNotice) fail(ws, authNotice.code, authNotice.message, authNotice.recovery);
 
           // auto-resume: reattach to a room we are still a member of
           const resume = msg.resumeCode?.toUpperCase();
@@ -761,7 +783,7 @@ async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
 
         /* ---------------------------------------------------------- create */
         case 'create': {
-          if (!meta.playerId) return fail(ws, 'no_identity', 'Say hello first.');
+          if (!meta.playerId) return fail(ws, 'no_identity', 'Still connecting to the arena.', 'Give it a second, then try again.');
           if (!allow(`create:${meta.playerId}:${ip}`, 20))
             return fail(ws, 'rate_limited', 'Too many rooms created. Wait a moment.', 'Try again in about a minute.');
           const rules = RULES[msg.gameId];
@@ -789,7 +811,7 @@ async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
            room itself, so the two players never exchange a code: they are told
            'matched', then handed the same room. */
         case 'queue': {
-          if (!meta.playerId) return fail(ws, 'no_identity', 'Say hello first.');
+          if (!meta.playerId) return fail(ws, 'no_identity', 'Still connecting to the arena.', 'Give it a second, then try again.');
           const rules = RULES[msg.gameId];
           if (!rules) return fail(ws, 'unknown_game', 'That game has no online referee yet.', 'Pick another game from the library.');
           if (memberOf(ws)) return fail(ws, 'in_room', 'You are already in an arena.', 'Leave it first, then look for a random opponent.');
@@ -821,7 +843,7 @@ async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
 
         /* ---------------------------------------------------------- join */
         case 'join': {
-          if (!meta.playerId) return fail(ws, 'no_identity', 'Say hello first.');
+          if (!meta.playerId) return fail(ws, 'no_identity', 'Still connecting to the arena.', 'Give it a second, then try again.');
           if (!allow(`join:${ip}`, 60)) return fail(ws, 'rate_limited', 'Too many join attempts.', 'Wait a few seconds, then retry.');
           const code = String(msg.code ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 5);
           const room = rooms.get(code);
@@ -1129,7 +1151,7 @@ async function handleMessage(ws: WebSocket, raw: unknown, ip: string) {
            only to carry the invitation to a live socket, and to refuse to open a
            room unless the person invited answers it. */
         case 'invite': {
-          if (!meta.playerId) return fail(ws, 'no_identity', 'Say hello first.');
+          if (!meta.playerId) return fail(ws, 'no_identity', 'Still connecting to the arena.', 'Give it a second, then try again.');
           if (!meta.accountId) {
             return fail(ws, 'not_signed_in', 'Sign in to invite a friend.',
               'Friends are tied to an account, so that they survive a cleared browser.');

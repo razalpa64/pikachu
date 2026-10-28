@@ -108,7 +108,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
     const id = Math.random().toString(36).slice(2);
     play(t.kind === 'achievement' ? 'achievement' : 'notify');
-    setToasts((prev) => [...prev.slice(-3), { ...t, id }]);
+    setToasts((prev) => {
+      /* One message, one bubble. A relay that answers the same failed tap four
+         times used to stack four identical cards down the screen, which reads as
+         "everything is broken" rather than "that did not work". A repeat of
+         something already on screen is dropped — but only within its own
+         lifetime, so the same warning may honestly appear again later. */
+      if (prev.some((x) => x.kind === t.kind && x.title === t.title && x.body === t.body)) return prev;
+      return [...prev.slice(-3), { ...t, id }];
+    });
     const handle = window.setTimeout(() => {
       setToasts((prev) => prev.filter((x) => x.id !== id));
       timers.current.delete(id);

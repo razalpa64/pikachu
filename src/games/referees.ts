@@ -16,6 +16,7 @@ import { mancalaRules } from './mancala/rules';
 import { wyrRules } from './wyr/rules';
 import { wordBombRules } from './wordbomb/rules';
 import { bluffRules } from './bluff/rules';
+import { bingoRules } from './bingo/rules';
 
 /**
  * The server's rulebook, in one place.
@@ -43,4 +44,5 @@ export const REFEREES: Record<string, TurnGameRules<any, any>> = {
   wyr: wyrRules,
   wordbomb: wordBombRules,
   bluff: bluffRules,
+  bingo: bingoRules,
 };

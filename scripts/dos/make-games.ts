@@ -238,7 +238,7 @@ memsize=32
 
 [render]
 frameskip=0
-aspect=true
+aspect=false
 
 [cpu]
 core=dynamic
@@ -287,7 +287,7 @@ memsize=16
 
 [render]
 frameskip=0
-aspect=true
+aspect=false
 
 [cpu]
 core=dynamic
@@ -338,7 +338,7 @@ memsize=16
 
 [render]
 frameskip=0
-aspect=true
+aspect=false
 
 [cpu]
 core=dynamic
@@ -554,6 +554,16 @@ c:
 SNAKE.COM
 `;
 
+/* `aspect=false`, and why it is not a taste decision: with `aspect=true` DOSBox
+   stretches 320x200 to 4:3, js-dos 8.5.3 sizes its canvas 320x240 for that, and
+   its wdosbox core then paints only the top 320x200 of it. The last 40 rows keep
+   whatever was drawn there last — the emulator's own "Working..." loader bar,
+   frozen under every game's HUD. With `aspect=false` the canvas is exactly the
+   video mode's size, nothing is left unpainted, and the browser upscales the
+   game's own pixels (the screen element asks for `image-rendering: pixelated`).
+   The same line is set in every hand-written conf in this file, including the
+   ones for the free-software games, because the bug was never game-specific. */
+
 /* One conf template for the ten shareware releases.
  *
  * They are all DOS games from 1991 to 1996 that expect a VGA card, a Sound
@@ -588,7 +598,7 @@ memsize=${options.memsize ?? 16}
 
 [render]
 frameskip=0
-aspect=true
+aspect=false
 
 [cpu]
 core=dynamic

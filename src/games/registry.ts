@@ -202,6 +202,19 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
+    id: 'bingo', slug: 'bingo-night', title: 'Bingo Night',
+    tagline: 'Two cards, one drum, one choice',
+    description: 'A real 75-ball card each, both face up. On your turn you are shown two balls and call exactly one — the one that finishes your row also fills theirs. Five in a line wins, and the drum never lies.',
+    genre: 'party', modes: ['online'], players: [2, 2], duration: 6,
+    accent: '#b8860b', artKey: 'bingo', status: 'live', serverRefereed: true,
+    settings: [
+      { key: 'pattern', label: 'Winning card', type: 'select', default: 'line', options: [
+        { value: 'line', label: 'Any line · five in a row' },
+        { value: 'full', label: 'Full house · the whole card' },
+      ] },
+    ],
+  },
+  {
     id: 'sketch', slug: 'guess-and-draw', title: 'Guess & Draw',
     tagline: 'One of you draws, the other shouts',
     description: 'You get a word, ninety seconds and a brush; they get the canvas and a text box. Wrong guesses cost nothing, a fast one is worth more, and you swap roles every round. The word never leaves the server until the round is over.',

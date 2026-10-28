@@ -196,7 +196,7 @@ export function ErrorState({ title, body, recovery, onRetry, retryLabel = 'Try a
 }
 
 /* ------------------------------------------------------------------ connection pill */
-export function ConnectionIndicator({ state, rtt }: { state: string; rtt: number | null }) {
+export function ConnectionIndicator({ state, rtt, compact }: { state: string; rtt: number | null; compact?: boolean }) {
   const map: Record<string, { c: string; t: string }> = {
     online: { c: 'bg-leaf-400', t: 'Connected' },
     connecting: { c: 'bg-volt-400', t: 'Connecting' },
@@ -205,10 +205,21 @@ export function ConnectionIndicator({ state, rtt }: { state: string; rtt: number
     idle: { c: 'bg-cream-500', t: 'Idle' },
   };
   const m = map[state] ?? map.idle;
+  /* `compact` is for the room's own bar on a phone, where the word CONNECTED
+     was 76px of a 390px row: the dot stays, the word is read out by the label
+     instead. The title still says it in full, so hovering or long-pressing a
+     desktop or Android phone gets the sentence too. */
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase text-cream-300 bg-white/70 border-2 border-ink-500 rounded-full px-2.5 py-1" title={`Relay ${m.t}${rtt != null ? ` · ${rtt} ms` : ''}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-[11px] font-bold tracking-wide uppercase text-cream-300
+        bg-white/70 border-2 border-ink-500 rounded-full ${compact ? 'px-1.5 sm:px-2.5' : 'px-2.5'} py-1`}
+      title={`Relay ${m.t}${rtt != null ? ` · ${rtt} ms` : ''}`}
+      aria-label={`Relay ${m.t}${rtt != null ? `, ${rtt} milliseconds` : ''}`}
+    >
       <span className={`w-2 h-2 rounded-full ${m.c} ${state === 'reconnecting' || state === 'connecting' ? 'animate-pulse' : ''}`} />
-      {m.t}{rtt != null && state === 'online' && <span className="text-cream-500 tabnum">{rtt}ms</span>}
+      <span className={compact ? 'hidden sm:inline' : ''}>{m.t}</span>
+      {rtt != null && state === 'online' && <span className={`text-cream-500 tabnum ${compact ? 'hidden sm:inline' : ''}`}>{rtt}ms</span>}
+      {compact && <span className="sr-only">{m.t}</span>}
     </span>
   );
 }

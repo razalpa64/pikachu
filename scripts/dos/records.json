@@ -18,14 +18,14 @@
       "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.",
       "id": "celis",
       "bundle": "bundles/celis.jsdos",
-      "bytes": 1181587,
+      "bytes": 1181588,
       "cover": "covers/celis.png",
       "provenance": {
         "repo": "GadZombie/celis",
         "commit": "01bea787b64e0033bc0fcb26784d8a5af55b6c9e",
         "license": "GPL-3.0",
         "prebuilt": null,
-        "sha256": "9973b851e6c41efd4d812f1a4d60da77084903df874a151a6a93341cf49927dc"
+        "sha256": "f145cea27f66f07b2b1893dd0fda90d62609997b19cd46b8fbfc9cbdc1c482d6"
       }
     },
     {
@@ -45,14 +45,14 @@
       "rights": "GPL-3.0. The copyright holder published the game, its data files and its source in this repository under the GPL, so hosting an unmodified build is permission the licence itself grants — no aggregator label, no upload from a third party, no ROM site. The licence text ships inside the bundle as LICENSE.TXT and the source is the repository at the commit below.",
       "id": "sadist",
       "bundle": "bundles/sadist.jsdos",
-      "bytes": 8088577,
+      "bytes": 8088578,
       "cover": "covers/sadist.png",
       "provenance": {
         "repo": "GadZombie/sadist",
         "commit": "237267637e41e3368cf3137dc743e69db280bc83",
         "license": "GPL-3.0",
         "prebuilt": null,
-        "sha256": "e5db8e19e58699066fe6631a9e8e697086e3b7cdffd2961637ea975379966111"
+        "sha256": "38376f0f41f1b0604416e363289a6393cad20c5725e399a1bb15f884f21e6f85"
       }
     },
     {
@@ -234,14 +234,14 @@
       "rights": "id Software’s 1992 shareware episode, distributed by Apogee, who encouraged readers to copy and pass it on without charge. Shareware edition only — episodes two to six were sold. Files unmodified, no charge, archive pinned by digest. Wolfenstein is a trademark of id Software; this site is not affiliated.",
       "id": "wolfenstein-3d-shareware",
       "bundle": "bundles/wolfenstein-3d-shareware.jsdos",
-      "bytes": 1733689,
+      "bytes": 1733690,
       "cover": "covers/wolfenstein-3d-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Apogee shareware terms)",
         "prebuilt": null,
-        "sha256": "3d9bf9ba8bd61bcecabccd6f87e1490e1ddafa1d2ed1db02fd9ac3585795fda0"
+        "sha256": "1c9c0e1b1ac3f2fd14f8fe53d797fc301961f8131c71a63fb0fdd66a2df47d4c"
       }
     },
     {
@@ -261,14 +261,14 @@
       "rights": "id Software’s shareware episode, licensed for distribution by Apogee, whose VENDOR.DOC in this bundle says everyone \"can -- and is encouraged! -- to copy, upload and generally pass around this Program without charging for it\". Unmodified, no charge. Commander Keen is a trademark of id Software; this site is not affiliated.",
       "id": "commander-keen-4-shareware",
       "bundle": "bundles/commander-keen-4-shareware.jsdos",
-      "bytes": 804787,
+      "bytes": 804788,
       "cover": "covers/commander-keen-4-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Apogee shareware terms)",
         "prebuilt": null,
-        "sha256": "185b37e6910b0210ec5e4e1710a48ab0f9872d4085b33f3494a7ba65b5c9e25a"
+        "sha256": "3986a3a8351ca8b6a209e4e004615f3b78ca86bd7d9336ce506dbf5e9acba2b2"
       }
     },
     {
@@ -288,14 +288,14 @@
       "rights": "Epic MegaGames shareware episode one of six. Epic’s LICENSE.DOC in this bundle permits and encourages redistribution by BBS and online service provided no files are altered or removed, which is why the release ships complete and unmodified, at no charge. Jazz Jackrabbit is a trademark of Epic Games; this site is not affiliated.",
       "id": "jazz-jackrabbit-shareware",
       "bundle": "bundles/jazz-jackrabbit-shareware.jsdos",
-      "bytes": 3350858,
+      "bytes": 3350859,
       "cover": "covers/jazz-jackrabbit-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Epic shareware terms)",
         "prebuilt": null,
-        "sha256": "0654e802db65157f6e099b09ea33ee486c50567930ac6681d8abc4600272cab1"
+        "sha256": "3047a60b7f5ce1b295b36fdfa2f7a4755562262813fc7f555ad41553bc914c3c"
       }
     },
     {
@@ -315,14 +315,14 @@
       "rights": "3D Realms’ 1996 shareware release, episode one of four. Its LICENSE.DOC, shipped here, grants \"LIMITED DISTRIBUTION RIGHTS\": individuals \"can -- and are encouraged! -- to give away copies of the Game without charge\". Registered episodes are not present. Duke Nukem is a trademark of Gearbox; this site is not affiliated.",
       "id": "duke-nukem-3d-shareware",
       "bundle": "bundles/duke-nukem-3d-shareware.jsdos",
-      "bytes": 12880586,
+      "bytes": 12880587,
       "cover": "covers/duke-nukem-3d-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (3D Realms terms)",
         "prebuilt": null,
-        "sha256": "8ac872fd5bf412edce17d5131260693355289c168ec8b30f7eba62a9c03ac86b"
+        "sha256": "732f6a7523bbf3f24b7e8b854bbca7ca26e01bf7348e8352cd342bbfd608c649"
       }
     },
     {
@@ -342,14 +342,14 @@
       "rights": "id Software’s shareware release of Heretic, licensed by its own LICENSE.DOC, which covers \"the shareware version or episode one\" and is shipped unmodified in this bundle. VENDOR.DOC routes retail resale through GT Interactive and exempts BBS and FTP distribution. No charge for this copy; registered episodes absent.",
       "id": "heretic-shareware",
       "bundle": "bundles/heretic-shareware.jsdos",
-      "bytes": 6123427,
+      "bytes": 6123428,
       "cover": "covers/heretic-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (id shareware terms)",
         "prebuilt": null,
-        "sha256": "b05b9b2102bc6eaf52fead8fd1c3053f393628f498fc9edc4a4edffa62f90da3"
+        "sha256": "cca3d6fd0c118d7019fa03be12d11ce5dc8fac28841e58e4e36976175a833f0c"
       }
     },
     {
@@ -369,14 +369,14 @@
       "rights": "Apogee’s shareware release, marked \"Shareware\" and containing \"episode #1\" as its VENDOR.DOC requires; that document also states everyone is encouraged to pass it around without charge. Unmodified, complete, no fee. Registered episodes are not here. Rise of the Triad is a trademark of its owners; this site is not affiliated.",
       "id": "rise-of-the-triad-shareware",
       "bundle": "bundles/rise-of-the-triad-shareware.jsdos",
-      "bytes": 8161060,
+      "bytes": 8161061,
       "cover": "covers/rise-of-the-triad-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Apogee shareware terms)",
         "prebuilt": null,
-        "sha256": "4b6000f5a08f4b722e5690448978140d2e2cac252d77a404a2e0dcf9502f7ade"
+        "sha256": "35cb68779abd843a68031b6c3fc2909e577cb05336931fd16aa49b529e167600"
       }
     },
     {
@@ -396,14 +396,14 @@
       "rights": "Jam Productions’ shareware release, licensed for distribution by Apogee: its VENDOR.DOC, shipped unmodified in this bundle, encourages everyone to \"copy, upload and generally pass around this Program without charging for it\". No charge, no registered content. Blake Stone is a trademark of its owners; this site is not affiliated.",
       "id": "blake-stone-shareware",
       "bundle": "bundles/blake-stone-shareware.jsdos",
-      "bytes": 3661631,
+      "bytes": 3661632,
       "cover": "covers/blake-stone-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Apogee shareware terms)",
         "prebuilt": null,
-        "sha256": "a3c33438b12c7d0f8c74a0c43930d98846df295156aebf36f4c04d5a83157b42"
+        "sha256": "edbc1e306e36b2890a855d10aebeab09e5fb995fcb62f6c5f169154651fc17f4"
       }
     },
     {
@@ -423,14 +423,14 @@
       "rights": "Cygnus Studios’ shareware release, distributed by Apogee. Its VENDOR.DOC in this bundle reads: everyone \"can -- and is encouraged! -- to copy, upload and generally pass around this Program without charging for it\". Shipped complete and unmodified, at no charge. Raptor is a trademark of its owners; this site is not affiliated.",
       "id": "raptor-shareware",
       "bundle": "bundles/raptor-shareware.jsdos",
-      "bytes": 5180868,
+      "bytes": 5180869,
       "cover": "covers/raptor-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Apogee shareware terms)",
         "prebuilt": null,
-        "sha256": "c3109ad976a1b48a0143603fa45c998c3c383bec4ed3954911003f1afbbcae02"
+        "sha256": "e8c84ffc4b403b749155e7ac99cacfa3459842729fb6a5172a1eb9504c6f60cc"
       }
     },
     {
@@ -450,14 +450,14 @@
       "rights": "Moonlite Software’s shareware release, distributed by Apogee, whose VENDOR.DOC ships in this bundle and encourages everyone to copy and pass the program around without charge. Files unmodified, no charge, no registered levels. Hocus Pocus is a trademark of its owners; this site is not affiliated.",
       "id": "hocus-pocus-shareware",
       "bundle": "bundles/hocus-pocus-shareware.jsdos",
-      "bytes": 3570227,
+      "bytes": 3570228,
       "cover": "covers/hocus-pocus-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Apogee shareware terms)",
         "prebuilt": null,
-        "sha256": "f08b061e84fb80e28b60f048d7c2bed3ce0f857fd15f9487d4ad9f8c079f49d2"
+        "sha256": "de2f14c1a1b1dd225d1eec903fab7eebfd8302d6b538e160b5f902906b7e3973"
       }
     },
     {
@@ -477,14 +477,14 @@
       "rights": "Epic MegaGames shareware episode one. Epic’s LICENSE.DOC in this bundle says readers are \"permitted, and encouraged, to make and distribute copies of the Program to their friends, family members and co-workers without charge\". Unmodified, no fee, no registered episodes. Jill of the Jungle is a trademark of Epic Games.",
       "id": "jill-of-the-jungle-shareware",
       "bundle": "bundles/jill-of-the-jungle-shareware.jsdos",
-      "bytes": 1148200,
+      "bytes": 1148201,
       "cover": "covers/jill-of-the-jungle-shareware.png",
       "provenance": {
         "repo": "flynnsbit/DOS_Shareware_MyMenu",
         "commit": "1b40b8e3c09f73bed1634686f82822c35e0fc138",
         "license": "Distributable (Epic shareware terms)",
         "prebuilt": null,
-        "sha256": "30fdeb6777e98c8f55e1a379d7361c1a2db7a5f10aa2dc7a2f6d3786084dd19e"
+        "sha256": "ff2bf60c6dd529941afb09c9e52c264b64d58017af5595957e078b351e0036d4"
       }
     },
     {
@@ -504,14 +504,14 @@
       "rights": "id Software’s shareware release. John Carmack, 23 Oct 1999: \"The DOOM shareware wad is freely distributable.\" Debian ships these files as doom-wad-shareware on that basis; RPM Fusion as doom-shareware, License: Distributable. Unmodified, no charge, registered episodes excluded. DOOM is a trademark of id Software; this site is not affiliated.",
       "id": "doom-shareware",
       "bundle": "bundles/doom-shareware.jsdos",
-      "bytes": 4975816,
+      "bytes": 4975817,
       "cover": "covers/doom-shareware.png",
       "provenance": {
         "repo": "JuansesDev/AerionOs",
         "commit": "f759adad3d9571f9c755e9d7fb5216cfd55c97bd",
         "license": "Distributable (id shareware terms)",
         "prebuilt": null,
-        "sha256": "84361dddedc7feb1d12b3f6100691ab8449db73847bdf5d57cba5177f8198925"
+        "sha256": "462ff937cf69d8d0f1265bc81dabb2a12c525b85809433a710de4e7864a0eafe"
       }
     }
   ]

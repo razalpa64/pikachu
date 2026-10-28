@@ -14,7 +14,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Blake%20Stone",
       "description": "A British agent, a lunar base and the last game Apogee shipped on the Wolfenstein engine — with ceilings and floors, animated walls and an informant who sells you hints for credits. The shareware release runs the first floors of Aliens of Gold. Arrows move, Ctrl fires, Space opens doors, and the VENDOR.DOC granting the copying is inside the cartridge rather than paraphrased on a card.",
       "bundle": "bundles/blake-stone-shareware.jsdos",
-      "bytes": 3661631,
+      "bytes": 3661632,
       "cover": "covers/blake-stone-shareware.png",
       "accent": "#4f7f8c",
       "tags": [
@@ -54,7 +54,7 @@
       "sourceUrl": "https://github.com/GadZombie/celis",
       "description": "A side-scrolling shooter for MS-DOS written in Turbo Pascal, which its author compares to Gradius, R-Type and Zybex. The repository labels the build “demo version 0.667” and says the game was never finished but is playable. Packaged from the project’s own files at commit 01bea78; the VGA, memory and Sound Blaster settings come from the DOSBox config the author ships in DOSBox/Celis.conf.",
       "bundle": "bundles/celis.jsdos",
-      "bytes": 1181587,
+      "bytes": 1181588,
       "cover": "covers/celis.png",
       "accent": "#5cc8ff",
       "tags": [
@@ -74,7 +74,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Commander%20Keen%204",
       "description": "Secret of the Oracle: eight-year-old Billy Blaze lands on Gnosticus IV, meets the Oracle and sets off to rescue the Council Members. id’s smooth-scrolling EGA platformer is 805 KB of cartridges and dopefish, and this is the shareware episode in full, not a demo. Arrows walk, Ctrl jumps, Enter uses a door, and the VENDOR.DOC that permits copying is inside the cartridge along with the game.",
       "bundle": "bundles/commander-keen-4-shareware.jsdos",
-      "bytes": 804787,
+      "bytes": 804788,
       "cover": "covers/commander-keen-4-shareware.png",
       "accent": "#3f7dbb",
       "tags": [
@@ -94,7 +94,7 @@
       "sourceUrl": "https://www.doomworld.com/idgames/idstuff/doom/doom19s",
       "description": "Episode one, Knee-Deep in the Dead, exactly as id shipped it in 1994: DOOM.EXE v1.9 and DOOM1.WAD, byte for byte, with the README that came in the archive. The IWAD is checked against the SHA-256 of the official 4,196,020-byte shareware file every time the bundle is built, so what runs here is id’s own release and not a repack. Arrow keys move and turn, Ctrl fires, Space opens doors, F1 shows the key card.",
       "bundle": "bundles/doom-shareware.jsdos",
-      "bytes": 4975816,
+      "bytes": 4975817,
       "cover": "covers/doom-shareware.png",
       "accent": "#c0392b",
       "tags": [
@@ -114,7 +114,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Duke%20Nukem%203D",
       "description": "The Build engine, a strip club, a shrink ray and a Duke who will not shut up: the 1996 shareware release, v1.3D, all 12.9 MB of DUKE3D.GRP included. This is episode one, L.A. Meltdown, the one everybody actually played. Arrows move and turn, Ctrl fires, Space jumps, and the in-game help is on F1. 3D Realms’ LICENSE.DOC is in the cartridge and asks only that copies be given away free.",
       "bundle": "bundles/duke-nukem-3d-shareware.jsdos",
-      "bytes": 12880586,
+      "bytes": 12880587,
       "cover": "covers/duke-nukem-3d-shareware.png",
       "accent": "#b03a2e",
       "tags": [
@@ -154,7 +154,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Heretic",
       "description": "Raven took the DOOM engine, replaced the space station with a cathedral and gave the player a crossbow that freezes people. This is the shareware episode, City of the Damned, with HERETIC1.WAD and the release’s own LICENSE.DOC. It launches straight into the first level because id’s engine understands -warp; arrows move, Ctrl fires, Space opens doors, and F1 shows the keys.",
       "bundle": "bundles/heretic-shareware.jsdos",
-      "bytes": 6123427,
+      "bytes": 6123428,
       "cover": "covers/heretic-shareware.png",
       "accent": "#6c5b7b",
       "tags": [
@@ -174,7 +174,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Hocus%20Pocus",
       "description": "A wizard’s apprentice collects crystals across 320×200 VGA levels while a soundtrack by the Fat Man plays behind him. Moonlite’s game was the first Apogee platformer with a scrolling background and a shop, and the shareware release is the opening levels in full. Arrows walk, Ctrl jumps, Space casts, Enter picks a menu entry.",
       "bundle": "bundles/hocus-pocus-shareware.jsdos",
-      "bytes": 3570227,
+      "bytes": 3570228,
       "cover": "covers/hocus-pocus-shareware.png",
       "accent": "#2e86c1",
       "tags": [
@@ -194,7 +194,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Jazz%20Jackrabbit",
       "description": "A 256-colour VGA platformer with a soundtrack by Robert A. Allen and Alexander Brandon, running at a speed that made 1994 hardware look slow. This is the shareware episode, Turtle Terror, with its own menu, its own demos and 84 files of MOD music and sprite banks, exactly as Epic packaged it. Arrows run and jump up, Ctrl fires, Enter confirms. Epic’s LICENSE.DOC, which permits the copying, ships inside the cartridge.",
       "bundle": "bundles/jazz-jackrabbit-shareware.jsdos",
-      "bytes": 3350858,
+      "bytes": 3350859,
       "cover": "covers/jazz-jackrabbit-shareware.png",
       "accent": "#2f9e63",
       "tags": [
@@ -214,7 +214,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Jill%20of%20the%20Jungle",
       "description": "Tim Sweeney wrote the engine, Allen Pilgrim drew the jungle, and Jill jumped through it in 16 colours with a knife and a key. Episode one is 1.1 MB and loads instantly, which is how a whole generation met Epic before Jazz and Unreal. Arrows move, Ctrl jumps, Space uses a weapon, and Epic’s LICENSE.DOC — the permission to copy — is inside the cartridge.",
       "bundle": "bundles/jill-of-the-jungle-shareware.jsdos",
-      "bytes": 1148200,
+      "bytes": 1148201,
       "cover": "covers/jill-of-the-jungle-shareware.png",
       "accent": "#27ae60",
       "tags": [
@@ -294,7 +294,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Raptor%20Call%20of%20the%20Shadows",
       "description": "The vertical shooter that sold a million shareware copies: a mercenary pilot buying better guns between waves of tanks, gunboats and things with too many engines. Apogee shipped it on three disks with a shop, a soundtrack and 5 MB of artwork, all of which is here. Arrows fly, Ctrl fires, Alt fires a missile, Enter confirms a menu entry.",
       "bundle": "bundles/raptor-shareware.jsdos",
-      "bytes": 5180868,
+      "bytes": 5180869,
       "cover": "covers/raptor-shareware.png",
       "accent": "#7d3c98",
       "tags": [
@@ -314,7 +314,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Rise%20of%20the%20Triad",
       "description": "The loudest game Apogee ever shipped: monks, missile launchers, a score counter lifted from pinball and an episode that ends with you flying a hang glider. ROTT’s shareware build is episode one, and its VENDOR.DOC is emphatic about what that means — \"No right is given by this Vendor.Doc to copy, use or distribute any other version\". Arrows move, Ctrl fires, Space jumps, Enter confirms.",
       "bundle": "bundles/rise-of-the-triad-shareware.jsdos",
-      "bytes": 8161060,
+      "bytes": 8161061,
       "cover": "covers/rise-of-the-triad-shareware.png",
       "accent": "#c27c1a",
       "tags": [
@@ -334,7 +334,7 @@
       "sourceUrl": "https://github.com/GadZombie/sadist",
       "description": "A 1998 DOS game by Grzegorz “GAD” Drozd, who published it — binaries, data, artwork and the Turbo Pascal source — under the GPL. Packaged from commit 2372676 with the files the source opens at runtime: GRAF.DAT, SADIST.DAT, both .CFG files, the character packs in POSTACI/, the terrain packs in TERENY/ and the loose bitmaps and WAV banks lifted out of Data/. Its audio is wired to a Sound Blaster 16 in the bundle’s dosbox.conf.",
       "bundle": "bundles/sadist.jsdos",
-      "bytes": 8088577,
+      "bytes": 8088578,
       "cover": "covers/sadist.png",
       "accent": "#ff7a6b",
       "tags": [
@@ -394,7 +394,7 @@
       "sourceUrl": "https://github.com/flynnsbit/DOS_Shareware_MyMenu/tree/1b40b8e3c09f73bed1634686f82822c35e0fc138/GAMES/Wolfenstein%203d",
       "description": "Castle Wolfenstein, in first person, in 1992, and the reason a generation of PCs got a sound card. This is v1.4 shareware: episode one, Escape from Wolfenstein, with the guard chatter, the dogs and the blue stone walls. Push forward with the up arrow, Ctrl fires, Space opens doors and Esc brings up the menu; the whole file set is the publisher’s distribution copy, unmodified, and still 1.7 MB.",
       "bundle": "bundles/wolfenstein-3d-shareware.jsdos",
-      "bytes": 1733689,
+      "bytes": 1733690,
       "cover": "covers/wolfenstein-3d-shareware.png",
       "accent": "#8a6d3b",
       "tags": [

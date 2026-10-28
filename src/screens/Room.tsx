@@ -5,6 +5,7 @@ import { useStore, useAmbience } from '../lib/store';
 import { useMatchCues } from '../lib/matchCues';
 import { gameById, onlineGames, defaultGameSettings } from '../games/registry';
 import { GameArtwork } from '../components/GameArtwork';
+import { ChessTrays } from '../components/boards/ChessTrays';
 import { Button, ConfirmDialog, ConnectionIndicator, CopyField, EmptyState, ErrorState, Icon, Panel, Stat } from '../components/ui';
 import { PikachuMascot, ElectricLoader, BoltRule } from '../mascot';
 import { ResultOverlay, MatchCountdown, type Verdict } from '../components/Overlays';
@@ -144,15 +145,27 @@ export default function Room() {
             The room name and the series chip return from `sm` up; the code stays
             because it is the one thing you read out loud. */}
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-1.5 sm:py-2.5 flex items-center gap-2 sm:gap-3 sm:flex-wrap">
-          <button onClick={() => setConfirmLeave(true)} className="btn btn-sm btn-ghost btn-iconish" aria-label="Leave room">
+          <button onClick={() => setConfirmLeave(true)} className="btn btn-sm btn-ghost btn-iconish" aria-label="Leave room"
+            title="Leave this arena">
             <Icon name="back" size={14} /><span className="hidden sm:inline">Leave</span>
           </button>
-          <button onClick={() => { sfx('select'); setPickerOpen(true); }} className="btn btn-sm btn-ghost btn-iconish text-cream-200 hover:text-volt-700" aria-label="Change game">
-            <Icon name="sparkle" size={14} /><span className="hidden sm:inline">Change Game</span>
+          {/* The game switcher used to be a bare four-pointed star on a phone,
+              which reads as "decorate this" or "AI", not "pick another game" —
+              and it sat next to a near-identical sparkle for Lobby. It is now
+              the gamepad glyph with its words always attached, and the words
+              are the action rather than the game's name: "Chess" alone would
+              describe the current state and leave the affordance to the user.
+              `aria-label` carries the current game for anyone on a reader. */}
+          <button onClick={() => { sfx('select'); setPickerOpen(true); }}
+            className="btn btn-sm btn-ghost shrink-0 text-cream-200 hover:text-volt-700"
+            aria-label={`Change game — now playing ${game?.title ?? 'a game'}`} aria-haspopup="dialog"
+            title="Change the game — the board resets, the room and the series stay">
+            <Icon name="gamepad" size={15} /><span className="text-[12px] whitespace-nowrap">Change game</span>
           </button>
           {room.status === 'IN_GAME' && (
-            <button onClick={() => setConfirmReturnLobby(true)} className="btn btn-sm btn-ghost btn-iconish text-volt-700" aria-label="Return to lobby">
-              <Icon name="spark" size={14} /><span className="hidden sm:inline">Lobby</span>
+            <button onClick={() => setConfirmReturnLobby(true)} className="btn btn-sm btn-ghost btn-iconish text-volt-700" aria-label="Return to lobby"
+              title="Back to the lobby">
+              <Icon name="home" size={14} /><span className="hidden sm:inline">Lobby</span>
             </button>
           )}
           <div className="min-w-0">
@@ -168,7 +181,7 @@ export default function Room() {
             <div className="hidden sm:block">
               <Stat label="Series" value={`${room.series.wins[slot]}–${room.series.wins[oppSlot]}${room.series.draws ? ` · ${room.series.draws}D` : ''}`} accent="#8d5a05" />
             </div>
-            <ConnectionIndicator state={conn} rtt={rtt} />
+            <ConnectionIndicator state={conn} rtt={rtt} compact />
           </div>
         </div>
       </div>
@@ -253,7 +266,7 @@ export default function Room() {
                   rematchPending={!!me?.rematchVote && !opp?.rematchVote}
                   onRematch={() => { sfx('select'); rematch(!me?.rematchVote); }}
                   onChangeGame={() => { sfx('select'); setPickerOpen(true); }}
-                  changeGameLabel="Change Game"
+                  changeGameLabel="Change game"
                   onExit={() => setConfirmLeave(true)}
                   extra={<p className="text-[11.5px] text-cream-500">{opp?.rematchVote ? `${opp.name} wants a rematch!` : 'Both trainers must vote to run it back.'}</p>}
                 />
@@ -418,17 +431,34 @@ function Lobby({ room, slot, inviteLink, onReady, onStart, _onChangeGame, onOpen
   const isHost = me?.isHost;
 
   return (
-    <div className="grid lg:grid-cols-[1fr_360px] gap-5 items-start">
-      <div>
+    <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_360px] gap-5 items-start">
+      {/* Explicit minmax(0,1fr) tracks: the implicit single column was sized by
+          its widest child's max-content, which pushed the lobby 6px past a
+          360px screen. */}
+      <div className="min-w-0">
         <Panel className="p-5 sm:p-7 relative overflow-hidden">
           <div className="absolute inset-0 inset-grid opacity-20 pointer-events-none" aria-hidden />
           <div className="relative">
             <p className="eyebrow text-volt-700 mb-1">Private arena</p>
             <h1 className="display text-[26px] sm:text-[32px] text-cream-100 mb-1">{room.roomName}</h1>
-            <div className="flex items-center gap-3 mb-6 flex-wrap">
-              <p className="text-[13px] text-cream-500">{game?.title} · {game?.tagline}</p>
-              <Button size="sm" variant="blue" onClick={() => { sfx('toggle'); onOpenPicker?.(); }} icon={<Icon name="spark" size={13} />}>
-                Change game
+            {/* The game is a *card*, not a sentence plus a blush button: the
+                old blush "Change game" was the loudest thing in the lobby and
+                out-shouted "Ready up", which is the only thing this screen is
+                asking for. Now the card states what is loaded and offers the
+                swap as a quiet, clearly labelled action next to it. */}
+            <div className="flex items-center gap-3 mb-6 p-2.5 pr-2 rounded-2xl bg-white border-2 border-ink-500"
+              style={{ boxShadow: 'inset 0 1px 0 rgba(255,255,255,.7), 0 2px 0 0 var(--line)' }}>
+              <div className="relative w-11 h-11 shrink-0 rounded-xl overflow-hidden border-2 border-ink-500 bg-ink-850">
+                <GameArtwork artKey={game?.artKey ?? 'chess'} className="w-full h-full object-cover" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[9.5px] font-extrabold uppercase tracking-wider text-cream-500 leading-none mb-0.5">Now playing</p>
+                <p className="text-[13.5px] font-extrabold text-cream-100 truncate leading-tight">{game?.title}</p>
+                <p className="hidden sm:block text-[11px] text-cream-500 truncate leading-tight">{game?.tagline}</p>
+              </div>
+              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => { sfx('toggle'); onOpenPicker?.(); }}
+                icon={<Icon name="gamepad" size={13} />} aria-label="Change game">
+                Change
               </Button>
             </div>
 
@@ -589,11 +619,13 @@ function MatchHud({ game, state, slot, names, myTurn, lastAction, onResign, onDr
         }
       />
       <div className="flex items-center gap-2 flex-wrap">
-        {game === 'chess' && state.clock && (
-          <>
-            <Stat label={names[0]} value={clockText(state.clock[0])} accent={slot === 0 ? '#f0b429' : undefined} />
-            <Stat label={names[1]} value={clockText(state.clock[1])} accent={slot === 1 ? '#f0b429' : undefined} />
-          </>
+        {/* Chess used to show two bare clocks, so a player could see that a piece
+            was gone but never which one, and never who was winning the exchange.
+            The tray carries both clocks as well now. */}
+        {game === 'chess' && state.fen && (
+          <div className="w-full order-last basis-full">
+            <ChessTrays fen={state.fen} youSlot={slot} names={names} clock={state.clock ?? undefined} />
+          </div>
         )}
         {game === 'memory' && (
           <>

@@ -2011,11 +2011,20 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   .dos-screen-panel-spinner { animation: none; border-top-color: #2b333f; border-left-color: #f2c14e; }
 }
 
+/* An explicit single track, not the implicit one. With no `grid-template-columns`
+   the implicit track is sized to the widest item's max-content — a paragraph
+   counts as one long line — so on a 390 px phone the grid laid itself out 860 px
+   wide and the whole desk scrolled sideways. `minmax(0, 1fr)` pins the track to
+   the container and lets the text wrap inside it; the children get `min-width: 0`
+   so a long word or a URL cannot push a track back out again. */
 .dos-papers {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   margin-top: 16px;
 }
+
+.dos-papers > * { min-width: 0; }
 
 .dos-papers-hidden { display: none; }
 
@@ -2028,7 +2037,7 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
 }
 
 @media (min-width: 900px) {
-  .dos-papers { grid-template-columns: 1.1fr 1fr; }
+  .dos-papers { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
 }
 
 /* The loading skeleton. Two tones and a slow sweep, so it reads as "filling in"

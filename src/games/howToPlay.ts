@@ -190,6 +190,16 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'Draw the shape of the thing before the detail. A plain outline reads faster than a careful drawing.',
   },
+  bingo: {
+    goal: 'Mark five in a line on your card before they do — or fill the whole card, if you set it that way.',
+    steps: [
+      'On your turn the drum shows you two balls. Call one; both cards are stamped with it.',
+      'The ball you do not call goes back into the drum, so nothing is ever wasted.',
+      'Every number is marked for you — the only decision in the game is which ball to call.',
+      'A green tick on a ball means it is on your card. A completed line ends it.',
+    ],
+    tip: 'A ball that finishes your row finishes nothing for them, and a ball that sits on both cards is the one to argue about.',
+  },
   imposter: {
     goal: 'Find the imposter — or, if you are the imposter, blend in and steal the guess.',
     steps: [

@@ -26,4 +26,5 @@ export const BOARDS: Record<string, LazyExoticComponent<ComponentType<BoardProps
   wyr: lazy(() => import('./WouldYouRatherBoard')),
   wordbomb: lazy(() => import('./WordBombBoard')),
   bluff: lazy(() => import('./BluffTriviaBoard')),
+  bingo: lazy(() => import('./BingoBoard')),
 };

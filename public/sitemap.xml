@@ -136,6 +136,11 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://pikachu.invytra.in/solo/bingo-night</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://pikachu.invytra.in/solo/guess-and-draw</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>

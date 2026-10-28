@@ -47,6 +47,21 @@
     max-height: 100%;
   }
 
+  /* The canvas is exactly the game's video mode — 320x200 for most of these,
+     640x480 for the later ones — and it is stretched to fill the 4:3 bezel.
+     That is not a distortion: a 320x200 VGA frame was drawn for a 4:3 monitor,
+     so the "tall" pixels ARE the picture, and a 1.6:1 letterbox would be the
+     incorrect shape. js-dos writes its own pixel size onto the element, so this
+     has to be !important; the two lines are the only override in the file. */
+  #dos .jsdos-rso canvas,
+  #dos canvas {
+    width: 100% !important;
+    height: 100% !important;
+    top: 0 !important;
+    left: 0 !important;
+    position: absolute !important;
+  }
+
   /* The boot card. It covers the emulator only while there is nothing to see,
      and it is a card rather than a full black slab so the screen behind it reads
      as "warming up", not "broken". */

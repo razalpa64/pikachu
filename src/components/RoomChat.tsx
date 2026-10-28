@@ -8,6 +8,7 @@ import { useStore } from '../lib/store';
 import type { ChatMessage } from '../lib/useRoom';
 import type { SystemLine } from '../lib/useRoomLines';
 import { buildFeed, REACTIONS, unreadCount, type ReactionSpec } from '../lib/chatFeed';
+import { useKeyboardInset } from '../lib/viewport';
 
 /* ============================================================================
    ARENA CHAT — one surface, three placements
@@ -260,7 +261,7 @@ function Composer({
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
           }}
           className="flex-1 min-w-0 resize-none bg-white border-2 border-ink-500 rounded-2xl px-3 py-2
-            text-[13px] font-semibold leading-snug text-cream-100 placeholder:text-cream-500
+            text-[16px] sm:text-[13px] font-semibold leading-snug text-cream-100 placeholder:text-cream-500
             focus:border-volt-500 focus:outline-none transition-colors no-tap
             disabled:opacity-60 disabled:cursor-not-allowed"
           style={{ boxShadow: 'inset 0 1px 3px rgba(120,80,55,.12)', maxHeight: 78 }}
@@ -481,6 +482,11 @@ export function ChatRail(props: SurfaceProps) {
 export function MobileChat(props: SurfaceProps) {
   const { messages, opp } = props;
   const [open, setOpen] = useState(false);
+  /* The on-screen keyboard is painted *over* a fixed-position sheet on iOS, so
+     the composer used to end up behind it — you could read the chat and not type
+     in it. `kb` is the height we have to lift everything by; 0 on Android, where
+     `interactive-widget=resizes-content` already shrinks the viewport for us. */
+  const kb = useKeyboardInset();
   const launcherRef = useRef<HTMLButtonElement | null>(null);
   const [readCount, setReadCount] = useState(messages.length);
   const unread = unreadCount(messages.length, readCount);
@@ -536,7 +542,14 @@ export function MobileChat(props: SurfaceProps) {
           aria-modal="true"
           aria-label="Arena chat"
           className="fixed z-50 left-2 right-2 sm:left-auto sm:right-3 sm:w-[380px] a-pop"
-          style={{ bottom: 'calc(8px + env(safe-area-inset-bottom))', height: 'min(68vh, 560px)' }}
+          style={{
+            bottom: `calc(${8 + kb}px + env(safe-area-inset-bottom))`,
+            /* Typing on a phone grows the sheet to fill whatever is left above
+               the keyboard, the way every messenger does, instead of leaving a
+               sliver of board and a box you cannot reach. */
+            height: kb > 0 ? `${Math.max(260, window.innerHeight - kb - 16)}px` : 'min(68vh, 560px)',
+            maxHeight: kb > 0 ? undefined : 'min(68vh, 560px)',
+          }}
         >
           <ChatSurface
             {...props}
@@ -560,7 +573,7 @@ export function MobileChat(props: SurfaceProps) {
       className="lg:hidden fixed z-40 left-2 right-2 sm:left-auto sm:right-3 sm:w-[360px] flex items-center gap-2.5 px-2.5 py-2 rounded-2xl
         bg-white border-2 border-ink-500 text-left no-tap cursor-pointer active:translate-y-[1px]"
       style={{
-        bottom: 'calc(8px + env(safe-area-inset-bottom))',
+        bottom: `calc(${8 + kb}px + env(safe-area-inset-bottom))`,
         boxShadow: '0 2px 4px -2px rgba(120,80,55,.2), 0 16px 30px -18px rgba(140,94,70,.6)',
       }}
     >

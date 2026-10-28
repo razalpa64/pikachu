@@ -118,6 +118,9 @@ describe('no board sizes itself from the viewport', () => {
     const LIST_LIKE = new Set([
       'BluffTriviaBoard.tsx', 'SparkQuizBoard.tsx', 'WordBombBoard.tsx',
       'WouldYouRatherBoard.tsx', 'WildEightsBoard.tsx',
+      // the captured-pieces trays are two rows of 16px pieces inside the HUD,
+      // not a lattice — they have no size of their own to get wrong
+      'ChessTrays.tsx',
     ]);
     const missing = boardFiles
       .filter((f) => !['BoardStage.tsx', 'BoardPlate.tsx', 'ChessPiece.tsx', 'types.ts', 'registry.tsx'].includes(f))

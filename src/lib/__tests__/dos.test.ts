@@ -405,16 +405,17 @@ describe('the committed DOS shelf', () => {
   it('holds the games this project can justify, and nothing else', () => {
     /* Sorted by title, which is the order the manifest is written in. */
     expect(shelf.games.map((g) => g.title)).toEqual([
-      'Calibration', 'Celis', 'DOOM', 'Floppybird', 'Moth Hunter', 'nasm-tetris',
-      'Out of Cash', 'Sadist', 'Snake (54 bytes)', 'Super Vinnie-Pooh',
+      'Blake Stone', 'Calibration', 'Celis', 'Commander Keen 4', 'DOOM', 'Duke Nukem 3D',
+      'Floppybird', 'Heretic', 'Hocus Pocus', 'Jazz Jackrabbit', 'Jill of the Jungle',
+      'Moth Hunter', 'nasm-tetris', 'Out of Cash', 'Raptor', 'Rise of the Triad',
+      'Sadist', 'Snake (54 bytes)', 'Super Vinnie-Pooh', 'Wolfenstein 3D',
     ]);
     for (const game of shelf.games) {
       expect(game.rights.length).toBeGreaterThan(8);
-      /* A formal licence, not an aggregator's label — this is the whole point.
-         One exception, and it is not a label: DOOM's shareware episode ships
-         under id's own terms, confirmed in writing by John Carmack on
-         23 October 1999 and relied on by Debian and RPM Fusion to this day, so
-         it is held to its own, stricter test below. */
+      /* A formal grant, not an aggregator's label — this is the whole point.
+         Two kinds qualify: a free-software licence, and the shareware releases
+         whose publishers wrote that they may be copied and passed on. The second
+         kind is held to its own, stricter test below. */
       expect(game.license, game.id).toMatch(/^(CC0|MIT|GPL|ISC|Apache|BSD|Distributable)/);
       expect(game.bundle).toMatch(/^bundles\/[a-z0-9-]+\.jsdos$/);
       expect(game.sourceUrl.startsWith('https://')).toBe(true);
@@ -430,6 +431,22 @@ describe('the committed DOS shelf', () => {
     expect(doom?.license).toMatch(/^Distributable/);
     expect(doom?.rights).toMatch(/Carmack/);
     expect(doom?.rights.toLowerCase()).toContain('freely distributable');
+
+    /* The ten 1995-era shareware releases are here on the same footing: each
+       licence line says so, each bundle is the shareware edition, and each
+       record quotes the notice that permits the copy. */
+    for (const id of [
+      'wolfenstein-3d-shareware', 'commander-keen-4-shareware', 'jazz-jackrabbit-shareware',
+      'duke-nukem-3d-shareware', 'heretic-shareware', 'rise-of-the-triad-shareware',
+      'blake-stone-shareware', 'raptor-shareware', 'hocus-pocus-shareware',
+      'jill-of-the-jungle-shareware',
+    ]) {
+      const game = dosGameById(shelf.games, id);
+      expect(game, id).not.toBeNull();
+      expect(game?.license, id).toMatch(/shareware|Distributable/i);
+      expect(game?.rights.toLowerCase(), id).toMatch(/without charge|no charge|encouraged|permitted|freely distributable/);
+      expect(game?.cover, id).toMatch(/^covers\/[a-z0-9-]+\.png$/);
+    }
     /* Vice City still has no DOS release, so it is still not here. */
     expect(dosGameById(shelf.games, 'vice-city')).toBeNull();
     expect(dosGameById(shelf.games, 'vice-city')).toBeNull();

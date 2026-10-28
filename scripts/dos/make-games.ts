@@ -5,11 +5,16 @@
  * test card proves the player boots; it is not a game. This script fills the
  * shelf with actual games, and it is deliberately narrow about which ones:
  *
- *   · The rights must be a real licence, held by the person who published the
- *     build. Every title here comes from the author's own repository with a
- *     LICENSE file at the commit recorded beside it — GPL-3.0 for the two Polish
- *     games and the Spanish adventure, MIT for the 508-byte one. There is no
+ *   · The rights must be a real grant, held by the person who published the
+ *     build. Most titles come from the author's own repository with a LICENSE
+ *     file at the commit recorded beside it — GPL-3.0 for the two Polish games
+ *     and the Spanish adventure, MIT for the 508-byte one. There is no
  *     "freeware" label anywhere in this list, because that label is not a grant.
+ *   · The shareware shelf is the other kind of grant, and it is quoted rather
+ *     than assumed: Apogee's VENDOR.DOC and Epic's LICENSE.DOC say in as many
+ *     words that the release may be copied and passed on without charge, and
+ *     those files ship inside each cartridge. Only the shareware editions are
+ *     here — the registered episodes were sold, and are not.
  *   · The files must already exist in the repository. Nothing here is compiled:
  *     there is no DOS toolchain in this project, and shipping a binary somebody
  *     else built from a tarball we cannot reproduce would be worse than shipping
@@ -88,6 +93,46 @@ async function blob(repo: string, ref: string, path: string): Promise<Uint8Array
   return bytes;
 }
 
+/**
+ * The archive the 1990s shareware releases are taken from, pinned to a commit.
+ *
+ * These are the publishers' own distribution copies — Apogee, id and Epic
+ * shipped them to be copied, and each one carries the notice that says so
+ * inside the release itself (VENDOR.DOC for Apogee's titles, LICENSE.DOC for
+ * Epic's), which is why those files are in every bundle. The archive is a
+ * catalogue of those releases, not a ROM site: it holds the shareware package,
+ * not the registered game, and it is addressed file by file so a bundle can pin
+ * a whole directory's contents by one digest (see `shareware` below).
+ */
+const SHAREWARE_REPO = 'flynnsbit/DOS_Shareware_MyMenu';
+const SHAREWARE_REF = '1b40b8e3c09f73bed1634686f82822c35e0fc138';
+
+/**
+ * What a shareware directory carries that is not the game: the vendor's own
+ * screenshots, DOS backup files, and the extra archives some releases shipped
+ * beside the game. Everything else at the top level goes in, including the
+ * licence documents, because they are the permission.
+ */
+const SHAREWARE_SKIP = /^~\$|^-Cover-|\.(swp|swc|zip|jpg)$/i;
+
+/** The folder a shareware release was taken from, at the pinned commit. */
+const sharewareUrl = (dir: string): string =>
+  `https://github.com/${SHAREWARE_REPO}/tree/${SHAREWARE_REF}/GAMES/${encodeURIComponent(dir)}`;
+
+/** A directory listing, cached like a blob: one request, then offline. */
+async function listing(repo: string, ref: string, dir: string): Promise<{ name: string; type: string }[]> {
+  const name = `${repo.replace('/', '_')}@${ref}/LISTING/${dir.replace(/[\\/ ]/g, '_')}.json`;
+  const file = cached(name);
+  if (existsSync(file)) return JSON.parse(readFileSync(file, 'utf8'));
+  const url = `https://api.github.com/repos/${repo}/contents/${encodeURI(dir)}?ref=${ref}`;
+  process.stdout.write(`  ↓ ${repo}/${dir} (listing)\n`);
+  const res = await fetch(url, { headers: { accept: 'application/vnd.github+json', 'user-agent': USER_AGENT, ...authHeaders } });
+  if (!res.ok) throw new Error(`${url} → ${res.status}`);
+  const body = (await res.json()) as { name: string; type: string }[];
+  writeFileSync(file, JSON.stringify(body.map(({ name: n, type }) => ({ name: n, type })), null, 1));
+  return body;
+}
+
 /* ------------------------------------------------------------- the shelf */
 
 /** A directory whose files are copied into the bundle, flattened or kept. */
@@ -118,6 +163,15 @@ interface Title {
    * DOOM.EXE and DOOM1.WAD without unpacking anything by hand.
    */
   archives?: { from: string; entries: { path: string; as: string; sha256?: string }[] }[];
+  /**
+   * Or take a shareware release's directory, file by file, from the archive
+   * above. Every file at the top level is kept — executable, data, and the
+   * release's own licence and readme files — because the notice that permits
+   * redistribution travels with the game. The digest is over the sorted
+   * `name<TAB>sha256` lines of exactly the files that were kept, so a mirror
+   * that adds, drops, edits or replaces any of them fails the build.
+   */
+  shareware?: { dir: string; sha256: string; skip?: RegExp };
   /** Or ship the project's own published bundle, untouched. */
   prebuilt?: string;
   /** Only for bundles we build: the conf and the program its autoexec starts. */
@@ -500,6 +554,79 @@ c:
 SNAKE.COM
 `;
 
+/* One conf template for the ten shareware releases.
+ *
+ * They are all DOS games from 1991 to 1996 that expect a VGA card, a Sound
+ * Blaster and a mouse-free keyboard, so the blocks that matter are the same in
+ * every one and only three numbers change: the machine's memory, the cycle
+ * count, and the line the [autoexec] runs. Writing that out ten times would be
+ * ten chances to typo a port number.
+ *
+ * `autolock` stays false for the same reason as above: these are keyboard games
+ * and js-dos's pointer lock draws a capture overlay and a sensitivity slider
+ * over the screen. `core=dynamic` and a fixed cycle count keep the timing of
+ * games that read the PIT for their speed (Wolfenstein, Raptor) steady enough to
+ * play on a phone rather than sprinting or crawling with the host's load.
+ */
+function sharewareConf(options: {
+  entry: string;
+  cycles: number;
+  memsize?: number;
+  /** Sound Blaster IRQ. DOSBox defaults to 7; some 1995 games assume 5. */
+  irq?: number;
+  note: string[];
+}): string {
+  return `[sdl]
+fullscreen=false
+fulldouble=false
+autolock=false
+waitonerror=true
+
+[dosbox]
+machine=svga_s3
+memsize=${options.memsize ?? 16}
+
+[render]
+frameskip=0
+aspect=true
+
+[cpu]
+core=dynamic
+cputype=auto
+cycles=fixed ${options.cycles}
+cycleup=500
+cycledown=20
+
+[mixer]
+nosound=false
+rate=44100
+blocksize=1024
+prebuffer=20
+
+[sblaster]
+sbtype=sb16
+sbbase=220
+irq=${options.irq ?? 7}
+dma=1
+hdma=5
+sbmixer=true
+oplmode=auto
+oplemu=default
+
+[dos]
+xms=true
+ems=true
+umb=true
+
+[autoexec]
+@echo off
+mount c .
+c:
+rem ${options.note.join('\nrem ')}
+${options.entry}
+`;
+}
+
 const TITLES: Title[] = [
   {
     id: 'celis',
@@ -779,6 +906,467 @@ const TITLES: Title[] = [
         'Fifty-four bytes of machine code; there is no third-party data inside it.',
     },
   },
+  /* ----------------------------------------------------- the shareware era
+   *
+   * Ten releases that a person who owned a PC in 1994 will recognise on sight,
+   * each one taken from the publisher's own shareware distribution rather than
+   * from a ROM site: Apogee's VENDOR.DOC tells every reader they "can -- and
+   * are encouraged! -- to copy, upload and generally pass around this Program
+   * without charging for it", and Epic's LICENSE.DOC says the same for its
+   * MegaGames. Those notices ship inside the cartridges, unedited.
+   *
+   * What is here is the shareware edition and nothing else: Wolfenstein 3D's
+   * episode one out of six, Keen's Goodbye Galaxy episode one, Duke's L.A.
+   * Meltdown, Heretic's City of the Damned. The registered episodes are
+   * commercial, are not in the archive, and are not here. Every bundle mounts
+   * the release's top-level files as they were published and is checked against
+   * one digest over all of them, so a mirror that swapped a file cannot pass.
+   */
+  {
+    id: 'wolfenstein-3d-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Wolfenstein 3d',
+      sha256: '9fe02ee4f340c5644d0d5216d655641a0a9242e631251d25e4db47fa4f759509',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'WOLF3D.EXE',
+        cycles: 12000,
+        note: [
+          'Straight from the title screen into episode one: Esc opens the menu,',
+          '"New Game" is the first item, and Enter takes it to the episode list.',
+        ],
+      }),
+      entry: 'WOLF3D.EXE',
+    },
+    record: {
+      title: 'Wolfenstein 3D',
+      tagline: 'Episode one, the one that started it all',
+      year: 1992,
+      author: 'id Software, published by Apogee',
+      license: 'Distributable (Apogee shareware terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Wolfenstein 3d'),
+      description:
+        'Castle Wolfenstein, in first person, in 1992, and the reason a generation of PCs got ' +
+        'a sound card. This is v1.4 shareware: episode one, Escape from Wolfenstein, with the ' +
+        'guard chatter, the dogs and the blue stone walls. Push forward with the up arrow, Ctrl ' +
+        'fires, Space opens doors and Esc brings up the menu; the whole file set is the ' +
+        'publisher\u2019s distribution copy, unmodified, and still 1.7 MB.',
+      accent: '#8a6d3b',
+      tags: ['shooter', 'classic'],
+      rights:
+        'id Software\u2019s 1992 shareware episode, distributed by Apogee, who encouraged readers ' +
+        'to copy and pass it on without charge. Shareware edition only \u2014 episodes two to six ' +
+        'were sold. Files unmodified, no charge, archive pinned by digest. Wolfenstein is a ' +
+        'trademark of id Software; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'commander-keen-4-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Commander Keen 4',
+      sha256: '2af94eda8bba5460c4e6d4a4590b6e7eec9bfb36521ad669f2d1f7b9be30be2c',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'KEEN4E.EXE',
+        cycles: 8000,
+        memsize: 16,
+        note: [
+          'The Oracle answers to the arrow keys and Ctrl jumps; Enter takes the',
+          'first menu item, which starts the game proper.',
+        ],
+      }),
+      entry: 'KEEN4E.EXE',
+    },
+    record: {
+      title: 'Commander Keen 4',
+      tagline: 'Goodbye Galaxy, episode one',
+      year: 1991,
+      author: 'id Software, published by Apogee',
+      license: 'Distributable (Apogee shareware terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Commander Keen 4'),
+      description:
+        'Secret of the Oracle: eight-year-old Billy Blaze lands on Gnosticus IV, meets the ' +
+        'Oracle and sets off to rescue the Council Members. id\u2019s smooth-scrolling EGA ' +
+        'platformer is 805 KB of cartridges and dopefish, and this is the shareware episode in ' +
+        'full, not a demo. Arrows walk, Ctrl jumps, Enter uses a door, and the VENDOR.DOC that ' +
+        'permits copying is inside the cartridge along with the game.',
+      accent: '#3f7dbb',
+      tags: ['platformer', 'classic'],
+      rights:
+        'id Software\u2019s shareware episode, licensed for distribution by Apogee, whose ' +
+        'VENDOR.DOC in this bundle says everyone "can -- and is encouraged! -- to copy, upload ' +
+        'and generally pass around this Program without charging for it". Unmodified, no charge. ' +
+        'Commander Keen is a trademark of id Software; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'jazz-jackrabbit-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Jazz Jackrabbit',
+      sha256: '2bca25bf3b62e722f5799fc6046e0425da8f024f78c98532c47513da3d2e528a',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'JAZZ.EXE',
+        cycles: 20000,
+        memsize: 16,
+        note: [
+          'Epic\u2019s setup wizard wants a sound card picked by hand; DOSBox already has a',
+          'Sound Blaster 16 at 220h, and Jazz starts without it. Enter on the menu plays.',
+        ],
+      }),
+      entry: 'JAZZ.EXE',
+    },
+    record: {
+      title: 'Jazz Jackrabbit',
+      tagline: 'Epic\u2019s green rabbit, episode one',
+      year: 1994,
+      author: 'Epic MegaGames',
+      license: 'Distributable (Epic shareware terms)',
+      licenseUrl: 'https://www.epicgames.com/',
+      sourceUrl: sharewareUrl('Jazz Jackrabbit'),
+      description:
+        'A 256-colour VGA platformer with a soundtrack by Robert A. Allen and Alexander ' +
+        'Brandon, running at a speed that made 1994 hardware look slow. This is the shareware ' +
+        'episode, Turtle Terror, with its own menu, its own demos and 84 files of MOD music and ' +
+        'sprite banks, exactly as Epic packaged it. Arrows run and jump up, Ctrl fires, Enter ' +
+        'confirms. Epic\u2019s LICENSE.DOC, which permits the copying, ships inside the cartridge.',
+      accent: '#2f9e63',
+      tags: ['platformer', 'classic'],
+      rights:
+        'Epic MegaGames shareware episode one of six. Epic\u2019s LICENSE.DOC in this bundle ' +
+        'permits and encourages redistribution by BBS and online service provided no files are ' +
+        'altered or removed, which is why the release ships complete and unmodified, at no ' +
+        'charge. Jazz Jackrabbit is a trademark of Epic Games; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'duke-nukem-3d-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Duke Nukem 3D',
+      sha256: '6564db968dd2aedec18b052194ec64f357763f1d6d4e586b6990fd58fd7e08cc',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'DUKE3D.EXE',
+        cycles: 60000,
+        memsize: 32,
+        /* DUKE3D.CFG in the release names IRQ 5, DMA 1 and 16-bit DMA 5 — the
+           Sound Blaster settings of 1995. DOSBox defaults to IRQ 7, and Duke
+           refuses to start with "Playback failed, possibly due to an invalid or
+           conflicting IRQ". Matching the file it ships with is the fix. */
+        irq: 5,
+        note: [
+          'L.A. Meltdown, as shipped: the shareware episode, one of four. Build\u2019s',
+          'engine needs the bigger machine, hence 32 MB and 60 000 cycles.',
+        ],
+      }),
+      entry: 'DUKE3D.EXE',
+    },
+    record: {
+      title: 'Duke Nukem 3D',
+      tagline: 'L.A. Meltdown, shareware episode',
+      year: 1996,
+      author: '3D Realms',
+      license: 'Distributable (3D Realms terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Duke Nukem 3D'),
+      description:
+        'The Build engine, a strip club, a shrink ray and a Duke who will not shut up: the ' +
+        '1996 shareware release, v1.3D, all 12.9 MB of DUKE3D.GRP included. This is episode ' +
+        'one, L.A. Meltdown, the one everybody actually played. Arrows move and turn, Ctrl ' +
+        'fires, Space jumps, and the in-game help is on F1. 3D Realms\u2019 LICENSE.DOC is in ' +
+        'the cartridge and asks only that copies be given away free.',
+      accent: '#b03a2e',
+      tags: ['shooter', 'classic'],
+      rights:
+        '3D Realms\u2019 1996 shareware release, episode one of four. Its LICENSE.DOC, shipped ' +
+        'here, grants "LIMITED DISTRIBUTION RIGHTS": individuals "can -- and are encouraged! -- ' +
+        'to give away copies of the Game without charge". Registered episodes are not present. ' +
+        'Duke Nukem is a trademark of Gearbox; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'heretic-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Heretic',
+      sha256: '2dea294dbe80f06a6b4edbc110b850e0927f1ad2f832830ed69e89eef4bff81c',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'HERETIC.EXE',
+        cycles: 20000,
+        memsize: 16,
+        note: [
+          'DOOM\u2019s engine with a wand instead of a shotgun: -warp drops straight into',
+          'City of the Damned, and -skill 3 is the difficulty id called "Hurt me plenty".',
+        ],
+      }),
+      entry: 'HERETIC.EXE',
+    },
+    record: {
+      title: 'Heretic',
+      tagline: 'City of the Damned, shareware episode',
+      year: 1994,
+      author: 'Raven Software, published by id Software',
+      license: 'Distributable (id shareware terms)',
+      licenseUrl: 'https://www.idsoftware.com/',
+      sourceUrl: sharewareUrl('Heretic'),
+      description:
+        'Raven took the DOOM engine, replaced the space station with a cathedral and gave the ' +
+        'player a crossbow that freezes people. This is the shareware episode, City of the ' +
+        'Damned, with HERETIC1.WAD and the release\u2019s own LICENSE.DOC. It launches straight ' +
+        'into the first level because id\u2019s engine understands -warp; arrows move, Ctrl ' +
+        'fires, Space opens doors, and F1 shows the keys.',
+      accent: '#6c5b7b',
+      tags: ['shooter', 'classic'],
+      rights:
+        'id Software\u2019s shareware release of Heretic, licensed by its own LICENSE.DOC, ' +
+        'which covers "the shareware version or episode one" and is shipped unmodified in this ' +
+        'bundle. VENDOR.DOC routes retail resale through GT Interactive and exempts BBS and FTP ' +
+        'distribution. No charge for this copy; registered episodes absent.',
+    },
+  },
+  {
+    id: 'rise-of-the-triad-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Rise of the Triad',
+      sha256: 'ff2052cc961f013a4bfb9737430c017286fb9c66607908a79f84e006684657fe',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'ROTT.EXE',
+        cycles: 30000,
+        memsize: 16,
+        /* ROTT probes its sound card at IRQ 5 by default and drops into its own
+           SNDSETUP screen when the probe fails at DOSBox's default 7. */
+        irq: 5,
+        note: [
+          'ROTT starts at its own menu with the shareware episode loaded; arrows pick a',
+          'difficulty, Enter starts, and Esc returns to the menu.',
+        ],
+      }),
+      entry: 'ROTT.EXE',
+    },
+    record: {
+      title: 'Rise of the Triad',
+      tagline: 'Dark War, shareware episode',
+      year: 1995,
+      author: 'Apogee Software',
+      license: 'Distributable (Apogee shareware terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Rise of the Triad'),
+      description:
+        'The loudest game Apogee ever shipped: monks, missile launchers, a score counter lifted ' +
+        'from pinball and an episode that ends with you flying a hang glider. ROTT\u2019s ' +
+        'shareware build is episode one, and its VENDOR.DOC is emphatic about what that means ' +
+        '\u2014 "No right is given by this Vendor.Doc to copy, use or distribute any other ' +
+        'version". Arrows move, Ctrl fires, Space jumps, Enter confirms.',
+      accent: '#c27c1a',
+      tags: ['shooter', 'classic'],
+      rights:
+        'Apogee\u2019s shareware release, marked "Shareware" and containing "episode #1" as its ' +
+        'VENDOR.DOC requires; that document also states everyone is encouraged to pass it around ' +
+        'without charge. Unmodified, complete, no fee. Registered episodes are not here. Rise of ' +
+        'the Triad is a trademark of its owners; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'blake-stone-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Blake Stone',
+      sha256: '8168b0211fd082ab42d6d378a373e3999c1818886ccbac3145f4744c2037a8d2',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'BS_AOG.EXE',
+        cycles: 12000,
+        memsize: 16,
+        note: [
+          'Wolfenstein\u2019s engine, upgraded: the game opens on its own menu, and Enter',
+          'on "Begin New Game" is all it takes to be inside the base.',
+        ],
+      }),
+      entry: 'BS_AOG.EXE',
+    },
+    record: {
+      title: 'Blake Stone',
+      tagline: 'Aliens of Gold, shareware release',
+      year: 1993,
+      author: 'Jam Productions, published by Apogee',
+      license: 'Distributable (Apogee shareware terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Blake Stone'),
+      description:
+        'A British agent, a lunar base and the last game Apogee shipped on the Wolfenstein ' +
+        'engine \u2014 with ceilings and floors, animated walls and an informant who sells you ' +
+        'hints for credits. The shareware release runs the first floors of Aliens of Gold. ' +
+        'Arrows move, Ctrl fires, Space opens doors, and the VENDOR.DOC granting the copying is ' +
+        'inside the cartridge rather than paraphrased on a card.',
+      accent: '#4f7f8c',
+      tags: ['shooter', 'classic'],
+      rights:
+        'Jam Productions\u2019 shareware release, licensed for distribution by Apogee: its ' +
+        'VENDOR.DOC, shipped unmodified in this bundle, encourages everyone to "copy, upload and ' +
+        'generally pass around this Program without charging for it". No charge, no registered ' +
+        'content. Blake Stone is a trademark of its owners; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'raptor-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Raptor Call of the Shadows',
+      sha256: 'd9ca3d19a53a21aa1bc8d1e772855a46268142e5ad9fc909237bf7088d540105',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'RAP.EXE',
+        cycles: 20000,
+        memsize: 16,
+        note: [
+          'Raptor\u2019s menu wants three keys: Enter on "Start New Game" then a pilot',
+          'and a difficulty. Arrows fly, Ctrl fires, Alt launches a missile.',
+        ],
+      }),
+      entry: 'RAP.EXE',
+    },
+    record: {
+      title: 'Raptor',
+      tagline: 'Call of the Shadows, shareware release',
+      year: 1994,
+      author: 'Cygnus Studios, published by Apogee',
+      license: 'Distributable (Apogee shareware terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Raptor Call of the Shadows'),
+      description:
+        'The vertical shooter that sold a million shareware copies: a mercenary pilot buying ' +
+        'better guns between waves of tanks, gunboats and things with too many engines. Apogee ' +
+        'shipped it on three disks with a shop, a soundtrack and 5 MB of artwork, all of which ' +
+        'is here. Arrows fly, Ctrl fires, Alt fires a missile, Enter confirms a menu entry.',
+      accent: '#7d3c98',
+      tags: ['shooter', 'arcade'],
+      rights:
+        'Cygnus Studios\u2019 shareware release, distributed by Apogee. Its VENDOR.DOC in this ' +
+        'bundle reads: everyone "can -- and is encouraged! -- to copy, upload and generally pass ' +
+        'around this Program without charging for it". Shipped complete and unmodified, at no ' +
+        'charge. Raptor is a trademark of its owners; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'hocus-pocus-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Hocus Pocus',
+      sha256: '0cd9a702656e66cbba10691a57083b4aec18d0096524d086890e5ef2b73cacc4',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'HOCUS.EXE',
+        cycles: 15000,
+        memsize: 16,
+        note: [
+          'Apogee\u2019s own launcher wants a sound choice first; DOSBox already has the',
+          'Sound Blaster 16, so the game is started directly and reads its defaults.',
+        ],
+      }),
+      entry: 'HOCUS.EXE',
+    },
+    record: {
+      title: 'Hocus Pocus',
+      tagline: 'Apogee\u2019s VGA platformer, shareware levels',
+      year: 1994,
+      author: 'Moonlite Software, published by Apogee',
+      license: 'Distributable (Apogee shareware terms)',
+      licenseUrl: 'https://www.3drealms.com/',
+      sourceUrl: sharewareUrl('Hocus Pocus'),
+      description:
+        'A wizard\u2019s apprentice collects crystals across 320\u00d7200 VGA levels while a ' +
+        'soundtrack by the Fat Man plays behind him. Moonlite\u2019s game was the first Apogee ' +
+        'platformer with a scrolling background and a shop, and the shareware release is the ' +
+        'opening levels in full. Arrows walk, Ctrl jumps, Space casts, Enter picks a menu entry.',
+      accent: '#2e86c1',
+      tags: ['platformer', 'classic'],
+      rights:
+        'Moonlite Software\u2019s shareware release, distributed by Apogee, whose VENDOR.DOC ' +
+        'ships in this bundle and encourages everyone to copy and pass the program around ' +
+        'without charge. Files unmodified, no charge, no registered levels. Hocus Pocus is a ' +
+        'trademark of its owners; this site is not affiliated.',
+    },
+  },
+  {
+    id: 'jill-of-the-jungle-shareware',
+    repo: SHAREWARE_REPO,
+    ref: SHAREWARE_REF,
+    origin: 'vendor-shareware',
+    shareware: {
+      dir: 'Jill of the Jungle',
+      sha256: '848ccdeb5f2fda4886bd16629ee26d3e80a7dfd3d615fba44e512cfc82de4567',
+    },
+    boot: {
+      conf: sharewareConf({
+        entry: 'JILL.EXE',
+        cycles: 12000,
+        memsize: 16,
+        note: [
+          'Jill boots into her own title screen and Enter starts episode one; arrows run,',
+          'Ctrl jumps and Space throws a dagger once she has one.',
+        ],
+      }),
+      entry: 'JILL.EXE',
+    },
+    record: {
+      title: 'Jill of the Jungle',
+      tagline: 'Epic\u2019s platformer, episode one',
+      year: 1992,
+      author: 'Epic MegaGames',
+      license: 'Distributable (Epic shareware terms)',
+      licenseUrl: 'https://www.epicgames.com/',
+      sourceUrl: sharewareUrl('Jill of the Jungle'),
+      description:
+        'Tim Sweeney wrote the engine, Allen Pilgrim drew the jungle, and Jill jumped through ' +
+        'it in 16 colours with a knife and a key. Episode one is 1.1 MB and loads instantly, ' +
+        'which is how a whole generation met Epic before Jazz and Unreal. Arrows move, Ctrl ' +
+        'jumps, Space uses a weapon, and Epic\u2019s LICENSE.DOC \u2014 the permission to copy ' +
+        '\u2014 is inside the cartridge.',
+      accent: '#27ae60',
+      tags: ['platformer', 'classic'],
+      rights:
+        'Epic MegaGames shareware episode one. Epic\u2019s LICENSE.DOC in this bundle says ' +
+        'readers are "permitted, and encouraged, to make and distribute copies of the Program to ' +
+        'their friends, family members and co-workers without charge". Unmodified, no fee, no ' +
+        'registered episodes. Jill of the Jungle is a trademark of Epic Games.',
+    },
+  },
   /* ------------------------------------------------------------------ DOOM */
   {
     /* The shareware episode, and the one title on this shelf whose files are a
@@ -850,6 +1438,13 @@ function sourceNote(title: Title): string {
     '',
     `  project   ${title.record.sourceUrl}`,
     `  commit    ${title.ref}`,
+    ...(title.shareware
+      ? [
+          `  archive   ${SHAREWARE_REPO} @ ${SHAREWARE_REF.slice(0, 7)}`,
+          `  folder    GAMES/${title.shareware.dir}`,
+          `  digest    ${title.shareware.sha256}`,
+        ]
+      : []),
     `  licence   ${title.record.license}`,
     `  author    ${title.record.author}`,
     '  emulator  js-dos 8.5.3 (GPL-2.0) with its DOSBox core',
@@ -947,6 +1542,27 @@ async function buildBundle(title: Title): Promise<{ bytes: Uint8Array; entry: st
     }
   }
 
+  if (title.shareware) {
+    const { dir, sha256: expected, skip } = title.shareware;
+    const entries = await listing(SHAREWARE_REPO, SHAREWARE_REF, `GAMES/${dir}`);
+    const names = entries
+      .filter((entry) => entry.type === 'file' && !(skip ?? SHAREWARE_SKIP).test(entry.name))
+      .map((entry) => entry.name)
+      .sort();
+    const digest = createHash('sha256');
+    for (const name of names) {
+      const data = await blob(SHAREWARE_REPO, SHAREWARE_REF, `GAMES/${dir}/${name}`);
+      digest.update(`${name}\t${sha256(data)}\n`);
+      if (taken.has(name.toLowerCase())) continue;
+      taken.add(name.toLowerCase());
+      files.push({ name, data });
+    }
+    const actual = digest.digest('hex');
+    if (actual !== expected) {
+      throw new Error(`${title.id}: ${dir} is not the directory its digest describes (${actual})`);
+    }
+  }
+
   for (const pack of title.archives ?? []) {
     const archive = await blob(title.repo, title.ref, pack.from);
     for (const entry of pack.entries) {
@@ -1024,7 +1640,7 @@ async function main() {
   mkdirSync(BUNDLE_DIR, { recursive: true });
   const records: unknown[] = [];
 
-  process.stdout.write('\nDOS shelf — building free-software bundles\n\n');
+  process.stdout.write('\nDOS shelf — building cartridges\n\n');
 
   for (const title of TITLES) {
     const { bytes, entry } = await buildBundle(title);

@@ -156,6 +156,26 @@ and comparing the frames before and after:
 | Sadist | yes | the studio logo / title card | **not confirmed** — Enter and Space left the frame unchanged |
 | Out of Cash | yes | DOSBox banner, `OUTCA$H.EXE` loader, then the WARCOM SOFT 2025 logo | **partly** — it advanced through its loader; menu input not confirmed |
 
+The eleven shareware cartridges, checked the same way on the day they were
+packaged — each one booted, and the frame below is what its own screen showed:
+
+| Cartridge | Boots | What was on the screen | Accepted input |
+|---|---|---|---|
+| Wolfenstein 3D | yes | memory check → title art → Options → episode list → difficulty → **E1M1, HUD at 100% / 8 rounds** | **yes — played**: walked to the door, turned right |
+| Heretic | yes | straight into **City of the Damned** from `-warp 1 1 -skill 3`; Esc opens the menu over the level | **yes** — menu, and the level is running behind it |
+| Jill of the Jungle | yes | intro card → main menu → **level one**, Jill on a platform | **yes** |
+| Jazz Jackrabbit | yes | title art → menu → attract demo in level 1 (`GET 30 GEMS`) → difficulty → episode list | **yes** |
+| Blake Stone | yes | JAM logo → title art → main options → mission select → in-game corridor with a guard | **yes** |
+| Duke Nukem 3D | yes | 3D Realms logo → title art → main menu drawn over E1L1 with the HUD live | **yes** — menu; not driven into play |
+| Commander Keen 4 | yes | init screen → id logo → Goodbye Galaxy title art → main menu → new-game menu | **yes** |
+| Hocus Pocus | yes | Apogee logo → title art → difficulty screen | **yes** |
+| Raptor | yes | Apogee logo → city flythrough → RAPTOR title and menu → pilot entry | **yes** |
+| Rise of the Triad | yes | Apogee logo → credits → RISE OF THE TRIAD title → main menu | **yes** — menu highlight moves |
+| DOOM | yes | E1M1 from `-warp`, as recorded above | **yes** |
+
+Ten of the eleven also produced their card cover from one of those frames, so
+what a card shows is a picture of that cartridge running.
+
 That is nine of nine booting and drawing, six confirmed to take keyboard input,
 one whose title screen ignores the keys tried, and one still loading. It is not
 a claim that anybody finished a game — it is a claim that the player and the
@@ -200,15 +220,25 @@ fixed in that script to make it honest: reading the canvas with
 real screenshot, PNG and all), and the colour-bar check scanned a *horizontal*
 line through vertically-stacked bars, so it could only ever see one colour.
 
-## The ten committed DOS cartridges
+## The twenty committed DOS cartridges
 
 Nothing in this table came from a ROM site, a "freeware" aggregator or a
-third-party upload. Eight of the nine games were published by the person who
-wrote them, in their own repository, under the licence shown; DOOM is the one
-vendor shareware release, taken from the published archive unmodified and
-identified by checksum. `npm run dos:games` downloads the files at the pinned
-commit, packages them and checks the result, and `scripts/dos/records.json`
-records the commit and the bundle's SHA-256.
+third-party upload, and no title was picked because a listing called it
+"shareware". There are two kinds of grant here and each one is written down:
+
+- **Nine author-published games**, from the repository of the person who made
+  them, at the commit on the card, under the licence in the repository.
+- **Eleven shareware releases**, from the 1990s, under the notice the publisher
+  shipped inside the game: Apogee's `VENDOR.DOC` ("Everyone can -- and is
+  encouraged! -- to copy, upload and generally pass around this Program without
+  charging for it"), Epic's `LICENSE.DOC` (readers are "permitted, and
+  encouraged, to make and distribute copies"), id's `LICENSE.DOC` for Heretic,
+  and the same terms for DOOM that Debian and RPM Fusion rely on. Those notices
+  travel in the cartridge, unedited.
+
+`npm run dos:games` downloads the files at the pinned commit, packages them and
+checks the result, and `scripts/dos/records.json` records the commit and the
+bundle's SHA-256.
 
 | Cartridge | Licence | Source (pinned commit) | Bundle |
 |---|---|---|---|
@@ -221,9 +251,27 @@ records the commit and the bundle's SHA-256.
 | Moth Hunter | MIT | `w84death/x86-assembly` @ `83a8662` | 3 075 B |
 | nasm-tetris | MIT | `Arkowski24/nasm-tetris` @ `3fc9598` | 6 348 B |
 | Snake (54 bytes) | MIT | `donno2048/snake` @ `45b2117` | 2 515 B |
-| Calibration | CC0-1.0 | authored here, `scripts/dos/make-shelf.ts` | 879 B |
+| Calibration | CC0-1.0 | authored here, `scripts/dos/make-shelf.ts` | 1 056 B |
 
-21 012 988 bytes of cartridges in total, all committed, all re-derivable with
+The eleven shareware releases, each taken file by file from the publisher's own
+distribution copy in `flynnsbit/DOS_Shareware_MyMenu` at commit `1b40b8e`, and
+each checked against one digest over every file it ships:
+
+| Cartridge | Edition | Directory digest (SHA-256) | Bundle |
+|---|---|---|---|
+| Wolfenstein 3D | v1.4, episode 1 of 6 | `9fe02ee4f340c564…` | 1 733 689 B |
+| Commander Keen 4 | Goodbye Galaxy, ep. 1 | `2af94eda8bba5460…` | 804 787 B |
+| Duke Nukem 3D | v1.3D, L.A. Meltdown | `6564db968dd2aede…` | 12 880 586 B |
+| Heretic | City of the Damned | `2dea294dbe80f06a…` | 6 123 427 B |
+| Rise of the Triad | shareware, episode #1 | `ff2052cc961f013a…` | 8 161 060 B |
+| Blake Stone | Aliens of Gold, shareware | `8168b0211fd082ab…` | 3 661 631 B |
+| Raptor | Call of the Shadows, shareware | `d9ca3d19a53a21aa…` | 5 180 868 B |
+| Hocus Pocus | shareware levels | `0cd9a702656e66cb…` | 3 570 227 B |
+| Jazz Jackrabbit | episode 1, Turtle Terror | `2bca25bf3b62e722…` | 3 350 858 B |
+| Jill of the Jungle | episode 1 | `848ccdeb5f2fda48…` | 1 148 200 B |
+| DOOM | Knee-Deep in the Dead | WAD `1d7d43be…c771` | 4 975 816 B |
+
+67 615 792 bytes of cartridges in total, all committed, all re-derivable with
 `npm run dos:games`. Each card also carries a cover captured from the running
 game by `npm run dos:covers` — a real frame of that DOSBox session, not a
 mock-up — which replaced the typographic plates that stood in for artwork.
@@ -249,6 +297,28 @@ Two packaging rules are worth writing down, because both were got wrong first:
   `/\.(exe|com|bat)$/`, concluding the bundle "never starts a program" and
   failing a build that was in fact correct. `autoexecProgram()` is now the one
   place that answers the question, and it also drops DOS `rem` comments.
+- **A shareware directory is pinned as a whole, and the pin is checked against
+  raw bytes.** Each shareware record carries one SHA-256 over the sorted
+  `name<TAB>sha256` lines of the files it ships, and the build recomputes it from
+  what it downloaded. That check caught a real mistake on the first run: the
+  files were inspected in a `git` checkout, whose text files had been converted
+  from CRLF to LF on the way out, so every digest taken from the checkout was
+  wrong for the bytes the archive actually serves. The download is the authority;
+  the digest is computed from the response body, never from a working tree.
+- **A shareware directory and the pending catalogue must not share an id.** The
+  discovery index ships 1,499 DOS records — `wolfenstein-3d`, `duke-nukem-3d`,
+  `heretic`, `jazz-jackrabbit` and others among them — and `smoke:dos` fails the
+  build if any shelf cartridge has one of those ids, so that "a card exists" can
+  never be mistaken for "an administrator approved the record". The new
+  cartridges are therefore `<title>-shareware`, which is also the honest name:
+  it is the shareware edition, not the game.
+- **A `dosbox.conf` is part of the port, and the IRQ is part of the conf.** Duke
+  Nukem 3D and Rise of the Triad both refused to start at DOSBox's default Sound
+  Blaster IRQ 7 — Duke printed "Playback failed, possibly due to an invalid or
+  conflicting IRQ" and quit, ROTT dropped into its own SNDSETUP screen. Both were
+  written for IRQ 5, which is what `DUKE3D.CFG` in Duke's own release says and
+  what ROTT probes for. Setting `irq=5` and `hdma=5` in those two confs boots
+  them with sound, with no game file edited.
 - **A build we cannot reproduce is not packaged.** Nothing here is compiled:
   there is no DOS toolchain in this repository. Where the project publishes its
   own `.jsdos` (Out of Cash does), that file is shipped byte for byte; elsewhere
@@ -325,6 +395,7 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | A streamed ZIP (js-dos's own bundles) can be read past its first entry | `src/lib/__tests__/dos.test.ts` | **yes** |
 | DOOM is the shareware release and says so: licence line, the Carmack sentence, and a WAD checksum pinned in the build script | `src/lib/__tests__/dos.test.ts` | **yes** |
 | DOOM boots into *Knee-Deep in the Dead* and takes the keyboard: walked into the level, turned, fired | `npm run e2e:retro:dos` runs the shelf; this cartridge was played by hand in the same harness and photographed frame by frame | **yes — screenshots, not a scripted check** |
+| Each shareware cartridge ships the publisher's own licence notice and is pinned to one digest over all its files | `src/lib/__tests__/dos.test.ts` (licence line and the rights quote), `npm run dos:games` (digest mismatch aborts the build) | **yes** |
 | A `.jsdos` bundle is a ZIP with `dosbox.conf`, no traversal, no bomb | `src/lib/__tests__/dos.test.ts` | **yes** |
 | A “Freeware”/“Shareware” label is never treated as permission | same file, `judgeRedistribution` | **yes** |
 | A DOS row cannot carry a GBA path (and vice versa) | `src/lib/__tests__/supabase-schema.test.ts` + PGlite | **yes** |
@@ -338,8 +409,11 @@ folder, editor tools and the duplicate `.DAT` copies are left out.
 | js-dos draws a frame, the calibration bars are in it, a keypress reaches the program, pause holds the picture | `npm run e2e:retro:dos` (Playwright, headless Chromium) | **yes — 22 checks, desktop and phone** |
 | The on-screen pad alone can drive a DOS program: below the picture, 40 px+ targets, on screen, alive in fullscreen | the same harness with `--phone` (it presses no physical key at all) | **yes** |
 | The pad sends down/up, repeats a held arrow, releases on cancel and on unmount, and stays silent before the machine runs | `src/components/__tests__/dos-pad.test.ts` | **yes** |
-| All nine cartridges boot and draw | the same harness, one cartridge at a time, frames compared before and after input | **yes** |
-| Six of them visibly respond to the keys a player presses | same | **yes** |
+| All twenty cartridges boot and draw | the same harness, one cartridge at a time, frames compared before and after input | **yes** |
+| Six of the original ten visibly respond to the keys a player presses | same | **yes** |
+| Wolfenstein 3D is playable, not just bootable: title, menu, episode list, difficulty, then E1M1 with the HUD, walked to the door and turned | a headless harness held ArrowUp and ArrowRight and compared the frames; the *Play* button was pressed on the real card | **yes — screenshots** |
+| Heretic reaches *City of the Damned* from `[autoexec]` alone (`-warp 1 1 -skill 3`) and takes the menu keys | same harness; the cover on its card is that frame | **yes — screenshots** |
+| Jill of the Jungle, Jazz Jackrabbit, Duke Nukem 3D, Blake Stone, Hocus Pocus, Raptor, Keen 4 and Rise of the Triad boot to their own title, menu or level | `npm run dos:covers` captured each one's own frame; the ten entries in `DRIVE` in `scripts/dos/capture-covers.mjs` are the keys that reach it | **yes — frames captured, not played to completion** |
 | Sadist and Out of Cash take menu input beyond their first screens | would need a longer scripted run per game | **no** |
 
 `npm test` → 886 tests in 58 files. `tsc -b` clean. `npm run lint` → 0 errors.

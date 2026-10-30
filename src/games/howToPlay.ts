@@ -131,6 +131,17 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'Stay near the middle of the meadow. Corners kill more runs than speed does.',
   },
+  sudoku: {
+    goal: 'Fill the grid so every row, column and 3×3 box holds 1–9 exactly once.',
+    steps: [
+      'Tap a cell, then a number to place it. Tap Notes first to pencil small candidates instead.',
+      'Every board is generated and then checked to have exactly one answer, so a correct board is the only answer — there is nothing to guess.',
+      'Errors are counted as you go; turn “Check as I go” off if you would rather not see the red — the count still runs.',
+      'Today’s grid has three tasks: finish it, finish it with no wrong entries, and finish inside twelve minutes.',
+      'Undo takes a move back, and three hints per board will place one correct number for you.',
+    ],
+    tip: 'The same digit is highlighted wherever it sits on the board — use it to find the row where a number has only one home left.',
+  },
   puzzle: {
     goal: 'Solve the puzzle in as few moves as you can.',
     steps: [

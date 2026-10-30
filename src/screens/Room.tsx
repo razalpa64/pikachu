@@ -30,6 +30,13 @@ export default function Room() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const recorded = useRef<string | null>(null);
   const joinAttempted = useRef(false);
+  /* A URL with a room code in it is a promise: the loader says "finding your
+     arena". If the join never lands — the relay is asleep, the socket is parked
+     in a reconnect backoff, the browser came back from sleep on the ghost of an
+     old room — that promise was never kept and the spinner span for ever. There
+     is no error to show, because nothing failed: nothing happened. So the wait
+     itself gets a deadline, and past it the screen tells the truth. */
+  const [slow, setSlow] = useState(false);
 
   useEffect(() => { connect(); }, [connect]);
   useEffect(() => {
@@ -38,6 +45,21 @@ export default function Room() {
     const t = setTimeout(() => { joinAttempted.current = true; join(code); }, 260);
     return () => clearTimeout(t);
   }, [code, room?.code, join]);
+
+  useEffect(() => {
+    if (room && you) { setSlow(false); return; }
+    if (error) { setSlow(false); return; }
+    const t = window.setTimeout(() => setSlow(true), 9000);
+    return () => window.clearTimeout(t);
+  }, [room, you, error, code]);
+
+  const retryJoin = useCallback(() => {
+    clearError();
+    setSlow(false);
+    joinAttempted.current = true;
+    connect();
+    join(code);
+  }, [clearError, connect, join, code]);
 
   const game = room ? gameById(room.gameId) : null;
   useEffect(() => { if (game) visit(game.id, 'online'); }, [game?.id]);
@@ -118,12 +140,30 @@ export default function Room() {
     );
   }
   if (!room || !you) {
+    const offline = conn === 'offline';
+    const giveUp = offline || slow;
     return (
       <div className="mx-auto max-w-[760px] px-[var(--shell-pad)] py-14">
-        <Panel>
-          {conn === 'offline'
-            ? <ErrorState title="Relay unreachable" body="The match server is not responding." recovery="Check that the relay process is running, then retry." onRetry={connect} />
-            : <ElectricLoader status={conn === 'reconnecting' ? 'Reconnecting' : 'Finding your arena'} detail={`Room ${code.toUpperCase()}`} />}
+        <Panel className="p-2">
+          {giveUp ? (
+            <ErrorState
+              title={offline ? 'The arena server is not answering.' : `Room ${code.toUpperCase()} did not answer.`}
+              body={offline
+                ? 'Your connection to the match relay dropped, so this room cannot be opened right now.'
+                : 'The code may have expired, or the relay is slow to wake up. Nothing is lost — the room and your seat are kept for 45 seconds.'}
+              recovery="Try again in a moment, or start a fresh room. Refreshing the page also works."
+              onRetry={retryJoin}
+              retryLabel="Try this room again"
+            />
+          ) : (
+            <ElectricLoader
+              status={conn === 'reconnecting' ? 'Reconnecting to the arena' : conn === 'connecting' ? 'Connecting to the arena' : 'Finding your arena'}
+              detail={`Room ${code.toUpperCase()} · ${conn === 'online' ? 'asking the relay' : 'waiting for a connection'}`}
+            />
+          )}
+          <div className="flex justify-center gap-2 pb-6">
+            <Button variant="ghost" size="sm" onClick={() => nav('/together')} cue="back">Back to Play Together</Button>
+          </div>
         </Panel>
       </div>
     );

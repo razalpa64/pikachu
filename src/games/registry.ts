@@ -152,6 +152,20 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
+    id: 'sudoku', slug: 'sudoku-daily', title: 'Sudoku Daily',
+    tagline: 'One grid a day, done properly',
+    description: 'Proper sudoku: every board is generated and then proved to have exactly one answer, so a guess is never the right move. Pencil marks, undo, three hints and five levels — plus a daily grid with three tasks and a streak that only counts the days you kept clean.',
+    genre: 'puzzle', modes: ['solo'], players: [1, 1], duration: 12,
+    accent: '#a4641d', artKey: 'sudoku', status: 'live', serverRefereed: false,
+    settings: [
+      { key: 'level', label: 'Level', type: 'select', default: 'casual', options: [
+        { value: 'beginner', label: 'Beginner · 42 clues' }, { value: 'casual', label: 'Casual · 36 clues' },
+        { value: 'intermediate', label: 'Inter · 31 clues' }, { value: 'advanced', label: 'Advanced · 27 clues' },
+        { value: 'expert', label: 'Expert · 24 clues' },
+      ] },
+    ],
+  },
+  {
     id: 'puzzle', slug: 'puzzle-quest', title: 'Puzzle Quest',
     tagline: 'Five little brain teasers',
     description: 'Five quiet puzzle types — slide, lights, lock, echo and sum. Each one is built backwards from a solution that definitely exists, so you are never stuck on a broken board.',

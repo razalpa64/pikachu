@@ -139,6 +139,11 @@ button { font-family: inherit; }
   border-radius: 12px;
 }
 
+/* Sudoku cells are drawn as a ruled grid: an offset outline outside the cell
+   breaks the ruling and lands on the neighbouring cell. The selection ring is
+   drawn *inside* the cell instead, so it is the focus indicator. */
+.sudoku-cell:focus-visible { outline: none; }
+
 /* The header is sticky, so an in-page jump (#main, game anchors) would park the
    target underneath it. */
 [id] { scroll-margin-top: calc(var(--hud-h) + 8px); }

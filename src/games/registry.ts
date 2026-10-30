@@ -152,6 +152,14 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
+    id: 'carrom', slug: 'carrom-table', title: 'Carrom Table',
+    tagline: 'Flick, cut, pocket',
+    description: 'Real carrom physics: a proper striker, coins that cut off each other, four corner pockets and a queen you have to cover. Aim with a drag, break the pack, and play the board rather than the animation — every shot is simulated, so a clip off the rail is a clip you can see coming.',
+    genre: 'strategy', modes: ['ai', 'online', 'local'], players: [1, 2], duration: 9,
+    accent: '#8d3b2f', artKey: 'carrom', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+  },
+  {
     id: 'sudoku', slug: 'sudoku-daily', title: 'Sudoku Daily',
     tagline: 'One grid a day, done properly',
     description: 'Proper sudoku: every board is generated and then proved to have exactly one answer, so a guess is never the right move. Pencil marks, undo, three hints and five levels — plus a daily grid with three tasks and a streak that only counts the days you kept clean.',

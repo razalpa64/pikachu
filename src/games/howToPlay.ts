@@ -131,6 +131,17 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'Stay near the middle of the meadow. Corners kill more runs than speed does.',
   },
+  carrom: {
+    goal: 'Pot all nine of your own coins, and take the queen while you are at it.',
+    steps: [
+      'Press on your own half of the board to slide the striker along your baseline, then pull back from it and let go to flick.',
+      'Sink one of your own coins and you shoot again. Sink an opponent’s coin and they get the point, and your turn ends.',
+      'Put the striker down a pocket and one of your coins comes back onto the centre spot. Touch nothing at all and that is a foul too.',
+      'The queen is only yours once you cover her — sink one of your own coins on the same shot or the next one, or she returns to the middle.',
+      'You cannot go out while the queen is still on the board: your last coin comes back until she is taken.',
+    ],
+    tip: 'Aim at the ghost of the striker behind the coin, on the line from the coin to the pocket — a straight hit at the coin itself just pushes it away from the hole.',
+  },
   sudoku: {
     goal: 'Fill the grid so every row, column and 3×3 box holds 1–9 exactly once.',
     steps: [

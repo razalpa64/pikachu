@@ -21,6 +21,7 @@ export const SOLO_IMPORTERS: Record<string, Importer> = {
   battleship: () => import('./battleship/SoloView'),
   checkers: () => import('./checkers/SoloView'),
   puzzle: () => import('./puzzle/SoloView'),
+  sudoku: () => import('./sudoku/SoloView'),
   arcade: () => import('./arcade/SoloView'),
   trivia: () => import('./trivia/SoloView'),
   wyr: () => import('./wyr/SoloView'),

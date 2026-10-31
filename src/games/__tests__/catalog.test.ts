@@ -183,7 +183,7 @@ function boardFileFor(id: string): string {
     cards: 'WildEightsBoard', trivia: 'SparkQuizBoard', reaction: 'ReactionBoard',
     sketch: 'SketchBoard', reversi: 'ReversiBoard', gomoku: 'GomokuBoard',
     dots: 'DotsBoard', mancala: 'MancalaBoard', wyr: 'WouldYouRatherBoard', wordbomb: 'WordBombBoard', bluff: 'BluffTriviaBoard',
-    bingo: 'BingoBoard', carrom: 'CarromBoard',
+    bingo: 'BingoBoard', carrom: 'CarromBoard', ludo: 'LudoBoard',
   };
   return `${known[id] ?? 'Unknown'}.tsx`;
 }

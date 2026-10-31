@@ -131,6 +131,17 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'Stay near the middle of the meadow. Corners kill more runs than speed does.',
   },
+  ludo: {
+    goal: 'Bring all four of your tokens home before your opponent brings theirs.',
+    steps: [
+      'Roll the die. A six brings a token out of your yard and onto your start square — and earns you another roll.',
+      'Tap a glowing token to move it that many squares around the ring, then up your own coloured lane towards the middle.',
+      'Land on a square an opponent is standing on, and their token goes back to their yard — unless they are on a safe square, marked with a star or a start arrow.',
+      'You must land on home exactly: overshoot and the token stays where it is, so the last few squares are the whole game.',
+      'Roll three sixes in a row and the turn is burnt — you lose it.',
+    ],
+    tip: 'A token sitting six squares in front of an opponent is a token they will eat. The stars and your own start square are the only places you can rest safely.',
+  },
   carrom: {
     goal: 'Pot all nine of your own coins, and take the queen while you are at it.',
     steps: [

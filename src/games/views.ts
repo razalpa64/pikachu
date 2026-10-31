@@ -23,6 +23,7 @@ export const SOLO_IMPORTERS: Record<string, Importer> = {
   puzzle: () => import('./puzzle/SoloView'),
   sudoku: () => import('./sudoku/SoloView'),
   carrom: () => import('./carrom/SoloView'),
+  ludo: () => import('./ludo/SoloView'),
   arcade: () => import('./arcade/SoloView'),
   trivia: () => import('./trivia/SoloView'),
   wyr: () => import('./wyr/SoloView'),

@@ -139,6 +139,20 @@ button { font-family: inherit; }
   border-radius: 12px;
 }
 
+/* The die tumbles before it settles — a roll you can hear with your eyes. */
+@keyframes ludo-tumble {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(115deg) scale(1.12); }
+  50%  { transform: rotate(205deg) scale(0.94); }
+  75%  { transform: rotate(312deg) scale(1.06); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.ludo-die-roll { animation: ludo-tumble 520ms cubic-bezier(.3,.8,.4,1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ludo-die-roll { animation: none; }
+}
+
 /* Sudoku cells are drawn as a ruled grid: an offset outline outside the cell
    breaks the ruling and lands on the neighbouring cell. The selection ring is
    drawn *inside* the cell instead, so it is the focus indicator. */

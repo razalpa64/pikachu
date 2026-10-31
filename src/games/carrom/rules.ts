@@ -47,6 +47,13 @@ export interface CarromState {
   fouls: [number, number];
   shots: number;
   lastShot: ShotSummary | null;
+  /**
+   * The shot that produced this state — the clamped one the referee actually ran,
+   * not the one the player sent. It is here so that the *other* player's browser
+   * can replay the shot frame by frame instead of watching the coins teleport.
+   * `id` is the shot counter, which is what makes a replay run exactly once.
+   */
+  lastMove: { id: number; player: Slot; shot: Shot } | null;
   log: string[];
   over: boolean;
   winner: Slot | null;
@@ -97,6 +104,7 @@ export function createInitial(): CarromState {
     fouls: [0, 0],
     shots: 0,
     lastShot: null,
+    lastMove: null,
     log: ['White breaks.'],
     over: false,
     winner: null,
@@ -132,6 +140,7 @@ export function applyShot(state: CarromState, player: Slot, raw: Shot): CarromSt
     ...state,
     coins: sim.coins,
     shots: state.shots + 1,
+    lastMove: { id: state.shots + 1, player, shot },
     strikerX: legalStrikerX(sim.coins, (player === 0 ? 1 : 0) as Slot, 50),
   };
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BASELINE_Y } from '../physics';
+import { BASELINE_Y, simulateShot } from '../physics';
 import type { Coin, CoinKind } from '../physics';
 import { applyShot, carromRules, createInitial, liveOf, pocketedOf, type CarromState } from '../rules';
 
@@ -200,5 +200,47 @@ describe('the referee', () => {
     applyShot(start, 0, { x: 50, angle: -Math.PI / 2, power: 0.9 });
     expect(JSON.stringify(start)).toBe(snapshot);
     expect(BASELINE_Y[0]).toBeGreaterThan(50);
+  });
+});
+
+describe('the shot is recorded for the other player', () => {
+  it('stores the clamped shot the referee actually ran', () => {
+    const s = createInitial();
+    // an absurd shot is clamped to something legal, and that is what is recorded
+    const after = applyShot(s, 0, { x: 400, angle: 99, power: 12 });
+    expect(after.lastMove).not.toBeNull();
+    expect(after.lastMove!.id).toBe(1);
+    expect(after.lastMove!.player).toBe(0);
+    expect(after.lastMove!.shot.power).toBeLessThanOrEqual(1);
+    expect(after.lastMove!.shot.power).toBeGreaterThan(0);
+    expect(Number.isFinite(after.lastMove!.shot.angle)).toBe(true);
+  });
+
+  it('gives every shot a different id, so a replay runs exactly once', () => {
+    let s = createInitial();
+    const ids: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      s = applyShot(s, s.turn, { x: 50, angle: s.turn === 0 ? -Math.PI / 2 : Math.PI / 2, power: 0.6 });
+      ids.push(s.lastMove!.id);
+    }
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('replays to exactly the state the referee produced', () => {
+    // the whole promise of the feature: the opponent's board is not a different
+    // simulation, it is the same one run again from the same starting position
+    const before = createInitial();
+    const after = applyShot(before, 0, { x: 46, angle: -Math.PI / 2 + 0.12, power: 0.85 });
+    const move = after.lastMove!;
+    const replayed = simulateShot(before.coins, { x: move.shot.x, y: BASELINE_Y[move.player] }, move.shot);
+    expect(replayed.coins.map((c) => [c.x.toFixed(6), c.y.toFixed(6), c.alive])).toEqual(
+      after.coins.map((c) => [c.x.toFixed(6), c.y.toFixed(6), c.alive]),
+    );
+  });
+
+  it('asks for frames, so a replay has something to draw', () => {
+    const s = createInitial();
+    const sim = simulateShot(s.coins, { x: 50, y: BASELINE_Y[0] }, { x: 50, angle: -Math.PI / 2, power: 0.9 }, true);
+    expect(sim.frames.length).toBeGreaterThan(20);
   });
 });

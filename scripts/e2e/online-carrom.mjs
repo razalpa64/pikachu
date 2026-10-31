@@ -87,6 +87,23 @@ await host.mouse.move(cx, cy + box.h * 0.26, { steps: 10 });
 await host.mouse.up();
 
 t('the shot reached the server', await until(async () => (await action(host)).length > 0));
+
+/* The complaint this guards against: the opponent's shot arriving as a single
+   jump, so you never see what they did. The receiving tab must spend real time
+   playing the shot back, frame by frame, from the same simulation. */
+const playing = (p) => p.$eval('canvas[data-coins]', (el) => el.dataset.carromPlaying === '1');
+const fingerprint = (p) => p.$eval('canvas[data-coins]', (el) => {
+  const ctx = el.getContext('2d');
+  const d = ctx.getImageData(0, 0, el.width, el.height).data;
+  let h = 0;
+  for (let i = 0; i < d.length; i += 997) h = (h * 31 + d[i]) | 0;
+  return h;
+});
+t('the other player watches the shot being played back', await until(async () => playing(guest), 6000, 30));
+const frameHashes = [];
+for (let i = 0; i < 7; i++) { frameHashes.push(await fingerprint(guest)); await sleep(90); }
+t('the board moves over several frames rather than jumping', new Set(frameHashes).size >= 3, `${new Set(frameHashes).size} distinct of ${frameHashes.length}`);
+t('the playback finishes', await until(async () => !(await playing(guest)), 12000, 100));
 t('the other player is told what was played', await until(async () => (await action(guest)).length > 0), await action(guest));
 t('both boards still agree after the shot', await until(async () => (await coinsKey(host)) === (await coinsKey(guest))));
 console.log('    last action:', await action(host));

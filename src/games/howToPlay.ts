@@ -147,7 +147,7 @@ export const HOW_TO: Record<string, HowTo> = {
     steps: [
       'Roll the die. A six brings a token out of your yard and onto your start square — and earns you another roll.',
       'Tap a glowing token to move it that many squares around the ring, then up your own coloured lane towards the middle.',
-      'Land on a square an opponent is standing on, and their token goes back to their yard — unless they are on a safe square, marked with a star or a start arrow.',
+      'Land on a square an opponent is standing on, and their token goes back to their yard — unless they are on a safe square, marked with a star or a start arrow. A capture also buys you another roll.',
       'You must land on home exactly: overshoot and the token stays where it is, so the last few squares are the whole game.',
       'Roll three sixes in a row and the turn is burnt — you lose it.',
     ],

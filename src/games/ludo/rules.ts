@@ -164,9 +164,9 @@ function finishIfWon(state: LudoState): LudoState {
         over: true,
         winner: slot,
         dice: null,
-        reason: `${slot === 0 ? 'Gold' : 'Rose'} brought every token home in ${state.moves} rolls.`,
+        reason: `${slot === 0 ? 'Blue' : 'Rose'} brought every token home in ${state.moves} rolls.`,
         event: { kind: 'win', slot },
-        log: say(state, `${slot === 0 ? 'Gold' : 'Rose'} wins.`),
+        log: say(state, `${slot === 0 ? 'Blue' : 'Rose'} wins.`),
       };
     }
   }
@@ -180,7 +180,7 @@ function finishIfWon(state: LudoState): LudoState {
       dice: null,
       reason: winner === null
         ? `Level after ${MOVE_LIMIT} rolls.`
-        : `Out of rolls — ${winner === 0 ? 'gold' : 'rose'} was further along.`,
+        : `Out of rolls — ${winner === 0 ? 'blue' : 'rose'} was further along.`,
       event: { kind: 'win', slot: (winner ?? 0) as Slot },
     };
   }
@@ -197,7 +197,7 @@ function roll(state: LudoState, slot: Slot): LudoState {
     return {
       ...endTurn(base),
       event: { kind: 'burn', slot, dice },
-      log: say(base, `${slot === 0 ? 'Gold' : 'Rose'} rolled a third six — the turn is burnt.`),
+      log: say(base, `${slot === 0 ? 'Blue' : 'Rose'} rolled a third six — the turn is burnt.`),
     };
   }
   return base;
@@ -217,7 +217,7 @@ export function applyLudo(state: LudoState, slot: Slot, move: LudoMove): LudoSta
     return finishIfWon({
       ...endTurn(state),
       event: { kind: 'pass', slot, dice: state.dice },
-      log: say(state, `${slot === 0 ? 'Gold' : 'Rose'} had nothing to move with a ${state.dice}.`),
+      log: say(state, `${slot === 0 ? 'Blue' : 'Rose'} had nothing to move with a ${state.dice}.`),
     });
   }
 
@@ -234,7 +234,7 @@ export function applyLudo(state: LudoState, slot: Slot, move: LudoMove): LudoSta
   tokens[slot][token] = to;
   for (const c of captured) tokens[c.slot][c.token] = -1;
 
-  const name = slot === 0 ? 'Gold' : 'Rose';
+  const name = slot === 0 ? 'Blue' : 'Rose';
   const target = cellFor(seatOf(slot), to);
   let next: LudoState = {
     ...state,

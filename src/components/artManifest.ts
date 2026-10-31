@@ -40,7 +40,7 @@ export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   spyfall:    { src: '/art/game/spyfall.webp',    alt: 'A row of blank name cards on a table, one turned face down' },
   bluff:      { src: '/art/game/bluff.webp',      alt: 'Two teacups and a folded card on a wooden table, one cup suspiciously swapped' },
   betweenUs:  { src: '/art/game/between-us.webp', alt: 'A bunker signal room lit by a hanging lamp, a console of brass dials below a wall of glowing glyphs' },
-  ludo:       { src: '/art/game/ludo.webp',       alt: 'A carved ludo board with gold and rose tokens, the die mid-tumble' },
+  ludo:       { src: '/art/game/ludo.webp',       alt: 'A carved walnut ludo board with blue and rose pawns, the die mid-tumble' },
   carrom:     { src: '/art/game/carrom.webp',     alt: 'A polished carrom board with cream, ebony and red coins, the striker on its baseline' },
   sudoku:     { src: '/art/game/sudoku.webp',     alt: 'A pencil-marked sudoku grid on warm paper beside a honey-coloured pencil' },
   bingo:      { src: '/art/game/bingo.webp',      alt: 'A little gold bingo cage of pastel balls beside a yellow and a pink card' },

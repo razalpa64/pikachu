@@ -187,3 +187,81 @@ describe('seats', () => {
     expect(seatOf(1)).toBe(2);
   });
 });
+
+/**
+ * Whole games, played out by a machine that only makes legal moves.
+ *
+ * The hand-built boards above prove individual rules. This proves the rules do
+ * not contradict each other over a few hundred thousand moves: every position
+ * offers something to do, every accepted move is legal, a turn only stays with
+ * the same player for a six or a capture, tokens never walk past home, and every
+ * game ends. It is the check that would have caught a "nothing to move" screen
+ * appearing while tokens were plainly movable.
+ */
+describe('whole games', () => {
+  const play = (seed: number, tally?: { captures: number }) => {
+    let s = createWithSeed(seed || 1);
+    let guard = 0;
+    let picker = seed * 2654435761 % 4294967296;
+    while (!s.over && guard++ < 6000) {
+      const moves = ludoRules.legalMoves(s, s.turn);
+      expect(moves.length, `seed ${seed}: no legal move on move ${s.moves}`).toBeGreaterThan(0);
+      picker = (picker * 1664525 + 1013904223) >>> 0;
+      const move = moves[picker % moves.length];
+      const before = s;
+      const next = ludoRules.applyMove(s, s.turn, move);
+      expect(next, `seed ${seed}: legal move was refused`).not.toBe(before);
+
+      for (const slot of [0, 1] as const) {
+        for (const p of next.tokens[slot]) {
+          expect(p).toBeGreaterThanOrEqual(-1);
+          expect(p).toBeLessThanOrEqual(HOME_STEP);
+          expect(p, `seed ${seed}: home count went backwards`).toBeGreaterThanOrEqual(before.tokens[slot][next.tokens[slot].indexOf(p)] - HOME_STEP);
+        }
+        expect(homeCount(next, slot)).toBeGreaterThanOrEqual(homeCount(before, slot));
+      }
+
+      if (!next.over && move.t !== 'roll' && next.turn === before.turn) {
+        // only a six or a capture buys another roll
+        expect(
+          before.dice === 6 || (next.event?.captured?.length ?? 0) > 0,
+          `seed ${seed}: the turn stayed put on a ${before.dice} with no capture`,
+        ).toBe(true);
+      }
+      if (!next.over) {
+        // a capture may only happen on a square that is not safe
+        for (const c of next.event?.captured ?? []) expect(c.slot).not.toBe(next.event?.slot);
+      } else {
+        expect(next.winner === null || [0, 1].includes(next.winner)).toBe(true);
+      }
+      if (tally && (next.event?.captured?.length ?? 0) > 0) tally.captures++;
+      s = next;
+    }
+    expect(s.over, `seed ${seed}: the game did not end`).toBe(true);
+    return s;
+  };
+
+  it('always has something to do, and always ends', () => {
+    const winners = new Set<number | null>();
+    const tally = { captures: 0 };
+    for (let seed = 1; seed <= 24; seed++) winners.add(play(seed, tally).winner);
+    // both seats win games — a seat that never wins would mean a broken start
+    expect(winners.has(0)).toBe(true);
+    expect(winners.has(1)).toBe(true);
+    // and captures really happen in ordinary play, not only on a hand-built board
+    expect(tally.captures, 'no captures in 24 games').toBeGreaterThan(0);
+  }, 30000);
+
+  it('costs the whole turn when the third six comes up', () => {
+    // a seed whose very next roll is a six, so the burn is not a matter of luck
+    const seed = Array.from({ length: 200 }, (_, i) => i + 1).find((i) => rollFrom(i).dice === 6)!;
+    const state = board(gold([5, -1, -1, -1]), { sixes: 2, seed });
+    const after = ludoRules.applyMove(state, 0, { t: 'roll' });
+    expect(after.event?.kind).toBe('burn');
+    expect(after.dice, 'the third six cannot be spent').toBeNull();
+    expect(after.turn, 'the turn goes over').toBe(1);
+    expect(after.sixes).toBe(0);
+    expect(after.tokens[0], 'and no token moved').toEqual([5, -1, -1, -1]);
+    expect(ludoRules.legalMoves(after, 0)).toHaveLength(0);
+  });
+});

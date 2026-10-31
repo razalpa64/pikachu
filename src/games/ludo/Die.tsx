@@ -3,18 +3,22 @@ import { useEffect, useState } from 'react';
 /**
  * The die.
  *
- * A real one, drawn as pips on a rounded cube face: ivory body, carved dots, a
- * soft shadow underneath, and a tumble while it is in the air. The number itself
- * always comes from the referee — this only shows it, and turns the wait into
- * something worth watching.
+ * A real one: an ivory body with a bevelled edge, carved pips with their own
+ * shadow, and a tumble while it is in the air. The number always comes from the
+ * referee — this only shows it, and turns the wait into something worth watching.
+ *
+ * The pips are placed by fraction of the face, not in a 3×3 grid. The grid was
+ * the obvious way to write it and the wrong one: a 3×3 cell centre sits at
+ * 0.167, 0.5 and 0.833, which never matches a pip at 0.28 or 0.72, so every face
+ * but one collapsed onto the middle dot and a 6 looked like a 1.
  */
 const PIPS: Record<number, [number, number][]> = {
   1: [[0.5, 0.5]],
-  2: [[0.29, 0.29], [0.71, 0.71]],
+  2: [[0.28, 0.28], [0.72, 0.72]],
   3: [[0.26, 0.26], [0.5, 0.5], [0.74, 0.74]],
-  4: [[0.3, 0.3], [0.7, 0.3], [0.3, 0.7], [0.7, 0.7]],
-  5: [[0.28, 0.28], [0.72, 0.28], [0.5, 0.5], [0.28, 0.72], [0.72, 0.72]],
-  6: [[0.3, 0.24], [0.7, 0.24], [0.3, 0.5], [0.7, 0.5], [0.3, 0.76], [0.7, 0.76]],
+  4: [[0.28, 0.28], [0.72, 0.28], [0.28, 0.72], [0.72, 0.72]],
+  5: [[0.26, 0.26], [0.74, 0.26], [0.5, 0.5], [0.26, 0.74], [0.74, 0.74]],
+  6: [[0.28, 0.24], [0.72, 0.24], [0.28, 0.5], [0.72, 0.5], [0.28, 0.76], [0.72, 0.76]],
 };
 
 export default function Die({
@@ -35,48 +39,59 @@ export default function Die({
   }, [rolling, value]);
 
   /* Before the first roll the die is not blank — a blank ivory tile reads as a
-     broken image. It shows the last face at low contrast, as if it is resting
-     on the table waiting to be picked up. */
+     broken image. It rests at low contrast, as if it is waiting to be picked up. */
   const idle = value === null && !rolling;
   const shown = face;
   const pips = PIPS[shown] ?? PIPS[1];
+  const pip = size * 0.155;
 
   return (
     <span
       aria-hidden
+      data-die=""
+      data-die-face={shown}
+      data-die-value={value ?? ''}
       className={`relative inline-grid place-items-center ${rolling ? 'ludo-die-roll' : ''}`}
       style={{ width: size, height: size }}
     >
       <span
-        className="absolute inset-0 rounded-[26%]"
+        className="absolute inset-0"
         style={{
-          background: `linear-gradient(155deg, ${tint}, #f3e3c6 55%, #d9c39c)`,
-          boxShadow: '0 3px 0 #b9995f, 0 10px 18px -8px rgba(40,22,4,.75), inset 0 1px 0 rgba(255,255,255,.95)',
+          borderRadius: size * 0.24,
+          background: `linear-gradient(158deg, ${tint} 0%, #f7ead2 46%, #e0caa2 100%)`,
+          boxShadow: [
+            `0 ${size * 0.05}px 0 #b9995f`,
+            `0 ${size * 0.16}px ${size * 0.3}px -${size * 0.12}px rgba(40,22,4,.8)`,
+            'inset 0 1px 0 rgba(255,255,255,.95)',
+            'inset 0 -2px 3px rgba(140,104,52,.35)',
+          ].join(', '),
           border: '1px solid rgba(150,112,58,.55)',
         }}
       />
-      <span className="absolute inset-0 grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', gridTemplateRows: 'repeat(3,1fr)' }}>
-        {Array.from({ length: 9 }, (_, i) => {
-          const cx = (i % 3 + 0.5) / 3;
-          const cy = ((i / 3) | 0) + 0.5;
-          const cyc = cy / 3;
-          const on = pips.some(([x, y]) => Math.abs(x - cx) < 0.02 && Math.abs(y - cyc) < 0.02);
-          return (
-            <span key={i} className="grid place-items-center">
-              <span
-                className="rounded-full transition-opacity"
-                style={{
-                  width: size * 0.17,
-                  height: size * 0.17,
-                  background: on ? 'radial-gradient(circle at 35% 30%, #6d4a24, #2a1709)' : 'transparent',
-                  boxShadow: on ? 'inset 0 1px 1px rgba(255,255,255,.25)' : 'none',
-                  opacity: idle ? 0.32 : 1,
-                }}
-              />
-            </span>
-          );
-        })}
-      </span>
+      {/* the polished top-left facet */}
+      <span
+        className="absolute"
+        style={{
+          inset: size * 0.07,
+          borderRadius: size * 0.19,
+          background: 'linear-gradient(150deg, rgba(255,255,255,.75), rgba(255,255,255,0) 62%)',
+        }}
+      />
+      {pips.map(([px, py], i) => (
+        <span
+          key={i}
+          className="absolute rounded-full transition-opacity"
+          style={{
+            left: size * px - pip / 2,
+            top: size * py - pip / 2,
+            width: pip,
+            height: pip,
+            opacity: idle ? 0.42 : 1,
+            background: 'radial-gradient(circle at 34% 28%, #5b3c1c 0%, #2a1709 62%, #160b03 100%)',
+            boxShadow: 'inset 0 1px 1px rgba(255,255,255,.22), 0 1px 1px rgba(255,255,255,.5)',
+          }}
+        />
+      ))}
     </span>
   );
 }

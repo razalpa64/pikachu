@@ -199,3 +199,43 @@ Test coverage at the time of writing: **567 tests across 38 files**, including
 `bluff-ui.test.ts` (6), `berry.test.ts` (11), `berry-ui.test.ts` (3) and
 `shelf.test.ts` (4) — the last one names the ten requested games and fails if any
 of them loses its cover, its rules card or the screen that plays it.
+
+---
+
+## Addendum: Ludo Royale, the art and input pass
+
+Ludo shipped with a procedural board — gradients doing the work of lacquer and
+wood — and it looked like it. It also had bugs that no amount of art would have
+fixed, and the second pass found five:
+
+| Flaw | What was wrong | Fix |
+| --- | --- | --- |
+| **The game could dead-end, permanently** | `SoloView` asked the referee for seat 0's moves on every turn. `legalMoves(state, 0)` is `[]` when seat 1 is to move, and `[].every(...)` is `true`, so the screen offered *"Nothing to move — pass"* while four tokens were plainly movable. Pressing it did nothing (the referee refused the pass) and the game stopped for good. | The acting seat is derived first (`mode === 'local' ? state.turn : 0`) and every legality question is asked about *that* seat. A legal list is never read as "nothing to move" unless it is non-empty. |
+| **The die always showed one pip** | Pips were placed on a 3×3 grid, whose cell centres are at 0.167 / 0.5 / 0.833. Every pip coordinate (0.28, 0.72, …) missed, so a 6 rendered as a single dot — the player was told the number only by the text. | Pips are placed by fraction of the face, and the count is now checked per face in the browser (`data-die-face` vs the number of rendered pips). |
+| **A token looked like it was on the wrong square** | A piece's foot was drawn at the bottom edge of its cell, so a token on row 8 stood visually on row 7 — which is the row somebody's home lane occupies. | The foot sits low in its own cell and the body overlaps the row above, the way a chess piece does. |
+| **The same vacuous-pass bug in the online room** | `legalMoves(...).every(m => m.t === 'pass')` on an empty list is `true`. | Guarded by `legal.length > 0`. |
+| **The hint told you to tap a token that did not exist** | "You rolled 5. Tap a glowing token." appeared even when nothing could move. | The hint has three cases now: tap, nothing-can-use-it, and waiting. |
+
+The art is no longer procedural. A walnut veneer, a slab of ivory marble and a
+night-blue velvet are generated textures (in `public/art/ludo/`, ~95 KB for the
+three), the pawn is a photographed turned piece keyed off a green screen and
+tinted per seat, and both are composited at paint time. The board itself — frame,
+brass inlay, mitred corners, yards, tiles, stars and the gilt centre — is painted
+**once** into an offscreen canvas and blitted each frame; only the pieces move, so
+the detail costs nothing per frame. If a texture never arrives the painter falls
+back to the gradients it used before, in the same places, so nothing pops.
+
+The board is a canvas and therefore a picture to a keyboard and a screen reader,
+so every move also exists as a real button ("Token 2 — 14 to home"), on both the
+solo screen and in a room. The canvas publishes the geometry it actually drew
+(`data-ludo-pad`, `data-ludo-cell`) so tests aim at pixels that exist instead of
+re-deriving them.
+
+**Gameplay-tested** (a real Chromium, real clicks): a full two-player game to a
+win — 164 rolls, 121 moves, 43 passes, **0 dead ends**, "Rose wins", no console
+errors; the same driver in the room, through the relay, 15/15; and 24 whole games
+replayed in the unit suite, asserting on every move that the turn only stays put
+for a six or a capture, that home count never falls, that captures happen, and
+that every game ends. **Smoke-tested only:** the visible capture animation (rules
+and relay are covered, but the flight home was not caught on camera), and the
+stacked-token badge.

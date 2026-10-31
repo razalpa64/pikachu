@@ -10,7 +10,7 @@ export type ArtKey =
   | 'checkers' | 'battleship' | 'snake' | 'puzzle' | 'arcade'
   | 'trivia' | 'dare' | 'imposter' | 'detective' | 'cards' | 'sketch'
   | 'reversi' | 'gomoku' | 'dots' | 'mancala' | 'wyr' | 'wordbomb' | 'daily' | 'berry' | 'bluff' | 'spyfall'
-  | 'bingo' | 'sudoku' | 'carrom';
+  | 'bingo' | 'sudoku' | 'carrom' | 'ludo';
 
 export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   chess:      { src: '/art/game/chess.webp',      alt: 'A pastel chess set on a honey chequerboard' },
@@ -39,6 +39,7 @@ export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   berry:      { src: '/art/game/berry.webp',      alt: 'A woven picnic basket overflowing with ripe golden berries' },
   spyfall:    { src: '/art/game/spyfall.webp',    alt: 'A row of blank name cards on a table, one turned face down' },
   bluff:      { src: '/art/game/bluff.webp',      alt: 'Two teacups and a folded card on a wooden table, one cup suspiciously swapped' },
+  ludo:       { src: '/art/game/ludo.webp',       alt: 'A carved ludo board with gold and rose tokens, the die mid-tumble' },
   carrom:     { src: '/art/game/carrom.webp',     alt: 'A polished carrom board with cream, ebony and red coins, the striker on its baseline' },
   sudoku:     { src: '/art/game/sudoku.webp',     alt: 'A pencil-marked sudoku grid on warm paper beside a honey-coloured pencil' },
   bingo:      { src: '/art/game/bingo.webp',      alt: 'A little gold bingo cage of pastel balls beside a yellow and a pink card' },

@@ -787,6 +787,8 @@ function scoreFor(gameId: string, state: any, s: 0 | 1) {
     case 'dots': return state.scores?.[s] ?? 0;
     // counted from the coins themselves, so a redacted state cannot lie
     case 'carrom': return `${(state.coins ?? []).filter((c: any) => !c.alive && c.kind === (s === 0 ? 'white' : 'black')).length}/9`;
+    // tokens home, straight off the board
+    case 'ludo': return `${(state.tokens?.[s] ?? []).filter((p: number) => p >= 56).length}/4`;
     // a player's store is the one past their own row of pits
     case 'mancala': return state.board?.[s === 0 ? state.pits : state.pits * 2 + 1] ?? 0;
     default: return state.cells ? state.cells.filter((c: any) => c === s).length : 0;

@@ -66,3 +66,34 @@ describe('audio assets', () => {
     }
   });
 });
+
+/**
+ * Board-game cues.
+ *
+ * Carrom and Ludo are the two games that are really *objects* — wood, coins,
+ * a die — so their sounds are synthesised transients rather than voices. These
+ * guards exist because a cue that is declared but has no `case` in `play()` is
+ * silently nothing at all, and that is exactly how a game ends up silent.
+ */
+describe('board-game cues', () => {
+  const CUES = ['cue', 'coinHit', 'rail', 'pocket', 'flick', 'die', 'hop', 'gather'];
+
+  it('are declared in the Cue union', () => {
+    const union = SRC.slice(SRC.indexOf('export type Cue'), SRC.indexOf(';', SRC.indexOf('tone4')));
+    for (const cue of CUES) expect(union, `"${cue}" is not in the Cue union`).toContain(`'${cue}'`);
+  });
+
+  it('every one of them actually makes a sound', () => {
+    for (const cue of CUES) {
+      // `case 'cue': ... break;` — the case has to exist and do something
+      const re = new RegExp(`case '${cue}':([\\s\\S]*?)(?:break;|case ')`);
+      const body = SRC.match(re)?.[1] ?? '';
+      expect(body.trim().length, `case "${cue}" is empty — the cue plays nothing`).toBeGreaterThan(20);
+    }
+  });
+
+  it('uses transients (noise), not just tones: a click is not a note', () => {
+    const block = SRC.slice(SRC.indexOf("case 'flick'"), SRC.indexOf("case 'tone0'"));
+    expect(block.match(/noise\(/g)?.length ?? 0).toBeGreaterThanOrEqual(6);
+  });
+});

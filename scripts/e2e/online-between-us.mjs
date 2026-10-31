@@ -34,12 +34,28 @@ async function tab(label) {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
   p.on('console', (m) => { if (m.type() === 'error') errs.push(`${label}: ${m.text()}`); });
   p.on('pageerror', (e) => errs.push(`${label} PAGEERROR: ${e.message}`));
+  await p.addInitScript(() => {
+    /* count the audio nodes the page makes: the room has to be audible, and
+       "audible" is something this file can check */
+    window.__snd = 0;
+    const C = window.AudioContext;
+    window.AudioContext = class extends C {
+      constructor(...a) {
+        super(...a);
+        const o = this.createOscillator.bind(this);
+        this.createOscillator = (...x) => { window.__snd++; return o(...x); };
+        const b = this.createBufferSource.bind(this);
+        this.createBufferSource = (...x) => { window.__snd++; return b(...x); };
+      }
+    };
+  });
   await p.goto(B + '/');
   await p.evaluate(() => sessionStorage.setItem('pikachu.intro.v1', '1'));
   return p;
 }
 const attr = (p, name) => p.$eval('canvas[data-between-us]', (el, n) => el.getAttribute(n), name);
 const boardThere = (p) => p.locator('canvas[data-between-us]').count();
+const snd = (p) => p.evaluate(() => window.__snd || 0);
 
 const host = await tab('host');
 const guest = await tab('guest');
@@ -104,6 +120,7 @@ async function solveRound(n) {
   const legend = await attr(operator, 'data-legend');
   const digits = digitsFor(glyphs, legend);
   await operator.bringToFront();
+  const sndBefore = { op: await snd(operator), li: await snd(listener) };
   for (let i = 0; i < 3; i++) {
     for (let k = 0; k < digits[i]; k++) {
       await operator.keyboard.press(String(i + 1));
@@ -117,6 +134,10 @@ async function solveRound(n) {
     return d.every((v, i) => v === digits[i]);
   }, 8000, 100);
   const dials = (await attr(operator, 'data-dials')).split(',').map(Number);
+  await sleep(400);
+  const op = await snd(operator), li = await snd(listener);
+  t(`round ${n}: turning a dial is audible to the operator`, op > sndBefore.op, `${sndBefore.op} → ${op}`);
+  t(`round ${n}: turning a dial is audible to the listener`, li > sndBefore.li, `${sndBefore.li} → ${li}`);
   t(`round ${n}: the operator set the dials the listener described`, set, `${dials} vs ${digits}`);
   await operator.keyboard.press('Enter');
   return true;
@@ -128,9 +149,14 @@ t('both players see the same dials', (await attr(listener, 'data-dials')) === (a
 t('the new round starts with the dials back at zero', (await attr(operator, 'data-dials')) === '0,0,0');
 
 /* a wrong pull costs a strike and is visible to both */
+const strikesBefore = { op: await snd(operator), li: await snd(listener) };
 await operator.keyboard.press('Enter');
 t('a wrong pull costs a strike', await until(async () => (await attr(operator, 'data-strikes')) === '1'));
 t('the listener is told about the strike too', await until(async () => (await attr(listener, 'data-strikes')) === '1'));
+await sleep(500);
+const opAfter = await snd(operator), liAfter = await snd(listener);
+t('a strike is audible to the player who pulled the lever', opAfter > strikesBefore.op, `${strikesBefore.op} → ${opAfter}`);
+t('a strike is audible to the listener', liAfter > strikesBefore.li, `${strikesBefore.li} → ${liAfter}`);
 
 await solveRound(2);
 await solveRound(3);

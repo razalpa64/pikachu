@@ -44,13 +44,10 @@ export interface SeatPaint {
 
 export const SEAT_PAINT: SeatPaint[] = [
   { name: 'Blue', light: '#9dc0ea', mid: '#2f5fae', deep: '#0d1f42', glow: '#7fb0ff', ink: '#081428', pawn: 'pawn-blue' },
-  { name: 'Amber', light: '#f3d79a', mid: '#c9922a', deep: '#5a3d08', glow: '#ffd27b', ink: '#2a1a03', pawn: 'pawn-red' },
+  { name: 'Amber', light: '#f0c25c', mid: '#c07f16', deep: '#4a3005', glow: '#ffd27b', ink: '#2a1a03', pawn: 'pawn-red' },
   { name: 'Rose', light: '#f0948c', mid: '#bd3529', deep: '#520b0e', glow: '#ff7b6b', ink: '#320306', pawn: 'pawn-red' },
-  { name: 'Green', light: '#a3d69d', mid: '#2f7a44', deep: '#0c3016', glow: '#7fd07f', ink: '#062412', pawn: 'pawn-blue' },
+  { name: 'Green', light: '#7dc47a', mid: '#2c6b3a', deep: '#0a2612', glow: '#7fd07f', ink: '#062412', pawn: 'pawn-blue' },
 ];
-
-/** Seats that nobody is playing are printed on the bed, not lacquered in. */
-const EMPTY: SeatPaint = { name: '', light: '#cbb894', mid: '#b8a37c', deep: '#94805c', glow: '#d8c3a3', ink: '#6b563b', pawn: 'pawn-blue' };
 
 const GOLD = '#b98f2e';
 const GOLD_LIGHT = '#e8cf8c';
@@ -127,7 +124,10 @@ export function buildBoard(size: number, active: number[], dpr: number, seatColo
 
 export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: number[], paints: SeatPaint[]) {
   const { size } = l;
-  const paintSeat = (seat: number) => (active.includes(seat) ? (paints[seat] ?? SEAT_PAINT[seat]) : EMPTY);
+  /* Every seat's colour is on the board whether or not that seat is occupied:
+     a printed board has four colours on it, and washing two of them out is what
+     made the first version look half-finished. */
+  const paintSeat = (seat: number) => paints[seat] ?? SEAT_PAINT[seat];
   const wood = material('wood');
   const ivory = material('ivory');
 
@@ -230,7 +230,7 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
     ctx.save();
     roundRect(ctx, l.pad, l.pad, bedW, bedW, size * 0.008);
     ctx.clip();
-    ctx.fillStyle = 'rgba(255,250,236,.42)';
+    ctx.fillStyle = 'rgba(255,248,230,.5)';
     ctx.fillRect(l.pad, l.pad, bedW, bedW);
     ctx.restore();
   }
@@ -250,87 +250,82 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
   ctx.fillRect(l.pad, l.pad, size * 0.05, bedW);
   ctx.restore();
 
-  /* --- the yards ------------------------------------------------------ */
+  /* --- the yards ------------------------------------------------------
+     A printed Ludo board colours all four corners whether or not four people
+     are playing — the board is the board. Painting the idle corners a washed-out
+     beige made the whole thing look unfinished (and matched nothing you can buy),
+     so every corner is lacquered, and the seat on turn simply glows. */
   for (let seat = 0; seat < 4; seat++) {
     const [cx, cy] = YARD_CORNER[seat];
-    const p = paintSeat(seat);
-    const live = active.includes(seat);
-    const inset = 0.14;
+    const p = paints[seat] ?? SEAT_PAINT[seat];
+    const inset = 0.06;
     const x = place(l, cx + inset), y = place(l, cy + inset);
     const w = l.cell * (6 - inset * 2);
+    const rad = l.cell * 0.16;
 
     ctx.save();
-    if (live) {
-      ctx.shadowColor = 'rgba(30,18,6,.5)';
-      ctx.shadowBlur = l.cell * 0.4;
-      ctx.shadowOffsetY = l.cell * 0.1;
-    }
-    roundRect(ctx, x, y, w, w, l.cell * 0.35);
+    ctx.shadowColor = 'rgba(30,18,6,.45)';
+    ctx.shadowBlur = l.cell * 0.28;
+    ctx.shadowOffsetY = l.cell * 0.07;
+    roundRect(ctx, x, y, w, w, rad);
     const g = ctx.createLinearGradient(x, y, x + w, y + w);
     g.addColorStop(0, p.light);
-    g.addColorStop(0.35, p.mid);
+    g.addColorStop(0.3, p.mid);
     g.addColorStop(1, p.deep);
     ctx.fillStyle = g;
-    ctx.globalAlpha = live ? 1 : 0.34;
     ctx.fill();
     ctx.restore();
 
-    if (live) {
-      // brass border, then a lighter inner keyline: the double edge of a printed board
-      brassStroke(ctx, () => roundRect(ctx, x, y, w, w, l.cell * 0.35), Math.max(1, l.cell * 0.05), size);
-      ctx.strokeStyle = 'rgba(255,246,224,.42)';
-      ctx.lineWidth = Math.max(0.6, l.cell * 0.022);
-      roundRect(ctx, x + l.cell * 0.13, y + l.cell * 0.13, w - l.cell * 0.26, w - l.cell * 0.26, l.cell * 0.26);
-      ctx.stroke();
+    // chalky lacquer: brighter along the top-left, deeper into the corner
+    ctx.save();
+    roundRect(ctx, x, y, w, w, rad);
+    ctx.clip();
+    const lacquer = ctx.createLinearGradient(x, y, x + w * 0.7, y + w * 0.8);
+    lacquer.addColorStop(0, 'rgba(255,255,255,.22)');
+    lacquer.addColorStop(0.45, 'rgba(255,255,255,.02)');
+    lacquer.addColorStop(1, 'rgba(0,0,0,.22)');
+    ctx.fillStyle = lacquer;
+    ctx.fillRect(x, y, w, w);
+    ctx.restore();
 
-      // gloss over the lacquer
-      ctx.save();
-      roundRect(ctx, x, y, w, w, l.cell * 0.35);
-      ctx.clip();
-      const sheen = ctx.createLinearGradient(x, y, x + w * 0.6, y + w * 0.75);
-      sheen.addColorStop(0, 'rgba(255,255,255,.3)');
-      sheen.addColorStop(0.38, 'rgba(255,255,255,.03)');
-      sheen.addColorStop(1, 'rgba(0,0,0,.26)');
-      ctx.fillStyle = sheen;
-      ctx.fillRect(x, y, w, w);
-      ctx.restore();
+    // a thin ivory keyline, the way a printed board frames each yard
+    ctx.strokeStyle = 'rgba(255,250,238,.5)';
+    ctx.lineWidth = Math.max(0.7, l.cell * 0.03);
+    roundRect(ctx, x + l.cell * 0.1, y + l.cell * 0.1, w - l.cell * 0.2, w - l.cell * 0.2, rad);
+    ctx.stroke();
 
-      /* the seat's name, engraved across the top of its yard */
-      ctx.save();
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = 'rgba(255,250,235,.95)';
-      ctx.font = `600 ${Math.round(l.cell * 0.32)}px ui-serif, Georgia, 'Times New Roman', serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.letterSpacing = `${l.cell * 0.1}px`;
-      ctx.fillText(p.name.toUpperCase(), x + w / 2, y + w * 0.115);
-      ctx.restore();
-    } else {
-      ctx.strokeStyle = 'rgba(120,96,58,.28)';
-      ctx.lineWidth = Math.max(0.6, l.cell * 0.02);
-      roundRect(ctx, x + l.cell * 0.16, y + l.cell * 0.16, w - l.cell * 0.32, w - l.cell * 0.32, l.cell * 0.3);
-      ctx.stroke();
-    }
+    /* the seat's name, printed across the top of its yard */
+    ctx.save();
+    ctx.globalAlpha = 0.95;
+    ctx.fillStyle = 'rgba(255,252,242,.96)';
+    ctx.font = `700 ${Math.round(l.cell * 0.33)}px ui-serif, Georgia, 'Times New Roman', serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.letterSpacing = `${l.cell * 0.12}px`;
+    ctx.fillText(p.name.toUpperCase(), x + w / 2, y + w * 0.105);
+    ctx.restore();
 
-    /* four sockets where the pawns wait */
+    /* four ivory sockets where the pawns wait — pale discs, not dark holes:
+       a real yard is four white circles on colour */
     for (const [sx, sy] of [[1.75, 1.75], [4.25, 1.75], [1.75, 4.25], [4.25, 4.25]]) {
       const px2 = place(l, cx + sx), py2 = place(l, cy + sy);
       const r = l.cell * 0.52;
-      if (live) {
-        const hole = ctx.createRadialGradient(px2 - r * 0.22, py2 - r * 0.28, r * 0.08, px2, py2, r);
-        hole.addColorStop(0, 'rgba(14,8,3,.5)');
-        hole.addColorStop(0.7, 'rgba(20,12,5,.28)');
-        hole.addColorStop(1, 'rgba(255,246,220,.16)');
-        ctx.fillStyle = hole;
-        ctx.beginPath(); ctx.arc(px2, py2, r, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = 'rgba(255,248,224,.24)';
-        ctx.lineWidth = Math.max(0.6, l.cell * 0.022);
-        ctx.beginPath(); ctx.arc(px2, py2, r * 0.96, Math.PI * 1.05, Math.PI * 1.95); ctx.stroke();
-      } else {
-        ctx.strokeStyle = 'rgba(110,86,50,.3)';
-        ctx.lineWidth = Math.max(0.6, l.cell * 0.022);
-        ctx.beginPath(); ctx.arc(px2, py2, r * 0.9, 0, Math.PI * 2); ctx.stroke();
-      }
+      ctx.save();
+      ctx.shadowColor = 'rgba(20,10,2,.4)';
+      ctx.shadowBlur = l.cell * 0.16;
+      ctx.shadowOffsetY = l.cell * 0.04;
+      const disc = ctx.createRadialGradient(px2 - r * 0.3, py2 - r * 0.36, r * 0.08, px2, py2, r);
+      disc.addColorStop(0, '#fffefb');
+      disc.addColorStop(0.55, '#f1e7d3');
+      disc.addColorStop(0.92, '#cbb99a');
+      disc.addColorStop(1, '#b7a180');
+      ctx.fillStyle = disc;
+      ctx.beginPath(); ctx.arc(px2, py2, r, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+      // a faint inner ring, so the socket looks turned rather than printed
+      ctx.strokeStyle = 'rgba(120,92,52,.22)';
+      ctx.lineWidth = Math.max(0.5, l.cell * 0.02);
+      ctx.beginPath(); ctx.arc(px2, py2, r * 0.72, 0, Math.PI * 2); ctx.stroke();
     }
   }
 
@@ -344,25 +339,39 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
     const p = override ?? paintSeat(seat);
 
     ctx.save();
-    ctx.shadowColor = 'rgba(60,36,10,.24)';
+    ctx.shadowColor = 'rgba(60,36,10,.3)';
     ctx.shadowBlur = l.cell * 0.1;
-    ctx.shadowOffsetY = l.cell * 0.025;
+    ctx.shadowOffsetY = l.cell * 0.03;
     roundRect(ctx, x, y, s, s, r);
     if (kind === 'ring' || kind === 'star') {
       const g = ctx.createLinearGradient(x, y, x + s, y + s);
-      g.addColorStop(0, '#fffdf7');
-      g.addColorStop(0.62, '#f7ecd7');
-      g.addColorStop(1, '#ece0c6');
+      g.addColorStop(0, '#fffefb');
+      g.addColorStop(0.65, '#fbf5e8');
+      g.addColorStop(1, '#f0e5cf');
       ctx.fillStyle = g;
     } else {
-      const g = ctx.createLinearGradient(x, y, x + s, y + s);
-      g.addColorStop(0, p.light);
-      g.addColorStop(0.5, p.mid);
-      g.addColorStop(1, p.deep);
-      ctx.fillStyle = g;
+      /* A printed board's coloured square is a flat, slightly chalky lacquer, not
+         a glossy gradient — the gradient is what made the first version read as
+         glass. Flat fill, a subtle rounded highlight, and a band of the seat's
+         colour is what a real board looks like. */
+      ctx.fillStyle = p.mid;
     }
     ctx.fill();
     ctx.restore();
+
+    if (kind !== 'ring' && kind !== 'star') {
+      // chalky depth: slightly darker at the outer edge, lighter at the middle
+      const face = ctx.createLinearGradient(x, y, x, y + s);
+      face.addColorStop(0, 'rgba(255,255,255,.16)');
+      face.addColorStop(0.55, 'rgba(255,255,255,0)');
+      face.addColorStop(1, 'rgba(0,0,0,.16)');
+      ctx.save();
+      roundRect(ctx, x, y, s, s, r);
+      ctx.clip();
+      ctx.fillStyle = face;
+      ctx.fillRect(x, y, s, s);
+      ctx.restore();
+    }
 
     // inner keyline, gold on the coloured tiles, sepia on the plain ones
     ctx.lineWidth = Math.max(0.5, l.cell * 0.016);
@@ -429,49 +438,55 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
 
   RING.forEach((cell, i) => {
     const seat = [0, 1, 2, 3].find((s2) => START[s2] === i);
-    if (seat !== undefined && !active.includes(seat)) {
-      /* a start square for a seat nobody is playing is still printed on the
-         board — muted, but recognisably that colour */
-      ctx.save();
-      ctx.globalAlpha = 0.68;
-      drawTile(cell[0], cell[1], 'start', seat, headingAt(i), SEAT_PAINT[seat]);
-      ctx.restore();
-      return;
-    }
     drawTile(cell[0], cell[1], seat !== undefined ? 'start' : SAFE.has(i) ? 'star' : 'ring', seat ?? 0, headingAt(i));
   });
   for (let seat = 0; seat < 4; seat++) {
-    for (const [x, y] of HOME_LANES[seat]) {
-      if (active.includes(seat)) drawTile(x, y, 'lane', seat);
-      else drawTile(x, y, 'ring', seat);
-    }
+    HOME_LANES[seat].forEach(([x, y], i) => {
+      /* the lane deepens towards home, which is how a printed board draws the
+         run-in: a soft colour at the mouth, near-black at the centre */
+      const base = paints[seat] ?? SEAT_PAINT[seat];
+      const tone: SeatPaint = i >= 3 ? { ...base, mid: base.deep, light: base.mid } : base;
+      drawTile(x, y, 'lane', seat, 0, tone);
+    });
   }
 
-  /* --- the middle: a gilt starburst where the four lanes meet --------- */
+  /* --- the middle: four triangles meeting under a gilt star -----------
+     On a printed board the centre is where the four home lanes arrive, so it is
+     split into four triangles pointing inwards, each in its seat's colour, with
+     the star over the join. Filling only the two *occupied* seats left two
+     triangles as bare marble, which read as a mistake rather than a design. */
   const cx0 = place(l, 6), cy0 = place(l, 6), box = l.cell * 3;
   ctx.save();
-  roundRect(ctx, cx0, cy0, box, box, l.cell * 0.22);
-  ctx.fillStyle = '#fbf1dc';
+  roundRect(ctx, cx0, cy0, box, box, l.cell * 0.1);
+  ctx.fillStyle = '#fbf4e4';
   ctx.fill();
   ctx.restore();
   if (ivory) {
     ctx.save();
-    roundRect(ctx, cx0, cy0, box, box, l.cell * 0.22);
+    roundRect(ctx, cx0, cy0, box, box, l.cell * 0.1);
     ctx.clip();
-    fillPattern(ctx, ivory, cx0, cy0, box, box, 0.4);
-    ctx.fillStyle = 'rgba(255,250,236,.5)';
+    fillPattern(ctx, ivory, cx0, cy0, box, box, 0.42);
+    ctx.fillStyle = 'rgba(255,250,236,.55)';
     ctx.fillRect(cx0, cy0, box, box);
     ctx.restore();
   }
 
   const mc = { x: cx0 + box / 2, y: cy0 + box / 2 };
-  const corners = [[cx0, cy0], [cx0 + box, cy0], [cx0 + box, cy0 + box], [cx0, cy0 + box]];
-  const L = corners[0], TR = corners[1], BR = corners[2], BL = corners[3];
-  const WEDGE: [number[], number[]][] = [
-    [L, BL], [L, TR], [TR, BR], [BL, BR],
+  const corners: [number, number][] = [
+    [cx0, cy0], [cx0 + box, cy0], [cx0 + box, cy0 + box], [cx0, cy0 + box],
   ];
+  /* one triangle per edge of the centre: left, top, right, bottom — matching the
+     four home lanes that arrive there */
+  const WEDGE: [number, number][][] = [
+    [corners[0], corners[3]], // left
+    [corners[0], corners[1]], // top
+    [corners[1], corners[2]], // right
+    [corners[3], corners[2]], // bottom
+  ];
+  /* lane 0 arrives from the left, 1 from the top, 2 from the right, 3 from the
+     bottom, so the seat that owns each triangle is the same index */
   for (let seat = 0; seat < 4; seat++) {
-    const p = paintSeat(seat);
+    const p = paints[seat] ?? SEAT_PAINT[seat];
     const [a, b] = WEDGE[seat];
     ctx.save();
     ctx.beginPath();
@@ -480,33 +495,35 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
     ctx.lineTo(mc.x, mc.y);
     ctx.closePath();
     const g = ctx.createLinearGradient(a[0], a[1], mc.x, mc.y);
-    g.addColorStop(0, p.light);
-    g.addColorStop(0.5, p.mid);
+    g.addColorStop(0, p.mid);
     g.addColorStop(1, p.deep);
     ctx.fillStyle = g;
-    ctx.globalAlpha = active.includes(seat) ? 1 : 0.32;
     ctx.fill();
     ctx.restore();
-    ctx.strokeStyle = 'rgba(255,250,232,.85)';
-    ctx.lineWidth = Math.max(0.8, l.cell * 0.03);
+    ctx.strokeStyle = 'rgba(255,250,232,.7)';
+    ctx.lineWidth = Math.max(0.8, l.cell * 0.028);
     ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(mc.x, mc.y); ctx.stroke();
   }
 
-  // the gilt star
+  // the gilt star, with a fine dark edge and a highlight along its upper arms
   ctx.save();
-  ctx.shadowColor = 'rgba(70,44,8,.6)';
-  ctx.shadowBlur = l.cell * 0.35;
-  starPath(ctx, mc.x, mc.y, l.cell * 0.82, l.cell * 0.34);
+  ctx.shadowColor = 'rgba(60,38,6,.55)';
+  ctx.shadowBlur = l.cell * 0.3;
+  starPath(ctx, mc.x, mc.y, l.cell * 0.78, l.cell * 0.32);
   const gs = ctx.createLinearGradient(mc.x - l.cell * 0.5, mc.y - l.cell * 0.6, mc.x + l.cell * 0.5, mc.y + l.cell * 0.6);
-  gs.addColorStop(0, '#fff3cf');
-  gs.addColorStop(0.4, GOLD);
-  gs.addColorStop(1, '#7d5c10');
+  gs.addColorStop(0, '#fff0c2');
+  gs.addColorStop(0.45, '#d8ae45');
+  gs.addColorStop(1, '#8a6512');
   ctx.fillStyle = gs;
   ctx.fill();
   ctx.restore();
-  ctx.strokeStyle = 'rgba(86,60,8,.75)';
-  ctx.lineWidth = Math.max(0.8, l.cell * 0.03);
-  starPath(ctx, mc.x, mc.y, l.cell * 0.82, l.cell * 0.34);
+  ctx.strokeStyle = 'rgba(74,52,6,.7)';
+  ctx.lineWidth = Math.max(0.8, l.cell * 0.026);
+  starPath(ctx, mc.x, mc.y, l.cell * 0.78, l.cell * 0.32);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,250,226,.6)';
+  ctx.lineWidth = Math.max(0.6, l.cell * 0.018);
+  starPath(ctx, mc.x - l.cell * 0.02, mc.y - l.cell * 0.02, l.cell * 0.7, l.cell * 0.29);
   ctx.stroke();
 
   return;
@@ -549,7 +566,7 @@ export function drawToken(ctx: CanvasRenderingContext2D, l: Layout, t: TokenDraw
   const groundY = place(l, t.gy) + l.cell * 0.7;
   const img = material(p.pawn);
 
-  const h = l.cell * 1.26 * scale;
+  const h = l.cell * 1.32 * scale;
   const w = h * 0.62;
 
   /* contact shadow — tight on the board, wide and soft in the air */

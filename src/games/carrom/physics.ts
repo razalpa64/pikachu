@@ -17,8 +17,16 @@
  * any machine, which is the property the server depends on.
  */
 export const BOARD = 100;
-export const COIN_R = 1.55;
-export const STRIKER_R = 2.05;
+/*
+ * The pieces were about a third too small, and that was the single biggest
+ * reason the board looked like a diagram instead of a table. A real set, on a
+ * 74 cm playing surface: a coin is 3.18 cm across, the striker 4.13, the pocket
+ * 4.45. Expressed here (100 units = the playing surface) that is a coin radius
+ * of 2.15 and a striker of 2.79 — so the old 1.55 / 2.05 drew a board of
+ * undersized pieces with a vast empty field between them.
+ */
+export const COIN_R = 2.15;
+export const STRIKER_R = 2.79;
 /**
  * The pockets are the *corners*: on a real board the frame is cut away there, so
  * the mouth opens onto both rails and a coin that reaches the corner falls in.
@@ -29,14 +37,14 @@ export const POCKETS: { x: number; y: number }[] = [
   { x: 0, y: 0 }, { x: BOARD, y: 0 },
   { x: 0, y: BOARD }, { x: BOARD, y: BOARD },
 ];
-export const POCKET_R = 5.2;
+export const POCKET_R = 3.5;
 /**
  * How far from a corner the rail is cut away. Without this the wall clamps a
  * coin at 1 coin-radius out and the pocket is a decoration you can never reach:
  * a ball aimed into the corner bounces off the rail and stays on the board. The
  * mouth is what makes the corner a hole.
  */
-export const POCKET_MOUTH = 7.2;
+export const POCKET_MOUTH = 7.6;
 /** the two baselines, one per player, and the legal span of the striker on each */
 export const BASELINE_Y = [82, 18];
 export const BASELINE_X = [20.5, 79.5];
@@ -62,6 +70,13 @@ export interface Vec { x: number; y: number }
 export interface Shot { x: number; angle: number; power: number }
 export interface Frame { coins: { x: number; y: number; alive: boolean }[]; striker: Vec; alive: boolean }
 
+/** One thing that happened during a shot, in the order it happened. */
+export type SimEvent =
+  | { t: 'strike'; x: number; y: number; force: number; at: number }
+  | { t: 'coin'; x: number; y: number; force: number; at: number }
+  | { t: 'rail'; x: number; y: number; force: number; at: number }
+  | { t: 'drop'; x: number; y: number; coin: number; at: number };
+
 export interface SimResult {
   coins: Coin[];
   striker: Vec;
@@ -73,6 +88,14 @@ export interface SimResult {
   /** distance travelled by the striker, for "did it actually move" checks */
   travelled: number;
   frames: Frame[];
+  /**
+   * What was heard, and when — one entry per collision, in shot order, with a
+   * `t` in seconds from the strike. The board plays these back against its own
+   * animation clock, so the click of two coins meeting comes from the same
+   * numbers that moved them. Nothing here changes the outcome of a shot; a
+   * server that ignores it and a client that plays it still agree on the board.
+   */
+  events: SimEvent[];
 }
 
 /**
@@ -124,9 +147,10 @@ export function legalStrikerX(coins: Coin[], player: 0 | 1, x: number): number {
 interface Body { id: number; x: number; y: number; vx: number; vy: number; mass: number; alive: boolean; coin: number }
 
 function stepBodies(bodies: Body[], collect: boolean): {
-  pocketed: number[]; strikerPocketed: boolean; contact: boolean; travelled: number; frames: Frame[];
+  pocketed: number[]; strikerPocketed: boolean; contact: boolean; travelled: number; frames: Frame[]; events: SimEvent[];
 } {
   const frames: Frame[] = [];
+  const events: SimEvent[] = [];
   const pocketed: number[] = [];
   let strikerPocketed = false;
   let contact = false;
@@ -157,6 +181,7 @@ function stepBodies(bodies: Body[], collect: boolean): {
            and be clamped back onto the board, which looks like a cheat. */
         const escaped = b.x < 0 || b.y < 0 || b.x > BOARD || b.y > BOARD;
         if (escaped || Math.hypot(b.x - p.x, b.y - p.y) < POCKET_R) {
+          events.push({ t: 'drop', x: b.x, y: b.y, coin: b.coin, at: step / HZ });
           b.alive = false; b.vx = 0; b.vy = 0;
           if (b === striker) strikerPocketed = true; else pocketed.push(b.coin);
           break whenMoving;
@@ -169,10 +194,13 @@ function stepBodies(bodies: Body[], collect: boolean): {
     for (const b of bodies) {
       if (!b.alive) continue;
       const r = b === striker ? STRIKER_R : COIN_R;
-      if (b.x < r && !inMouth(b.y)) { b.x = r; b.vx = Math.abs(b.vx) * WALL_RESTITUTION; }
-      if (b.x > BOARD - r && !inMouth(b.y)) { b.x = BOARD - r; b.vx = -Math.abs(b.vx) * WALL_RESTITUTION; }
-      if (b.y < r && !inMouth(b.x)) { b.y = r; b.vy = Math.abs(b.vy) * WALL_RESTITUTION; }
-      if (b.y > BOARD - r && !inMouth(b.x)) { b.y = BOARD - r; b.vy = -Math.abs(b.vy) * WALL_RESTITUTION; }
+      const hit = (nx: number, ny: number, speed: number) => {
+        if (speed > 6) events.push({ t: 'rail', x: nx, y: ny, force: Math.min(1, speed / 90), at: step / HZ });
+      };
+      if (b.x < r && !inMouth(b.y)) { hit(b.x, b.y, Math.abs(b.vx)); b.x = r; b.vx = Math.abs(b.vx) * WALL_RESTITUTION; }
+      if (b.x > BOARD - r && !inMouth(b.y)) { hit(b.x, b.y, Math.abs(b.vx)); b.x = BOARD - r; b.vx = -Math.abs(b.vx) * WALL_RESTITUTION; }
+      if (b.y < r && !inMouth(b.x)) { hit(b.x, b.y, Math.abs(b.vy)); b.y = r; b.vy = Math.abs(b.vy) * WALL_RESTITUTION; }
+      if (b.y > BOARD - r && !inMouth(b.x)) { hit(b.x, b.y, Math.abs(b.vy)); b.y = BOARD - r; b.vy = -Math.abs(b.vy) * WALL_RESTITUTION; }
     }
 
     // collisions, twice per step so a packed triangle resolves instead of jittering
@@ -207,6 +235,16 @@ function stepBodies(bodies: Body[], collect: boolean): {
           const impulse = (-(1 + COIN_RESTITUTION) * sep) / invSum;
           a.vx -= impulse * invA * nx; a.vy -= impulse * invA * ny;
           b.vx += impulse * invB * nx; b.vy += impulse * invB * ny;
+          /* how hard two pieces knocked together: −sep is the closing speed, so
+             a glancing nudge is quiet and a full-power hit is a crack */
+          const closing = Math.abs(sep);
+          if (closing > 3) {
+            const force = Math.min(1, closing / 80);
+            const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+            events.push(a === striker || b === striker
+              ? { t: 'strike', x: cx, y: cy, force, at: step / HZ }
+              : { t: 'coin', x: cx, y: cy, force, at: step / HZ });
+          }
         }
       }
     }
@@ -220,7 +258,7 @@ function stepBodies(bodies: Body[], collect: boolean): {
     }
   }
 
-  return { pocketed, strikerPocketed, contact, travelled, frames };
+  return { pocketed, strikerPocketed, contact, travelled, frames, events };
 }
 
 function toBodies(coins: Coin[], striker: Vec, shot: Shot): Body[] {
@@ -250,6 +288,7 @@ export function simulateShot(coins: Coin[], striker: Vec, shot: Shot, collect = 
     contact: out.contact,
     travelled: out.travelled,
     frames: out.frames,
+    events: out.events,
   };
 }
 

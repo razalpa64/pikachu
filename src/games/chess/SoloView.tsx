@@ -82,7 +82,17 @@ export default function ChessSolo({ game }: { game: GameMeta }) {
   const inCheck = chess.inCheck();
   const canUndo = mode === 'ai' && state.pgnMoves.length >= 2 && !state.over;
 
-  const move = (m: ChessMove) => setState((s) => (R.isLegal(s, turn, m) ? R.applyMove(s, turn, m) : s));
+  /* A capture is a different noise from a quiet development, and a move that
+     gives check rings. Playing `move` for all three is how you can tell a game
+     has no sound design, so the cue is chosen from the position it produced. */
+  const move = (m: ChessMove) => setState((s) => {
+    if (!R.isLegal(s, turn, m)) return s;
+    const next = R.applyMove(s, turn, m);
+    const taken = (m as unknown as { captured?: string }).captured || next.pgnMoves.at(-1)?.includes('x');
+    if (next.over) return next;
+    sfx(taken ? 'capture' : 'move');
+    return next;
+  });
 
   return (
     <SoloShell game={game} wide

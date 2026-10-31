@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BASELINE_X, BASELINE_Y, BOARD, COIN_R, legalStrikerX, simulateShot } from './physics';
-import type { Coin, Frame, Shot } from './physics';
+import type { Coin, Frame, Shot, SimEvent } from './physics';
+import { play as playSound } from '../../lib/audio';
 import {
   aimPreview, buildBoard, layout, paintAim, paintCoin, paintGhost, paintPocketBurst, paintStriker,
 } from './paint';
 import type { PaintSize } from './paint';
+import { carromArt } from './materials';
 import type { CarromState } from './rules';
 import type { Slot } from '../types';
 
@@ -45,12 +47,16 @@ export default function CarromBoard({
   const raf = useRef(0);
   const lastFrame = useRef<{ coins: { x: number; y: number; alive: boolean }[]; striker: { x: number; y: number }; alive: boolean } | null>(null);
   const bursts = useRef<{ x: number; y: number; kind: Coin['kind']; at: number }[]>([]);
-  const texture = useRef<{ canvas: HTMLCanvasElement; size: number; dpr: number } | null>(null);
+  const texture = useRef<{ canvas: HTMLCanvasElement; size: number; dpr: number; art: string } | null>(null);
+  /* the wood is a generated photograph; the board repaints once it lands */
+  const [artTick, setArtTick] = useState(0);
   /** the newest state, for animation callbacks that outlive the render they started in */
   const latest = useRef(state);
   latest.current = state;
   /** the shot id whose replay this board has already played — so it plays once */
   const playedId = useRef(0);
+  /** the coins a running playback started from, so a reset can be told from a shot */
+  const shotFrom = useRef<Coin[] | null>(null);
   const prevState = useRef<CarromState>(state);
 
   aimRef.current = aim;
@@ -68,14 +74,20 @@ export default function CarromBoard({
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    carromArt.load();
+    return carromArt.onChange(() => setArtTick((n) => n + 1));
+  }, []);
+
   /* The table is painted once and blitted; only the pieces move. */
   const getTexture = useCallback(() => {
     const dpr = Math.min(2.5, window.devicePixelRatio || 1);
-    if (!texture.current || texture.current.size !== size || texture.current.dpr !== dpr) {
-      texture.current = { canvas: buildBoard(size, dpr), size, dpr };
+    const key = carromArt.ready();
+    if (!texture.current || texture.current.size !== size || texture.current.dpr !== dpr || texture.current.art !== key) {
+      texture.current = { canvas: buildBoard(size, dpr), size, dpr, art: key };
     }
     return texture.current.canvas;
-  }, [size]);
+  }, [size, artTick]);
 
   const draw = useCallback((
     coins: Coin[],
@@ -138,8 +150,56 @@ export default function CarromBoard({
     for (const b of bursts.current) paintPocketBurst(ctx, l, b.x, b.y, (now - b.at) / 420, b.kind);
   }, [size, getTexture]);
 
+  /**
+   * The sound of a shot, in the order it happened.
+   *
+   * The events come from the same simulation that produced the frames, each with
+   * the time it occurred, so the tick of two coins meeting lands on the frame
+   * where they meet — including on a replay of the opponent's shot, which is why
+   * their turn now has a soundtrack too. Hard hits are loud, grazing ones are
+   * nearly silent, and nothing fires more than once every 18 ms, so a big break
+   * crackles instead of clipping.
+   */
+  const playEvents = useCallback((frames: Frame[], events: SimEvent[], started: number, perFrame: number) => {
+    /* A break resolves inside a single physics step, so a full-power shot reports
+       thirty collisions all at the same instant. Played literally they sum into
+       one dull click. Spread the collisions that share a frame across the few
+       milliseconds after it — the physics is unchanged, the ear simply gets the
+       crackle a real break makes — and cap the total so nothing clips. */
+    const byFrame = new Map<number, SimEvent[]>();
+    for (const e of events) {
+      const index = Math.round(e.at * 60);
+      const list = byFrame.get(index);
+      if (list) list.push(e); else byFrame.set(index, [e]);
+    }
+    const due: { at: number; e: SimEvent }[] = [];
+    for (const [index, list] of [...byFrame.entries()].sort((a, b) => a[0] - b[0])) {
+      const base = index * perFrame;
+      const taken = list.slice(0, 9);
+      taken.forEach((e, i) => due.push({ at: base + i * 11, e }));
+    }
+    due.sort((a, b) => a.at - b.at);
+    let cursor = 0;
+    let lastAt = -1e9;
+    return (now: number) => {
+      const elapsed = now - started;
+      while (cursor < due.length && due[cursor].at <= elapsed) {
+        const { e } = due[cursor++];
+        // two sounds within a few milliseconds of each other read as one
+        if (now - lastAt < 7) continue;
+        lastAt = now;
+        switch (e.t) {
+          case 'strike': playSound(e.force > 0.45 ? 'flick' : 'cue'); break;
+          case 'coin': playSound(e.force > 0.5 ? 'coinHit' : 'cue'); break;
+          case 'rail': playSound('rail'); break;
+          case 'drop': playSound('pocket'); break;
+        }
+      }
+    };
+  }, []);
+
   /** Play a shot's frames. Used for your own shot *and* the opponent's. */
-  const play = useCallback((frames: Frame[]) => {
+  const play = useCallback((frames: Frame[], events: SimEvent[] = []) => {
     if (!frames.length) return;
     /* A plain DOM flag while frames are running. It costs nothing, it keeps the
        component out of a re-render per frame, and it is what the browser test
@@ -147,10 +207,12 @@ export default function CarromBoard({
     if (canvasRef.current) canvasRef.current.dataset.carromPlaying = '1';
     framesRef.current = frames;
     lastFrame.current = null;
+    shotFrom.current = latest.current.coins;
     previous.current = { coins: latest.current.coins, at: performance.now() };
     const started = performance.now();
     // real time at 120 Hz, compressed only if a shot somehow runs very long
     const perFrame = Math.min(8.34, 2600 / frames.length);
+    const cue = playEvents(frames, events, started, perFrame);
 
     const step = () => {
       const list = framesRef.current;
@@ -168,6 +230,7 @@ export default function CarromBoard({
           }
         });
       }
+      cue(performance.now());
       const animated = f.coins.map((c, i) => ({ ...skin[i], ...c }));
       draw(animated, f.striker, f.alive, null, 0, prev ? prev.coins : null);
       lastFrame.current = { coins: f.coins, striker: f.striker, alive: f.alive };
@@ -188,7 +251,7 @@ export default function CarromBoard({
     };
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(step);
-  }, [draw]);
+  }, [draw, playEvents]);
 
   /**
    * Every shot the referee announces is replayed here — including the other
@@ -204,19 +267,26 @@ export default function CarromBoard({
     if (!move || move.id === playedId.current) return;
     playedId.current = move.id;
     if (!before || before.coins === state.coins) return;
-    const frames = simulateShot(before.coins, { x: move.shot.x, y: BASELINE_Y[move.player] }, move.shot, true).frames;
-    play(frames);
+    const sim = simulateShot(before.coins, { x: move.shot.x, y: BASELINE_Y[move.player] }, move.shot, true);
+    play(sim.frames, sim.events);
   }, [state, play]);
 
   /* Idle render: the board, the coins, the striker waiting on its baseline. */
   useEffect(() => {
-    /* a replay is running — unless the board was reset underneath it */
+    /* A playback is running — unless the board was reset underneath it.
+       In a room the state does not change the instant you shoot: `onShoot` goes
+       to the referee and comes back a round trip later, so between the two the
+       board still carries the pre-shot state. Cancelling on `lastMove === null`
+       therefore killed your own shot the moment `setAim(null)` re-rendered — you
+       saw the coins jump and heard nothing. A reset is the case where the coins
+       are a different rack from the one the playback started with. */
     if (framesRef.current.length) {
-      if (state.lastMove === null) {
-        framesRef.current = [];
-        cancelAnimationFrame(raf.current);
-        if (canvasRef.current) canvasRef.current.dataset.carromPlaying = '0';
-      } else return;
+      const reset = state.lastMove === null && state.coins !== shotFrom.current;
+      if (!reset) return;
+      framesRef.current = [];
+      shotFrom.current = null;
+      cancelAnimationFrame(raf.current);
+      if (canvasRef.current) canvasRef.current.dataset.carromPlaying = '0';
     }
     const y = BASELINE_Y[state.turn];
     draw(state.coins, { x: state.strikerX, y }, true, aim, interactive ? 0.6 : 0.25);
@@ -243,7 +313,7 @@ export default function CarromBoard({
     const sim = simulateShot(state.coins, striker, shot, true);
     // the state that comes back will carry this same shot; do not play it twice
     playedId.current = state.shots + 1;
-    play(sim.frames);
+    play(sim.frames, sim.events);
     onShoot(shot);
   };
 

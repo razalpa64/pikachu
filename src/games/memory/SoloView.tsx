@@ -52,7 +52,14 @@ export default function MemorySolo({ game }: { game: GameMeta }) {
     const t = setTimeout(() => {
       setState((s) => {
         if (s.over || s.turn !== 1) return s;
-        if (s.revealed.length >= 2) return R.applyMove(s, 1, { resolve: true });
+        if (s.revealed.length >= 2) {
+          /* a pair found and a pair missed are opposite sounds; the old build
+             played the flip and then nothing, so a miss and a match felt the
+             same */
+          const [a, b] = s.revealed;
+          sfx(s.deck[a] === s.deck[b] ? 'coin' : 'miss');
+          return R.applyMove(s, 1, { resolve: true });
+        }
         const pick = pickMemoryFlip(s, brain.current, difficulty);
         if (pick === null) return s;
         observe(brain.current, pick, s.deck[pick], difficulty);
@@ -66,9 +73,14 @@ export default function MemorySolo({ game }: { game: GameMeta }) {
   /* solo auto-resolve */
   useEffect(() => {
     if (mode !== 'solo' || state.revealed.length < 2) return;
-    const t = setTimeout(() => setState((s) => (s.revealed.length >= 2 ? R.applyMove(s, s.turn, { resolve: true }) : s)), 760);
+    const t = setTimeout(() => setState((s) => {
+      if (s.revealed.length < 2) return s;
+      const [a, b] = s.revealed;
+      sfx(s.deck[a] === s.deck[b] ? 'coin' : 'miss');
+      return R.applyMove(s, s.turn, { resolve: true });
+    }), 760);
     return () => clearTimeout(t);
-  }, [state.revealed.length, mode]);
+  }, [state.revealed.length, mode, sfx]);
 
   /* solo keeps the turn on the single player */
   useEffect(() => {

@@ -34,6 +34,21 @@ async function tab(label) {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 950 } })).newPage();
   p.on('console', (m) => { if (m.type() === 'error') errs.push(`${label}: ${m.text()}`); });
   p.on('pageerror', (e) => errs.push(`${label} PAGEERROR: ${e.message}`));
+  await p.addInitScript(() => {
+    /* count the audio nodes the page makes, so "the room is audible" is a fact
+       this file checks rather than a claim in a commit message */
+    window.__snd = 0;
+    const C = window.AudioContext;
+    window.AudioContext = class extends C {
+      constructor(...a) {
+        super(...a);
+        const o = this.createOscillator.bind(this);
+        this.createOscillator = (...x) => { window.__snd++; return o(...x); };
+        const b = this.createBufferSource.bind(this);
+        this.createBufferSource = (...x) => { window.__snd++; return b(...x); };
+      }
+    };
+  });
   await p.goto(B + '/');
   await p.evaluate(() => sessionStorage.setItem('pikachu.intro.v1', '1'));
   return p;
@@ -74,18 +89,24 @@ t('the board is on screen for the guest', await until(async () => (await boardRe
 
 const attr = async (p, name) => p.$eval('canvas[data-ludo-board]', (el, n) => el.getAttribute(n), name);
 const tokens = async (p) => JSON.parse(await attr(p, 'data-ludo-tokens'));
+const snd = (p) => p.evaluate(() => window.__snd || 0);
 
 t('both players start with every token in its yard', (await tokens(host)).flat().every((v) => v === -1) && (await tokens(guest)).flat().every((v) => v === -1));
 
 // the host rolls; the number must be the same in both tabs
 const rollBtn = host.getByRole('button', { name: /^Roll$/ }).first();
 t('the player on turn is offered a roll', await until(async () => (await rollBtn.count()) > 0));
+const hostBefore = await snd(host);
+const guestBefore = await snd(guest);
 await rollBtn.click();
 const diceShown = await until(async () => (await attr(host, 'data-ludo-dice')) !== '');
 t('the server rolled a die', diceShown, String(await attr(host, 'data-ludo-dice')));
 const dice = await attr(host, 'data-ludo-dice');
 t('the same number appears for both players', await until(async () => (await attr(guest, 'data-ludo-dice')) === dice), `host=${dice} guest=${await attr(guest, 'data-ludo-dice')}`);
 t('the number is a real die', /^[1-6]$/.test(String(dice)), String(dice));
+await host.waitForTimeout(600);
+t('the roll is audible to the player who rolled', (await snd(host)) > hostBefore, `${hostBefore} → ${await snd(host)}`);
+t('the roll is audible to the other player', (await snd(guest)) > guestBefore, `${guestBefore} → ${await snd(guest)}`);
 
 // the guest must not be able to roll out of turn
 const guestRoll = guest.getByRole('button', { name: /^Roll$/ }).first();
@@ -102,6 +123,9 @@ if (hits.length) {
   const y = box.y + box.w * (box.pad + hits[0].gy * box.cell);
   await host.mouse.click(x, y);
   t('the tokens moved for the player', await until(async () => (await tokens(host)).flat().some((v) => v >= 0)));
+  await host.waitForTimeout(700);
+  t('the move is audible in both tabs', (await snd(host)) > hostBefore + 1 && (await snd(guest)) > guestBefore + 1,
+    `host ${hostBefore} → ${await snd(host)}, guest ${guestBefore} → ${await snd(guest)}`);
   t('the other player sees the same board', await until(async () => JSON.stringify(await tokens(host)) === JSON.stringify(await tokens(guest))), JSON.stringify(await tokens(guest)));
 } else {
   const pass = host.getByRole('button', { name: /Nothing to move/ }).first();

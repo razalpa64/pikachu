@@ -1,30 +1,43 @@
 /**
  * How carrom looks.
  *
- * Drawn in code rather than shipped as a picture, for two reasons: the board has
- * to be sharp at any size on any screen, and the pieces have to move. Everything
- * here is deterministic — the wood grain comes from a seeded generator, so the
- * board does not shimmer between frames.
+ * Painted, not shipped as a picture, because the board has to be sharp at any
+ * size and because the pieces on it move. But painted *from photographs*: the
+ * rosewood of the rails and the birch ply of the bed are generated textures in
+ * `public/art/carrom`, because grain drawn in code is what made this look like a
+ * diagram of a carrom board rather than a carrom board.
  *
- * The table itself is *painted once* into an offscreen canvas (`buildBoard`) and
- * blitted every frame. That is what buys the detail: a carved frame with mitred
- * corners and brass pins, three layers of grain, a lit surface, recessed pockets
- * with copper rims and a warm pool of lamplight over the middle all cost nothing
- * while nineteen coins are rolling around on top of them.
+ * Three passes have gone into making it read as furniture:
+ *
+ *   • **scale** — the pieces were a third too small. A real set on a 74 cm bed
+ *     has a coin 3.18 cm across, a striker 4.13 and a pocket 4.45; the old radii
+ *     drew undersized pieces with a wide empty field between them.
+ *   • **the rail** — real boards cut the four rails mitred, chamfer the inner
+ *     corner at each pocket, and leave a hairline shadow where the rail meets the
+ *     bed. The bed is about 89% of the board, not 83%.
+ *   • **the pieces** — carrom coins are turned beech with a shallow recess and a
+ *     lacquer, not glass marbles. The gloss was the giveaway: a hard white
+ *     highlight reads as plastic. These are matte, with a turned groove and a
+ *     warm shadow underneath.
+ *
+ * The static table is painted once into an offscreen canvas and blitted every
+ * frame; only the coins and the striker are drawn per frame.
  */
 import { BOARD, COIN_R, POCKETS, POCKET_R, STRIKER_R } from './physics';
 import type { CoinKind } from './physics';
 import { rng } from '../types';
+import { carromArt } from './materials';
 
-const INK = '#8c2f22';
-const INK_SOFT = 'rgba(140,47,34,.55)';
+const INK = '#8a2b1e';
+const INK_SOFT = 'rgba(138,43,30,.5)';
 
 export interface PaintSize { size: number; frame: number; scale: number; origin: number }
 
 export function layout(size: number): PaintSize {
-  /* A real carrom board's rail is about a tenth of its width; a hairline frame
-     reads as a printed sheet, not a piece of furniture. */
-  const frame = Math.max(14, size * 0.085);
+  /* A real board: the rail is about 4.5 cm on an 83 cm frame, so the bed is a
+     little under nine tenths of the width. The old 8.5% drew a picture frame
+     around the game. */
+  const frame = Math.max(9, size * 0.052);
   const inner = size - frame * 2;
   return { size, frame, scale: inner / BOARD, origin: frame };
 }
@@ -33,8 +46,7 @@ const px = (l: PaintSize, v: number) => l.origin + v * l.scale;
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rad = Math.min(r, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rad, y);
+  ctx.beginPath(); ctx.moveTo(x + rad, y);
   ctx.arcTo(x + w, y, x + w, y + h, rad);
   ctx.arcTo(x + w, y + h, x, y + h, rad);
   ctx.arcTo(x, y + h, x, y, rad);
@@ -42,12 +54,24 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
+/** Tile an image across a box at a given scale. */
+function fillPattern(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, scale: number) {
+  const pattern = ctx.createPattern(img, 'repeat');
+  if (!pattern) return false;
+  const s = (scale * Math.max(w, h)) / Math.max(img.naturalWidth, img.naturalHeight);
+  const m = new DOMMatrix();
+  m.a = s; m.d = s;
+  pattern.setTransform(m);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  ctx.fillStyle = pattern;
+  ctx.fillRect(x, y, w, h);
+  ctx.restore();
+  return true;
+}
+
 /* ------------------------------------------------------------------ the table */
 
-/**
- * The whole static table, painted once at the device's resolution. The caller
- * keeps the canvas and blits it; nothing in here is cheap enough to run at 60 fps.
- */
 export function buildBoard(size: number, dpr = 1): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(size * dpr);
@@ -58,183 +82,182 @@ export function buildBoard(size: number, dpr = 1): HTMLCanvasElement {
   return canvas;
 }
 
-/** A carved wooden frame, then the pale playing surface inside it. */
 export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
   const { size, frame } = l;
   const random = rng(20261030);
-  const pad = frame;
-  const inner = size - pad * 2;
-  const radius = size * 0.022;
+  const inner = size - frame * 2;
+  const radius = size * 0.016;
+  const rail = carromArt.rail();
+  const bed = carromArt.surface();
 
-  /* --- the table under the board -------------------------------------- */
-  const table = ctx.createRadialGradient(size * 0.46, size * 0.38, size * 0.05, size * 0.5, size * 0.5, size * 0.8);
-  table.addColorStop(0, '#5d3a18');
-  table.addColorStop(0.6, '#40260f');
-  table.addColorStop(1, '#2a1808');
+  /* --- the room: a dark refectory table under the board ---------------- */
+  const table = ctx.createRadialGradient(size * 0.38, size * 0.3, size * 0.04, size * 0.5, size * 0.55, size * 0.9);
+  table.addColorStop(0, '#3a2415');
+  table.addColorStop(0.55, '#241508');
+  table.addColorStop(1, '#120a04');
   ctx.fillStyle = table;
   ctx.fillRect(0, 0, size, size);
 
-  /* --- the frame: a lit top edge, a dark base, mitred corners ---------- */
+  /* --- the board's own drop shadow ------------------------------------ */
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,.55)';
-  ctx.shadowBlur = size * 0.03;
-  ctx.shadowOffsetY = size * 0.008;
-  roundRect(ctx, pad * 0.35, pad * 0.35, size - pad * 0.7, size - pad * 0.7, radius);
-  const wood = ctx.createLinearGradient(0, 0, size * 0.85, size);
-  wood.addColorStop(0, '#c99456');
-  wood.addColorStop(0.18, '#a9722f');
-  wood.addColorStop(0.42, '#8a5620');
-  wood.addColorStop(0.7, '#a5712c');
-  wood.addColorStop(1, '#6f451a');
-  ctx.fillStyle = wood;
+  ctx.shadowColor = 'rgba(0,0,0,.72)';
+  ctx.shadowBlur = size * 0.05;
+  ctx.shadowOffsetY = size * 0.014;
+  roundRect(ctx, frame * 0.28, frame * 0.28, size - frame * 0.56, size - frame * 0.56, radius);
+  ctx.fillStyle = '#2b1a0c';
   ctx.fill();
   ctx.restore();
 
-  // grain on the frame — three passes of different weight, like real veneer
+  /* --- four rails, mitred --------------------------------------------
+     Real carrom boards are four pieces of wood joined at 45°, with the grain
+     running along each rail. Filling the whole square with one texture and
+     drawing a seam on top looks like wallpaper; filling each rail separately,
+     rotated, looks like a joint. */
+  const inset = frame * 0.28;
+  const outer = { x: inset, y: inset, s: size - inset * 2 };
+  const half = outer.s / 2;
+  const seam = frame * 0.55;
+
   ctx.save();
-  roundRect(ctx, pad * 0.35, pad * 0.35, size - pad * 0.7, size - pad * 0.7, radius);
+  roundRect(ctx, outer.x, outer.y, outer.s, outer.s, radius);
   ctx.clip();
-  for (let i = 0; i < 130; i++) {
-    const y = random() * size;
-    ctx.strokeStyle = `rgba(60,32,8,${0.02 + random() * 0.045})`;
-    ctx.lineWidth = 0.5 + random() * 1.8;
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    for (let x = 0; x <= size; x += size / 9) ctx.lineTo(x, y + Math.sin((x / size) * 6 + i * 0.8) * (1 + random() * 2.6));
-    ctx.stroke();
-  }
-  // figure: a few wide, pale bands the way a cut board catches light
-  for (let i = 0; i < 5; i++) {
-    const y = random() * size;
-    const g = ctx.createLinearGradient(0, y - size * 0.06, 0, y + size * 0.06);
-    g.addColorStop(0, 'rgba(255,220,160,0)');
-    g.addColorStop(0.5, `rgba(255,220,160,${0.05 + random() * 0.05})`);
-    g.addColorStop(1, 'rgba(255,220,160,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, y - size * 0.06, size, size * 0.12);
-  }
-  ctx.restore();
 
-  // mitred corner seams, so the frame reads as four pieces of wood
-  ctx.save();
-  ctx.strokeStyle = 'rgba(52,28,6,.45)';
-  ctx.lineWidth = Math.max(1, size * 0.0035);
+  const railQuad = (pts: [number, number][]) => {
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.closePath();
+  };
+
+  const sides: { pts: [number, number][]; rotate: number }[] = [
+    /* top    */ { pts: [[outer.x, outer.y], [outer.x + outer.s, outer.y], [outer.x + outer.s - seam, outer.y + seam], [outer.x + seam, outer.y + seam]], rotate: 0 },
+    /* right  */ { pts: [[outer.x + outer.s, outer.y], [outer.x + outer.s, outer.y + outer.s], [outer.x + outer.s - seam, outer.y + outer.s - seam], [outer.x + outer.s - seam, outer.y + seam]], rotate: Math.PI / 2 },
+    /* bottom */ { pts: [[outer.x + outer.s, outer.y + outer.s], [outer.x, outer.y + outer.s], [outer.x + seam, outer.y + outer.s - seam], [outer.x + outer.s - seam, outer.y + outer.s - seam]], rotate: 0 },
+    /* left   */ { pts: [[outer.x, outer.y + outer.s], [outer.x, outer.y], [outer.x + seam, outer.y + seam], [outer.x + seam, outer.y + outer.s - seam]], rotate: Math.PI / 2 },
+  ];
+
+  for (const side of sides) {
+    ctx.save();
+    railQuad(side.pts);
+    ctx.clip();
+    if (rail) {
+      ctx.translate(half, half);
+      ctx.rotate(side.rotate);
+      ctx.translate(-half, -half);
+      fillPattern(ctx, rail, 0, 0, size, size, 0.62);
+    } else {
+      const g = ctx.createLinearGradient(outer.x, outer.y, outer.x + outer.s, outer.y + outer.s);
+      g.addColorStop(0, '#a4682f');
+      g.addColorStop(0.4, '#7d471c');
+      g.addColorStop(0.75, '#94592a');
+      g.addColorStop(1, '#5d3413');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, size, size);
+    }
+    // polish: lit along the outer edge, deeper towards the bed
+    const sheen = ctx.createLinearGradient(
+      side.rotate ? outer.x : outer.y,
+      side.rotate ? outer.y : outer.y,
+      side.rotate ? outer.x + outer.s : outer.y + seam,
+      side.rotate ? outer.y + seam : outer.y + outer.s * (side.pts[0][1] > half ? -1 : 1),
+    );
+    sheen.addColorStop(0, 'rgba(255,214,150,.16)');
+    sheen.addColorStop(0.5, 'rgba(255,214,150,0)');
+    sheen.addColorStop(1, 'rgba(40,18,4,.22)');
+    ctx.fillStyle = sheen;
+    ctx.fillRect(0, 0, size, size);
+    ctx.restore();
+  }
+
+  // the mitre seams
+  ctx.strokeStyle = 'rgba(28,14,4,.5)';
+  ctx.lineWidth = Math.max(1, size * 0.0022);
   for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
-    const x0 = sx > 0 ? pad * 0.35 : size - pad * 0.35;
-    const y0 = sy > 0 ? pad * 0.35 : size - pad * 0.35;
+    const x0 = sx > 0 ? outer.x : outer.x + outer.s;
+    const y0 = sy > 0 ? outer.y : outer.y + outer.s;
     ctx.beginPath();
-    ctx.moveTo(x0 - sx * pad * 0.34, y0);
-    ctx.lineTo(x0, y0);
-    ctx.lineTo(x0, y0 - sy * pad * 0.34);
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x0 + sx * frame * 1.1, y0 + sy * frame * 1.1);
     ctx.stroke();
   }
   ctx.restore();
 
-  // brass pins at the corners
-  for (const [cx, cy] of [[pad * 0.72, pad * 0.72], [size - pad * 0.72, pad * 0.72], [pad * 0.72, size - pad * 0.72], [size - pad * 0.72, size - pad * 0.72]]) {
-    const r = size * 0.006;
-    const pin = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, 0, cx, cy, r);
-    pin.addColorStop(0, '#fff0cc');
-    pin.addColorStop(0.5, '#d9ab5f');
-    pin.addColorStop(1, '#7d5220');
-    ctx.fillStyle = pin;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(40,22,4,.5)';
-    ctx.lineWidth = Math.max(0.5, r * 0.25);
-    ctx.stroke();
-  }
-
-  /* --- the rail: a bevel from frame to surface ------------------------- */
+  // the chamfered outer edge: a hairline of bright wood on the lit side, a dark
+  // bevel everywhere else, so the board has thickness instead of a plastic rim
   ctx.save();
-  const bevel = ctx.createLinearGradient(0, pad * 0.6, 0, pad * 2.1);
-  bevel.addColorStop(0, 'rgba(255,226,168,.55)');
-  bevel.addColorStop(0.4, 'rgba(146,88,26,.26)');
-  bevel.addColorStop(1, 'rgba(58,30,8,.34)');
-  roundRect(ctx, pad * 0.62, pad * 0.62, size - pad * 1.24, size - pad * 1.24, radius * 0.9);
-  ctx.fillStyle = bevel;
-  ctx.fill();
+  roundRect(ctx, outer.x, outer.y, outer.s, outer.s, radius);
+  ctx.strokeStyle = 'rgba(28,14,4,.7)';
+  ctx.lineWidth = Math.max(1.5, size * 0.005);
+  ctx.stroke();
+  roundRect(ctx, outer.x + size * 0.004, outer.y + size * 0.004, outer.s - size * 0.008, outer.s - size * 0.008, radius);
+  ctx.strokeStyle = 'rgba(255,214,160,.28)';
+  ctx.lineWidth = Math.max(1, size * 0.0028);
+  ctx.stroke();
   ctx.restore();
 
-  /* --- the playing surface -------------------------------------------- */
-  const surface = ctx.createRadialGradient(size * 0.42, size * 0.34, size * 0.06, size / 2, size / 2, size * 0.66);
-  surface.addColorStop(0, '#fdf3d9');
-  surface.addColorStop(0.45, '#f7e5c0');
-  surface.addColorStop(0.78, '#eed6a9');
-  surface.addColorStop(1, '#dcbb87');
-  ctx.fillStyle = surface;
-  ctx.fillRect(pad, pad, inner, inner);
-
+  /* --- the bed --------------------------------------------------------- */
   ctx.save();
   ctx.beginPath();
-  ctx.rect(pad, pad, inner, inner);
+  ctx.rect(frame, frame, inner, inner);
   ctx.clip();
-
-  // fine grain across the surface
-  for (let i = 0; i < 70; i++) {
-    const y = pad + random() * inner;
-    ctx.strokeStyle = `rgba(150,105,55,${0.008 + random() * 0.016})`;
-    ctx.lineWidth = 0.4 + random() * 0.7;
-    ctx.beginPath();
-    ctx.moveTo(pad, y);
-    for (let x = pad; x <= size - pad; x += inner / 7) ctx.lineTo(x, y + Math.sin((x / size) * 4.5 + i * 0.7) * 1.6);
-    ctx.stroke();
+  if (bed) {
+    fillPattern(ctx, bed, frame, frame, inner, inner, 0.92);
+    // keep it pale and warm: raw ply is a touch grey on screen
+    ctx.fillStyle = 'rgba(255,246,224,.28)';
+    ctx.fillRect(frame, frame, inner, inner);
+  } else {
+    const surface = ctx.createRadialGradient(size * 0.42, size * 0.34, size * 0.06, size / 2, size / 2, size * 0.66);
+    surface.addColorStop(0, '#fdf3d9');
+    surface.addColorStop(0.45, '#f7e5c0');
+    surface.addColorStop(0.78, '#eed6a9');
+    surface.addColorStop(1, '#dcbb87');
+    ctx.fillStyle = surface;
+    ctx.fillRect(frame, frame, inner, inner);
   }
 
-  // a pool of lamplight over the middle, falling off to the rails
-  const lamp = ctx.createRadialGradient(size * 0.47, size * 0.4, size * 0.02, size * 0.5, size * 0.5, size * 0.5);
-  lamp.addColorStop(0, 'rgba(255,250,232,.34)');
-  lamp.addColorStop(0.45, 'rgba(255,246,222,.12)');
+  // lamplight pooled over the middle, and the rail's shadow on the bed
+  const lamp = ctx.createRadialGradient(size * 0.46, size * 0.38, size * 0.02, size * 0.5, size * 0.5, size * 0.56);
+  lamp.addColorStop(0, 'rgba(255,250,232,.3)');
+  lamp.addColorStop(0.5, 'rgba(255,246,222,.1)');
   lamp.addColorStop(1, 'rgba(255,240,210,0)');
   ctx.fillStyle = lamp;
-  ctx.fillRect(pad, pad, inner, inner);
+  ctx.fillRect(frame, frame, inner, inner);
 
-  // inner shadow where the rail meets the board
-  const edge = ctx.createLinearGradient(0, pad, 0, pad + size * 0.05);
-  edge.addColorStop(0, 'rgba(90,55,18,.28)');
-  edge.addColorStop(1, 'rgba(90,55,18,0)');
-  ctx.fillStyle = edge;
-  ctx.fillRect(pad, pad, inner, size * 0.05);
-  const edgeTop = ctx.createLinearGradient(pad, 0, pad + size * 0.05, 0);
-  edgeTop.addColorStop(0, 'rgba(90,55,18,.22)');
-  edgeTop.addColorStop(1, 'rgba(90,55,18,0)');
-  ctx.fillStyle = edgeTop;
-  ctx.fillRect(pad, pad, size * 0.05, inner);
+  const shadeW = Math.max(3, size * 0.026);
+  const top = ctx.createLinearGradient(0, frame, 0, frame + shadeW);
+  top.addColorStop(0, 'rgba(58,32,8,.42)');
+  top.addColorStop(1, 'rgba(58,32,8,0)');
+  ctx.fillStyle = top;
+  ctx.fillRect(frame, frame, inner, shadeW);
+  const left = ctx.createLinearGradient(frame, 0, frame + shadeW, 0);
+  left.addColorStop(0, 'rgba(58,32,8,.38)');
+  left.addColorStop(1, 'rgba(58,32,8,0)');
+  ctx.fillStyle = left;
+  ctx.fillRect(frame, frame, shadeW, inner);
 
-  // a break in the light, so the board does not look like a flat gradient
-  const shade = ctx.createRadialGradient(size * 0.72, size * 0.74, size * 0.04, size * 0.7, size * 0.72, size * 0.44);
-  shade.addColorStop(0, 'rgba(120,78,30,.14)');
-  shade.addColorStop(1, 'rgba(120,78,30,0)');
-  ctx.fillStyle = shade;
-  ctx.fillRect(pad, pad, inner, inner);
+  const vignette = ctx.createRadialGradient(size / 2, size / 2, size * 0.3, size / 2, size / 2, size * 0.76);
+  vignette.addColorStop(0, 'rgba(120,80,32,0)');
+  vignette.addColorStop(1, 'rgba(104,64,24,.16)');
+  ctx.fillStyle = vignette;
+  ctx.fillRect(frame, frame, inner, inner);
   ctx.restore();
 
-  /* The rule a real board has: a pair of fine red lines inside the rail, with
-     the corner squares left for the pockets. It is the difference between a
-     sheet of pale wood and a carrom board. */
-  const inset = l.scale * 2.4;
-  const inner2 = size - pad * 2;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(140,47,34,.5)';
-  ctx.lineWidth = Math.max(1, l.scale * 0.28);
-  ctx.strokeRect(pad + inset, pad + inset, inner2 - inset * 2, inner2 - inset * 2);
-  ctx.strokeStyle = 'rgba(140,47,34,.22)';
-  ctx.lineWidth = Math.max(0.7, l.scale * 0.16);
-  ctx.strokeRect(pad + inset * 1.9, pad + inset * 1.9, inner2 - inset * 3.8, inner2 - inset * 3.8);
-  ctx.restore();
-
+  /* --- the painted furniture ------------------------------------------ */
   paintMarkings(ctx, l);
 
-  // the vignette sits over the paint, the way the rail shadows it
-  const vignette = ctx.createRadialGradient(size / 2, size / 2, size * 0.24, size / 2, size / 2, size * 0.74);
-  vignette.addColorStop(0, 'rgba(255,255,255,0)');
-  vignette.addColorStop(1, 'rgba(110,70,26,.2)');
-  ctx.fillStyle = vignette;
-  ctx.fillRect(pad, pad, inner, inner);
+  // the rule inside the rail, drawn *on* the bed, as on a real board
+  const insetRule = l.scale * (POCKET_MOUTH_RULE);
+  ctx.save();
+  ctx.strokeStyle = INK_SOFT;
+  ctx.lineWidth = Math.max(0.8, l.scale * 0.22);
+  ctx.strokeRect(frame + insetRule * 0.55, frame + insetRule * 0.55, inner - insetRule * 1.1, inner - insetRule * 1.1);
+  ctx.restore();
 
   for (const p of POCKETS) paintPocket(ctx, l, p.x, p.y);
 }
+
+/** The bed's inner rule sits clear of the pocket mouths. */
+const POCKET_MOUTH_RULE = 0;
 
 /** The painted furniture: centre rosette, baselines, corner arrows. */
 function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
@@ -246,10 +269,8 @@ function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
   ctx.fillStyle = INK;
   ctx.lineWidth = Math.max(1, l.scale * 0.42);
 
-  // outer circle and inner circle
   ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
   ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, 0, Math.PI * 2); ctx.stroke();
-  // eight petals, each with a lighter core so they read as painted, not printed
   for (let i = 0; i < 8; i++) {
     const a = (Math.PI / 4) * i;
     ctx.beginPath();
@@ -258,29 +279,27 @@ function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
   }
   ctx.beginPath(); ctx.arc(cx, cy, r * 0.1, 0, Math.PI * 2); ctx.fill();
 
-  // a fine outer ring, the second circle a real board has
   ctx.strokeStyle = INK_SOFT;
   ctx.lineWidth = Math.max(0.6, l.scale * 0.2);
   ctx.beginPath(); ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2); ctx.stroke();
 
-  // baselines, one per player
+  // baselines, one per player, with the striker's circles at each end
   for (const y of [18, 82]) {
     const y0 = px(l, y), x0 = px(l, 20), x1 = px(l, 80);
     ctx.strokeStyle = INK;
     ctx.lineWidth = Math.max(1, l.scale * 0.34);
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.stroke();
     for (const cx2 of [20, 80]) {
-      ctx.beginPath(); ctx.arc(px(l, cx2), y0, l.scale * 2.4, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(px(l, cx2), y0, l.scale * 2.6, 0, Math.PI * 2); ctx.stroke();
       ctx.beginPath(); ctx.arc(px(l, cx2), y0, l.scale * 0.9, 0, Math.PI * 2); ctx.fill();
     }
-    // the little dots that mark the striker's allowed span
     for (let i = 1; i <= 6; i++) {
       if (i === 3 || i === 6) continue;
       ctx.beginPath(); ctx.arc(px(l, 20 + (60 / 7) * i), y0, l.scale * 0.55, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  // corner arrows pointing at the centre, the way a real board paints them
+  // corner arrows pointing at the centre
   for (const [ax, ay] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
     const from = { x: px(l, ax > 0 ? 13 : 87), y: px(l, ay > 0 ? 13 : 87) };
     const to = { x: px(l, ax > 0 ? 34 : 66), y: px(l, ay > 0 ? 34 : 66) };
@@ -297,165 +316,169 @@ function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
   ctx.restore();
 }
 
-/** A pocket: a recessed hole with a copper rim and a dark lip. */
+/**
+ * A pocket.
+ *
+ * A hole in the corner: a dark mouth, a lit bevel on the arc that faces the play,
+ * and the rail's shadow falling into it. The *visual* centre is inset from the
+ * corner while the physics' pocket stays exactly at the corner, because a hole
+ * drawn dead-centre on the corner is half outside the board — which is what made
+ * two earlier attempts look like a hole punched through the frame.
+ *
+ * The tempting embellishments are all wrong here. A brass ring around the mouth
+ * reads as a coin slot; a scalloped cut of the whole corner reads as damage. The
+ * only thing a real board has is bare wood, chamfered, and a dark hole.
+ */
 function paintPocket(ctx: CanvasRenderingContext2D, l: PaintSize, x: number, y: number) {
-  const cxp = px(l, x), cyp = px(l, y);
   const r = POCKET_R * l.scale;
+  const inx = x === 0 ? 1 : -1;
+  const iny = y === 0 ? 1 : -1;
+  const cxp = px(l, x) + inx * r * 0.72;
+  const cyp = px(l, y) + iny * r * 0.72;
+  const facing = Math.atan2(iny, inx);
 
-  /* The wood around the hole is polished by a century of thumbs. Drawn before
-     the mouth, so it darkens the surface rather than greying the hole. */
-  const worn = ctx.createRadialGradient(cxp, cyp, r * 0.9, cxp, cyp, r * 1.9);
-  worn.addColorStop(0, 'rgba(255,246,220,.3)');
-  worn.addColorStop(1, 'rgba(255,246,220,0)');
-  ctx.fillStyle = worn;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.9, 0, Math.PI * 2); ctx.fill();
+  // the rail's shadow, falling away from the mouth across the bed
+  const spill = ctx.createRadialGradient(cxp, cyp, r * 0.95, cxp, cyp, r * 1.85);
+  spill.addColorStop(0, 'rgba(40,22,8,.36)');
+  spill.addColorStop(1, 'rgba(40,22,8,0)');
+  ctx.fillStyle = spill;
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.85, 0, Math.PI * 2); ctx.fill();
 
-  /* The rail is cut away at each corner to make the pocket's mouth. Without it
-     the hole sits on the rail's edge like a sticker; with it the corner reads as
-     a corner somebody made a hole in — and it is warm dark wood, never grey. */
-  ctx.save();
-  const mouth = ctx.createRadialGradient(cxp, cyp, r * 0.95, cxp, cyp, r * 1.4);
-  mouth.addColorStop(0, 'rgba(26,14,6,.95)');
-  mouth.addColorStop(0.6, 'rgba(38,22,9,.8)');
-  mouth.addColorStop(1, 'rgba(50,30,12,0)');
-  ctx.fillStyle = mouth;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.4, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-
-  // shadow cast into the hole
-  const rim = ctx.createRadialGradient(cxp, cyp, r * 0.55, cxp, cyp, r * 1.25);
-  rim.addColorStop(0, 'rgba(50,28,8,.5)');
-  rim.addColorStop(1, 'rgba(50,28,8,0)');
-  ctx.fillStyle = rim;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.25, 0, Math.PI * 2); ctx.fill();
-
-  // the hole itself, darker at the bottom so it has depth
-  const hole = ctx.createRadialGradient(cxp - r * 0.2, cyp - r * 0.3, r * 0.05, cxp, cyp + r * 0.1, r * 1.02);
-  hole.addColorStop(0, '#3a2513');
-  hole.addColorStop(0.45, '#1c1008');
-  hole.addColorStop(1, '#050302');
+  // the hole: deepest towards the corner
+  const hole = ctx.createRadialGradient(cxp + inx * r * 0.34, cyp + iny * r * 0.34, r * 0.04, cxp, cyp, r * 1.04);
+  hole.addColorStop(0, '#060403');
+  hole.addColorStop(0.5, '#120c07');
+  hole.addColorStop(0.84, '#251608');
+  hole.addColorStop(1, '#3d2611');
   ctx.fillStyle = hole;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.04, 0, Math.PI * 2); ctx.fill();
 
-  // copper rim: bright on the lit side, dim on the other
-  ctx.lineWidth = Math.max(1, r * 0.11);
-  const brass = ctx.createLinearGradient(cxp - r, cyp - r, cxp + r, cyp + r);
-  brass.addColorStop(0, '#ffe7ae');
-  brass.addColorStop(0.35, '#d9a961');
-  brass.addColorStop(0.7, '#8a5c22');
-  brass.addColorStop(1, '#c79a55');
-  ctx.strokeStyle = brass;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.02, 0, Math.PI * 2); ctx.stroke();
+  // chamfer: lit on the arc facing the play, dark behind it, nothing in between
+  ctx.lineWidth = Math.max(1, r * 0.13);
+  ctx.strokeStyle = 'rgba(255,232,190,.5)';
+  ctx.beginPath();
+  ctx.arc(cxp, cyp, r * 1.02, facing - 1.2, facing + 1.2);
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(28,16,6,.75)';
+  ctx.beginPath();
+  ctx.arc(cxp, cyp, r * 1.05, facing + 1.9, facing + 4.4);
+  ctx.stroke();
 
-  // and a soft inner lip of light on the lit side
-  ctx.strokeStyle = 'rgba(255,236,190,.4)';
-  ctx.lineWidth = Math.max(0.6, r * 0.05);
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.88, Math.PI * 1.05, Math.PI * 1.85); ctx.stroke();
+  // and the hard inner edge where wood meets nothing
+  ctx.strokeStyle = 'rgba(0,0,0,.55)';
+  ctx.lineWidth = Math.max(0.8, r * 0.06);
+  ctx.beginPath();
+  ctx.arc(cxp, cyp, r * 0.9, 0, Math.PI * 2);
+  ctx.stroke();
 }
 
 /* ------------------------------------------------------------------ pieces */
 
-const COIN_STYLE: Record<CoinKind, { face: [string, string, string]; rim: string; edge: string; gloss: number; grain: string }> = {
-  white: { face: ['#fffdf6', '#f8e9cb', '#d9b784'], rim: '#c49a63', edge: '#a97f4a', gloss: 0.7, grain: 'rgba(150,110,60,.10)' },
-  black: { face: ['#7c6a5c', '#443830', '#1b1411'], rim: '#0f0a08', edge: '#8d7660', gloss: 0.5, grain: 'rgba(255,235,205,.06)' },
-  queen: { face: ['#f0665c', '#bf2733', '#740f1c'], rim: '#5d0b14', edge: '#f3c76d', gloss: 0.72, grain: 'rgba(255,230,190,.08)' },
+/**
+ * A coin is turned beech: a flat face, a shallow recess inside a raised rim, a
+ * faint ring where the lathe left it, and lacquer — but matte lacquer. The hard
+ * white highlight the old painter used is what made them look like glass beads.
+ */
+const COIN_STYLE: Record<CoinKind, {
+  face: [string, string, string]; rim: string; recess: string; edge: string; queen?: boolean;
+}> = {
+  white: { face: ['#fbf2dd', '#efdcb8', '#cfb184'], rim: '#f7ead0', recess: 'rgba(150,112,60,.22)', edge: '#b99a6a' },
+  black: { face: ['#4a3f36', '#2e2620', '#1a1512'], rim: '#5a4c40', recess: 'rgba(0,0,0,.35)', edge: '#171310' },
+  queen: { face: ['#c8402f', '#a3271c', '#6d120c'], rim: '#d9553f', recess: 'rgba(70,8,4,.35)', edge: '#5c0f08', queen: true },
 };
 
-/**
- * One coin.
- *
- * Three things make a disc read as a piece of turned wood rather than a circle:
- * a contact shadow that is soft where the piece is thick and hard where it
- * meets the board, a rim that catches the light on one side only, and a
- * highlight that slides across the face as a real polish does. The queen gets
- * her crown of eight dots.
- */
 export function paintCoin(ctx: CanvasRenderingContext2D, l: PaintSize, c: { x: number; y: number; kind: CoinKind }, lift = 0) {
   const x = px(l, c.x), y = px(l, c.y);
   const r = COIN_R * l.scale;
   const style = COIN_STYLE[c.kind];
-  const oy = -lift * r * 0.35;
+  const oy = -lift * r * 0.4;
 
-  // contact shadow — tight and dark at rest, wide and soft in the air
+  // a soft, warm contact shadow — wide, never a hard ring
   ctx.save();
   const spread = 1 + lift * 0.5;
-  const shadow = ctx.createRadialGradient(x + r * 0.18, y + r * 0.3, r * 0.15, x + r * 0.12, y + r * 0.26, r * 1.15 * spread);
-  shadow.addColorStop(0, `rgba(58,34,8,${0.42 - lift * 0.16})`);
-  shadow.addColorStop(0.6, `rgba(58,34,8,${0.16 - lift * 0.06})`);
-  shadow.addColorStop(1, 'rgba(58,34,8,0)');
+  const shadow = ctx.createRadialGradient(x + r * 0.14, y + r * 0.3, r * 0.12, x + r * 0.1, y + r * 0.24, r * 1.1 * spread);
+  shadow.addColorStop(0, `rgba(52,30,8,${0.36 - lift * 0.14})`);
+  shadow.addColorStop(0.55, `rgba(52,30,8,${0.16 - lift * 0.06})`);
+  shadow.addColorStop(1, 'rgba(52,30,8,0)');
   ctx.fillStyle = shadow;
   ctx.beginPath();
-  ctx.ellipse(x + r * 0.1, y + r * 0.2, r * 1.12 * spread, r * 0.95 * spread, 0, 0, Math.PI * 2);
+  ctx.ellipse(x + r * 0.08, y + r * 0.2, r * 1.06 * spread, r * 0.92 * spread, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  // the disc's edge, visible under the face from this angle
+  // thickness: the disc's edge, visible under the face
   ctx.fillStyle = style.edge;
   ctx.beginPath();
-  ctx.arc(x, y + oy + r * 0.06, r, 0, Math.PI * 2);
+  ctx.arc(x, y + oy + r * 0.07, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // body
-  const body = ctx.createRadialGradient(x - r * 0.36, y - r * 0.46 + oy, r * 0.1, x, y + oy, r * 1.08);
+  // the face
+  const body = ctx.createRadialGradient(x - r * 0.34, y - r * 0.42 + oy, r * 0.06, x, y + oy, r * 1.02);
   body.addColorStop(0, style.face[0]);
-  body.addColorStop(0.5, style.face[1]);
-  body.addColorStop(0.86, style.face[2]);
+  body.addColorStop(0.55, style.face[1]);
   body.addColorStop(1, style.face[2]);
   ctx.fillStyle = body;
   ctx.beginPath();
   ctx.arc(x, y + oy, r, 0, Math.PI * 2);
   ctx.fill();
 
-  // turned-wood grain rings, very faint
-  ctx.save();
-  ctx.globalAlpha = 0.55;
-  for (const ring of [0.34, 0.52, 0.72]) {
-    ctx.strokeStyle = style.grain;
-    ctx.lineWidth = Math.max(0.4, r * 0.05);
-    ctx.beginPath();
-    ctx.arc(x + r * 0.04, y + oy + r * 0.02, r * ring, 0.2, Math.PI * 1.9);
-    ctx.stroke();
-  }
-  ctx.restore();
+  /* the raised rim, then the shallow recess inside it: two thin rings, dark on
+     the far side and catching light on the near side, which is how a turned
+     edge reads under a lamp */
+  const ringAt = (rr: number, dark: string, light: string, width: number) => {
+    ctx.lineWidth = width;
+    ctx.strokeStyle = dark;
+    ctx.beginPath(); ctx.arc(x, y + oy, rr, -0.35, Math.PI + 0.55); ctx.stroke();
+    ctx.strokeStyle = light;
+    ctx.beginPath(); ctx.arc(x, y + oy, rr, Math.PI - 0.45, Math.PI * 2 + 0.25); ctx.stroke();
+  };
+  ringAt(r * 0.88, 'rgba(60,36,10,.28)', 'rgba(255,246,224,.5)', Math.max(0.8, r * 0.06));
+  ringAt(r * 0.62, style.recess, 'rgba(255,248,230,.34)', Math.max(0.7, r * 0.05));
 
-  // rim: lit on the upper left, dark on the lower right
-  ctx.lineWidth = Math.max(0.8, r * 0.13);
-  ctx.strokeStyle = style.rim;
-  ctx.beginPath(); ctx.arc(x, y + oy, r * 0.93, 0, Math.PI * 2); ctx.stroke();
-  ctx.lineWidth = Math.max(0.6, r * 0.07);
-  ctx.strokeStyle = 'rgba(255,246,224,.55)';
-  ctx.beginPath(); ctx.arc(x, y + oy, r * 0.96, Math.PI * 1.02, Math.PI * 1.78); ctx.stroke();
+  // the recess itself, very slightly darker in the middle
+  const bowl = ctx.createRadialGradient(x - r * 0.12, y - r * 0.16 + oy, r * 0.04, x, y + oy, r * 0.62);
+  bowl.addColorStop(0, 'rgba(255,255,255,.06)');
+  bowl.addColorStop(1, 'rgba(70,44,14,.09)');
+  ctx.fillStyle = bowl;
+  ctx.beginPath(); ctx.arc(x, y + oy, r * 0.6, 0, Math.PI * 2); ctx.fill();
 
-  // inner ring, and the queen's crown of eight dots
-  ctx.strokeStyle = c.kind === 'queen' ? style.edge : 'rgba(120,88,48,.35)';
-  ctx.lineWidth = Math.max(0.6, r * 0.07);
-  ctx.beginPath(); ctx.arc(x, y + oy, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-  if (c.kind === 'queen') {
-    ctx.fillStyle = style.edge;
+  if (style.queen) {
+    // the queen's ring of eight gold dots, and a small rosette in the middle
+    ctx.fillStyle = '#f0cf86';
     for (let i = 0; i < 8; i++) {
-      const a = (Math.PI / 4) * i;
+      const a = (Math.PI / 4) * i + Math.PI / 8;
       ctx.beginPath();
-      ctx.arc(x + Math.cos(a) * r * 0.6, y + oy + Math.sin(a) * r * 0.6, r * 0.07, 0, Math.PI * 2);
+      ctx.arc(x + Math.cos(a) * r * 0.74, y + oy + Math.sin(a) * r * 0.74, r * 0.075, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.strokeStyle = 'rgba(240,207,134,.8)';
+    ctx.lineWidth = Math.max(0.6, r * 0.05);
+    ctx.beginPath(); ctx.arc(x, y + oy, r * 0.3, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y + oy, r * 0.08, 0, Math.PI * 2); ctx.fill();
   }
 
-  // specular: a tight hot spot and a loose sheen
-  const gloss = ctx.createRadialGradient(x - r * 0.36, y - r * 0.48 + oy, 0, x - r * 0.36, y - r * 0.48 + oy, r * 0.8);
-  gloss.addColorStop(0, `rgba(255,255,255,${style.gloss})`);
-  gloss.addColorStop(0.35, 'rgba(255,255,255,.12)');
-  gloss.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = gloss;
-  ctx.beginPath(); ctx.arc(x, y + oy, r, 0, Math.PI * 2); ctx.fill();
+  // a broad matte sheen from the top left — no white dot
+  const sheen = ctx.createLinearGradient(x - r * 0.8, y - r * 0.9 + oy, x + r * 0.6, y + r * 0.7 + oy);
+  sheen.addColorStop(0, 'rgba(255,255,255,.3)');
+  sheen.addColorStop(0.42, 'rgba(255,255,255,.05)');
+  sheen.addColorStop(1, 'rgba(0,0,0,.12)');
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x, y + oy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.fillStyle = sheen;
+  ctx.fillRect(x - r, y - r + oy, r * 2, r * 2);
+  ctx.restore();
 
-  // a second, smaller hotspot — the tell of a polished surface
-  const hot = ctx.createRadialGradient(x + r * 0.34, y + oy - r * 0.5, 0, x + r * 0.34, y + oy - r * 0.5, r * 0.26);
-  hot.addColorStop(0, 'rgba(255,255,255,.5)');
-  hot.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = hot;
-  ctx.beginPath(); ctx.arc(x, y + oy, r, 0, Math.PI * 2); ctx.fill();
+  // and a thin lit edge, so the coin separates from the wood behind it
+  ctx.strokeStyle = 'rgba(255,248,232,.34)';
+  ctx.lineWidth = Math.max(0.6, r * 0.045);
+  ctx.beginPath(); ctx.arc(x, y + oy, r * 0.985, Math.PI * 1.05, Math.PI * 1.8); ctx.stroke();
 }
 
+/**
+ * The striker: ivory disc, a red ring around the face, a turned centre. That is
+ * what a carrom striker is — a plain polished disc you flick — not the chrome
+ * pucks the arcade uses.
+ */
 export function paintStriker(ctx: CanvasRenderingContext2D, l: PaintSize, x: number, y: number, glow = 0) {
   const cxp = px(l, x), cyp = px(l, y);
   const r = STRIKER_R * l.scale;
@@ -463,59 +486,55 @@ export function paintStriker(ctx: CanvasRenderingContext2D, l: PaintSize, x: num
   if (glow > 0) {
     ctx.save();
     ctx.globalAlpha = glow;
-    const halo = ctx.createRadialGradient(cxp, cyp, r * 0.6, cxp, cyp, r * 2.6);
-    halo.addColorStop(0, 'rgba(255,214,102,.55)');
+    const halo = ctx.createRadialGradient(cxp, cyp, r * 0.7, cxp, cyp, r * 2.4);
+    halo.addColorStop(0, 'rgba(255,214,102,.4)');
     halo.addColorStop(1, 'rgba(255,214,102,0)');
     ctx.fillStyle = halo;
-    ctx.beginPath(); ctx.arc(cxp, cyp, r * 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cxp, cyp, r * 2.4, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
+  // shadow
   ctx.save();
-  const shadow = ctx.createRadialGradient(cxp + r * 0.2, cyp + r * 0.35, r * 0.2, cxp, cyp, r * 1.3);
-  shadow.addColorStop(0, 'rgba(58,34,8,.45)');
-  shadow.addColorStop(1, 'rgba(58,34,8,0)');
+  const shadow = ctx.createRadialGradient(cxp + r * 0.16, cyp + r * 0.3, r * 0.15, cxp, cyp, r * 1.22);
+  shadow.addColorStop(0, 'rgba(52,30,8,.4)');
+  shadow.addColorStop(1, 'rgba(52,30,8,0)');
   ctx.fillStyle = shadow;
-  ctx.beginPath(); ctx.ellipse(cxp + r * 0.08, cyp + r * 0.2, r * 1.18, r * 0.98, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cxp + r * 0.06, cyp + r * 0.18, r * 1.14, r * 0.96, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
 
-  // steel edge under the face
-  ctx.fillStyle = '#8fa9c0';
-  ctx.beginPath(); ctx.arc(cxp, cyp + r * 0.06, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#cbb187';
+  ctx.beginPath(); ctx.arc(cxp, cyp + r * 0.07, r, 0, Math.PI * 2); ctx.fill();
 
-  const body = ctx.createRadialGradient(cxp - r * 0.42, cyp - r * 0.52, r * 0.1, cxp, cyp, r * 1.06);
-  body.addColorStop(0, '#ffffff');
-  body.addColorStop(0.42, '#f2f7fd');
-  body.addColorStop(0.8, '#d7e4f1');
-  body.addColorStop(1, '#a9c0d6');
+  const body = ctx.createRadialGradient(cxp - r * 0.36, cyp - r * 0.44, r * 0.06, cxp, cyp, r * 1.02);
+  body.addColorStop(0, '#fffdf7');
+  body.addColorStop(0.5, '#f6eedd');
+  body.addColorStop(1, '#dccbaa');
   ctx.fillStyle = body;
   ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.fill();
 
-  ctx.strokeStyle = '#6f93b4';
-  ctx.lineWidth = Math.max(0.8, r * 0.14);
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.9, 0, Math.PI * 2); ctx.stroke();
+  // the red ring and the turned centre
+  ctx.strokeStyle = '#b8352a';
+  ctx.lineWidth = Math.max(1, r * 0.16);
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.68, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(150,110,60,.35)';
+  ctx.lineWidth = Math.max(0.6, r * 0.05);
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.42, 0, Math.PI * 2); ctx.stroke();
 
-  // a turned inner bowl, lit from the top left
-  const bowl = ctx.createRadialGradient(cxp - r * 0.2, cyp - r * 0.24, r * 0.02, cxp, cyp, r * 0.66);
-  bowl.addColorStop(0, 'rgba(255,255,255,.85)');
-  bowl.addColorStop(0.55, 'rgba(210,228,245,.35)');
-  bowl.addColorStop(1, 'rgba(150,180,208,.18)');
-  ctx.fillStyle = bowl;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.66, 0, Math.PI * 2); ctx.fill();
+  // matte sheen and a lit edge
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.clip();
+  const sheen = ctx.createLinearGradient(cxp - r * 0.8, cyp - r * 0.9, cxp + r * 0.6, cyp + r * 0.7);
+  sheen.addColorStop(0, 'rgba(255,255,255,.6)');
+  sheen.addColorStop(0.45, 'rgba(255,255,255,.06)');
+  sheen.addColorStop(1, 'rgba(90,60,20,.14)');
+  ctx.fillStyle = sheen;
+  ctx.fillRect(cxp - r, cyp - r, r * 2, r * 2);
+  ctx.restore();
 
-  const ring = ctx.createLinearGradient(cxp - r, cyp - r, cxp + r, cyp + r);
-  ring.addColorStop(0, '#ff9a6b');
-  ring.addColorStop(0.5, '#e2452f');
-  ring.addColorStop(1, '#9c1f16');
-  ctx.strokeStyle = ring;
-  ctx.lineWidth = Math.max(1, r * 0.3);
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.6, 0, Math.PI * 2); ctx.stroke();
-
-  const gloss = ctx.createRadialGradient(cxp - r * 0.42, cyp - r * 0.54, 0, cxp - r * 0.42, cyp - r * 0.54, r * 0.82);
-  gloss.addColorStop(0, 'rgba(255,255,255,.98)');
-  gloss.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = gloss;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,252,240,.5)';
+  ctx.lineWidth = Math.max(0.6, r * 0.05);
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 0.98, Math.PI * 1.05, Math.PI * 1.82); ctx.stroke();
 }
 
 /** A coin going into a pocket: a ring that opens and fades. `t` runs 0…1. */

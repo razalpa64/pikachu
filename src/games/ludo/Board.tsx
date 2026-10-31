@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { YARDS, cellFor, pathBetween } from './track';
 import { buildBoard, boardLayout, drawTarget, drawToken, drawTurnGlow, type Layout, type TokenDraw } from './paint';
 import { loadMaterials, materialsReady, onMaterialLoad } from './materials';
+import { play as playSound } from '../../lib/audio';
 import { HOME_STEP, movableTokens, seatOf, type LudoMove, type LudoState } from './rules';
 import type { Slot } from '../types';
 
@@ -60,6 +61,8 @@ export function LudoBoard({
      invalidates the painted board so it is redrawn with the real materials */
   const [materials, setMaterials] = useState(0);
   const flights = useRef<Map<string, Flight>>(new Map());
+  /** the square each token was last seen on, so a hop can be heard as it lands */
+  const lastHop = useRef<Map<string, number>>(new Map());
   const spots = useRef<Map<string, Spot>>(new Map());
   const texture = useRef<{ canvas: HTMLCanvasElement; size: number; active: string } | null>(null);
   const raf = useRef(0);
@@ -197,11 +200,16 @@ export function LudoBoard({
             positions.push({ key, slot, token, seat, spot: last, lift: 0, alpha: 1, scale: 1 });
             return;
           }
+          const isFly = per === FLY_MS;
+          // one wooden tap per square, on the frame the token arrives there
+          if (!isFly && lastHop.current.get(key) !== index) {
+            lastHop.current.set(key, index);
+            playSound('hop');
+          }
           const t = (elapsed % per) / per;
           const from = index === 0 ? flight.from : (flight.queue[index - 1] ?? flight.from);
           const to = flight.queue[index] ?? from;
           const ease = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-          const isFly = per === FLY_MS;
           positions.push({
             key, slot, token, seat,
             spot: { gx: from.gx + (to.gx - from.gx) * ease, gy: from.gy + (to.gy - from.gy) * ease },

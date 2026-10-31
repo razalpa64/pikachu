@@ -38,40 +38,47 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
   }, [sfx]);
 
   const play = useCallback((move: LudoMove) => {
+    /* The updater is pure: which animation to play is decided out here, from the
+       move, not from inside React's state calculation. */
+    if (move.t === 'roll') {
+      setRolling(true);
+      window.setTimeout(() => setRolling(false), 560);
+    }
     setState((s) => {
       if (s.over) return s;
-      const next = ludoRules.applyMove(s, s.turn, move) as LudoState;
-      if (next === s) return s;
-      if (move.t === 'roll') setRolling(true);
-      return next;
+      return ludoRules.applyMove(s, s.turn, move) as LudoState;
     });
-    sfx('click');
-    window.setTimeout(() => setRolling(false), 560);
+    sfx(move.t === 'roll' ? 'click' : 'move');
   }, [sfx]);
 
-  /* The machine rolls and plays, with a pause that reads as thought rather than lag. */
+  /* The machine rolls and plays, with a pause that reads as thought rather than
+     lag. It reads the position out here and hands back a finished state, instead
+     of doing arithmetic inside React's state updater — an updater that called
+     setState of its own ran twice under StrictMode and could drop a roll. */
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   useEffect(() => {
-    if (!isAiTurn) return;
-    let cancelled = false;
+    if (!isAiTurn) { setThinking(false); return; }
     setThinking(true);
+    const delay = state.dice === null ? 620 : 780;
     const t = window.setTimeout(() => {
-      if (cancelled) return;
+      const s = stateRef.current;
+      if (s.turn !== 1 || s.over) { setThinking(false); return; }
+      if (s.dice === null) {
+        setRolling(true);
+        window.setTimeout(() => setRolling(false), 520);
+        setState(ludoRules.applyMove(s, 1, { t: 'roll' }) as LudoState);
+        sfx('click');
+        return;
+      }
+      const token = chooseToken(s, 1, difficulty);
+      const mv: LudoMove = token === null ? { t: 'pass' } : { t: 'move', token };
+      setState(ludoRules.applyMove(s, 1, mv) as LudoState);
       setThinking(false);
-      setState((s) => {
-        if (s.turn !== 1 || s.over) return s;
-        if (s.dice === null) {
-          setRolling(true);
-          window.setTimeout(() => setRolling(false), 560);
-          const rolled = ludoRules.applyMove(s, 1, { t: 'roll' }) as LudoState;
-          return rolled;
-        }
-        const token = chooseToken(s, 1, difficulty);
-        if (token === null) return ludoRules.applyMove(s, 1, { t: 'pass' }) as LudoState;
-        return ludoRules.applyMove(s, 1, { t: 'move', token }) as LudoState;
-      });
-      sfx('move');
-    }, state.dice === null ? 620 : 760);
-    return () => { cancelled = true; clearTimeout(t); setThinking(false); };
+      sfx(token === null ? 'select' : 'move');
+    }, delay);
+    return () => clearTimeout(t);
   }, [isAiTurn, state.turn, state.dice, state.moves, difficulty, sfx]);
 
   /* Sound for what just happened, and the result card once. */
@@ -95,25 +102,51 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
     sfx(won ? 'win' : state.winner === null ? 'draw' : 'lose');
   }, [state.over, state.winner, state.moves, mode, finishMatch, sfx]);
 
+  /* Whose move the *device* is being asked to make. In a two-player game that is
+     whoever is on turn; against the machine it is always you.
+     Everything below is computed against this seat, not against seat 0 — using
+     seat 0 unconditionally meant that on Rose's turn `legalMoves(state, 0)` was
+     empty, `[].every(...)` was vacuously true, and the screen offered a "Nothing
+     to move — pass" button while four tokens were plainly movable. Clicking it
+     did nothing and the game was stuck for good. */
+  const acting: Slot = mode === 'local' ? state.turn : 0;
   const yourTurn = mode === 'local' || state.turn === 0;
+  const legal = yourTurn && state.dice !== null && !state.over ? ludoRules.legalMoves(state, acting) : [];
   const canRoll = !state.over && yourTurn && state.dice === null;
-  const canPass = !state.over && yourTurn && state.dice !== null && ludoRules.legalMoves(state, 0).every((m) => m.t === 'pass');
-  const mustMove = !state.over && yourTurn && state.dice !== null && !canPass;
+  const canPass = !state.over && yourTurn && state.dice !== null && legal.length > 0 && legal.every((m) => m.t === 'pass');
+  const mustMove = !state.over && yourTurn && state.dice !== null && legal.some((m) => m.t === 'move');
 
   const gold = SEAT_PAINT[0];
   const rose = SEAT_PAINT[2];
+  const seatPaint = acting === 0 ? gold : rose;
+
+  /* One name per side, used by every sentence on the screen, so the board, the
+     scoreboard and the talking Pikachu never disagree about who is who. */
+  const who = useCallback(
+    (slot: Slot) => (mode === 'ai' ? (slot === 0 ? 'You' : 'The machine') : slot === 0 ? 'Blue' : 'Rose'),
+    [mode],
+  );
 
   const status = useMemo(() => {
-    if (state.over) return state.winner === 0 ? 'You brought every token home.' : state.winner === 1 ? (mode === 'ai' ? 'The machine got there first.' : 'Rose won.') : 'Level board.';
+    const mover = who(state.turn);
+    if (state.over) {
+      if (state.winner === null) return 'Level board.';
+      if (state.winner === 0) return mode === 'ai' ? 'Every token home — you won.' : 'Every token home — Blue won.';
+      return mode === 'ai' ? 'The machine got there first.' : 'Every token home — Rose won.';
+    }
     if (state.event?.kind === 'burn') return 'Three sixes in a row — the turn is burnt.';
     if (state.event?.kind === 'pass') return `Nothing could move on a ${state.event.dice}.`;
-    if (state.event?.kind === 'capture') return 'Captured. That token is back in its yard — and you roll again.';
+    if (state.event?.kind === 'capture') return 'Captured — that token is back in its yard.';
     if (state.event?.kind === 'home') return 'A token is home.';
-    if (state.dice !== null && yourTurn) return `You rolled ${state.dice}. Tap a glowing token.`;
-    if (state.dice !== null) return `${mode === 'ai' ? 'The machine' : 'Rose'} rolled ${state.dice}.`;
+    if (state.dice !== null) {
+      if (!yourTurn) return `${mover} rolled ${state.dice}.`;
+      if (mustMove) return `${mode === 'ai' ? 'You' : mover} rolled ${state.dice}. Tap a glowing token.`;
+      return `${mode === 'ai' ? 'You' : mover} rolled ${state.dice} — nothing can use it.`;
+    }
     if (thinking) return 'The machine is rolling…';
-    return yourTurn ? 'Your roll.' : `${mode === 'ai' ? 'The machine' : 'Rose'} to roll.`;
-  }, [state, yourTurn, thinking, mode]);
+    if (yourTurn) return mode === 'ai' ? 'Your roll.' : `${mover} — roll the die.`;
+    return `${mover} to roll.`;
+  }, [state, yourTurn, thinking, mode, mustMove, who]);
 
   return (
     <SoloShell
@@ -125,7 +158,7 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
       hud={
         <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center sm:w-fit sm:mx-auto">
           {[
-            { slot: 0 as Slot, paint: gold, label: mode === 'ai' ? 'You' : 'Gold' },
+            { slot: 0 as Slot, paint: gold, label: mode === 'ai' ? 'You' : 'Blue' },
             { slot: 1 as Slot, paint: rose, label: mode === 'ai' ? 'Machine' : 'Rose' },
           ].map(({ slot, paint, label }) => {
             const home = homeCount(state, slot);
@@ -163,7 +196,7 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
     >
       <div className="w-full flex flex-col items-center gap-3">
         <BoardStage ratio={1} max={660} min={280} reserve={168} chrome={6} label="Ludo board">
-          <LudoBoard state={state} youSlot={0} interactive={!state.over && yourTurn} onMove={play} />
+          <LudoBoard state={state} youSlot={acting} interactive={!state.over && yourTurn} onMove={play} />
         </BoardStage>
 
         {/* die + action */}
@@ -188,15 +221,51 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
               </Button>
             ) : mustMove ? (
               <p className="text-[12px] text-cream-300">Tap a glowing token to move it {state.dice}.</p>
+            ) : yourTurn ? (
+              <p className="text-[12px] text-cream-400">Nothing on the board can use a {state.dice}.</p>
             ) : (
               <p className="text-[12px] text-cream-400">{mode === 'ai' ? 'The machine is playing…' : 'Rose is playing…'}</p>
             )}
           </div>
         </div>
 
+        {/* The board is a canvas, so it is a picture to a keyboard and a screen
+            reader. These are the same moves as real buttons. */}
+        {mustMove && (
+          <div className="flex flex-wrap items-center justify-center gap-2" role="group" aria-label={`Move a token ${state.dice}`}>
+            {[0, 1, 2, 3].map((token) => {
+              const canUse = legal.some((m) => m.t === 'move' && m.token === token);
+              const at = state.tokens[acting][token];
+              const where = at < 0 ? 'in the yard' : at >= 56 ? 'home' : `${56 - at} to home`;
+              return (
+                <button
+                  key={token}
+                  type="button"
+                  disabled={!canUse}
+                  onClick={() => canUse && play({ t: 'move', token })}
+                  aria-label={`Move token ${token + 1} — ${where}`}
+                  className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11.5px] font-semibold transition-colors ${
+                    canUse
+                      ? 'border-volt-600 bg-volt-100/50 text-ink-900 hover:bg-volt-200'
+                      : 'border-ink-600/60 text-cream-500 opacity-55'
+                  }`}
+                >
+                  <span
+                    aria-hidden
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ background: `radial-gradient(circle at 32% 26%, #fff, ${seatPaint.light} 24%, ${seatPaint.mid} 66%, ${seatPaint.deep})` }}
+                  />
+                  Token {token + 1}
+                  <span className="text-[10px] font-normal opacity-75 tabnum">{where}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-cream-400">
           <span className="flex items-center gap-1">
-            <span aria-hidden className="w-2 h-2 rounded-full" style={{ background: gold.mid }} /> gold
+            <span aria-hidden className="w-2 h-2 rounded-full" style={{ background: gold.mid }} /> blue
           </span>
           <span className="flex items-center gap-1">
             <span aria-hidden className="w-2 h-2 rounded-full" style={{ background: rose.mid }} /> rose
@@ -220,7 +289,7 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
         )}
 
         <p role="status" aria-live="polite" className="sr-only">
-          {status} Gold: {homeCount(state, 0)} of {TOKENS} home. Rose: {homeCount(state, 1)} of {TOKENS} home.
+          {status} Blue: {homeCount(state, 0)} of {TOKENS} home. Rose: {homeCount(state, 1)} of {TOKENS} home.
         </p>
       </div>
     </SoloShell>

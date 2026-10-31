@@ -96,11 +96,10 @@ const hits = JSON.parse((await attr(host, 'data-ludo-hits')) || '[]');
 if (hits.length) {
   const box = await host.$eval('canvas[data-ludo-board]', (el) => {
     const r = el.getBoundingClientRect();
-    return { x: r.x, y: r.y, w: r.width };
+    return { x: r.x, y: r.y, w: r.width, pad: Number(el.dataset.ludoPad), cell: Number(el.dataset.ludoCell) };
   });
-  const cell = (box.w * (1 - 0.07)) / 15;
-  const x = box.x + box.w * 0.035 + hits[0].gx * cell;
-  const y = box.y + box.w * 0.035 + hits[0].gy * cell;
+  const x = box.x + box.w * (box.pad + hits[0].gx * box.cell);
+  const y = box.y + box.w * (box.pad + hits[0].gy * box.cell);
   await host.mouse.click(x, y);
   t('the tokens moved for the player', await until(async () => (await tokens(host)).flat().some((v) => v >= 0)));
   t('the other player sees the same board', await until(async () => JSON.stringify(await tokens(host)) === JSON.stringify(await tokens(guest))), JSON.stringify(await tokens(guest)));

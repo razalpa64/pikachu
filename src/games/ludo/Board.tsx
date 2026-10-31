@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { YARDS, cellFor, pathBetween } from './track';
 import { buildBoard, boardLayout, drawTarget, drawToken, drawTurnGlow, type Layout, type TokenDraw } from './paint';
+import { loadMaterials, materialsReady, onMaterialLoad } from './materials';
 import { HOME_STEP, movableTokens, seatOf, type LudoMove, type LudoState } from './rules';
 import type { Slot } from '../types';
 
@@ -55,6 +56,9 @@ export function LudoBoard({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [size, setSize] = useState(560);
   const [selected, setSelected] = useState<number | null>(null);
+  /* the generated veneer, marble and pawns arrive asynchronously; bumping this
+     invalidates the painted board so it is redrawn with the real materials */
+  const [materials, setMaterials] = useState(0);
   const flights = useRef<Map<string, Flight>>(new Map());
   const spots = useRef<Map<string, Spot>>(new Map());
   const texture = useRef<{ canvas: HTMLCanvasElement; size: number; active: string } | null>(null);
@@ -71,22 +75,34 @@ export function LudoBoard({
     return () => ro.disconnect();
   }, []);
 
+  useEffect(() => {
+    loadMaterials();
+    return onMaterialLoad(() => setMaterials((n) => n + 1));
+  }, []);
+
   const layout: Layout = useMemo(() => boardLayout(size), [size]);
 
   /* Paint (or repaint) the board when its size or its occupants change. */
   const getTexture = useCallback(() => {
-    const key = `${activeSeats.join(',')}`;
+    const key = `${activeSeats.join(',')}|${materialsReady().join(',')}`;
     const dpr = Math.min(2.5, window.devicePixelRatio || 1);
     if (!texture.current || texture.current.size !== size || texture.current.active !== key) {
       texture.current = { canvas: buildBoard(size, activeSeats, dpr), size, active: key };
     }
     return texture.current.canvas;
-  }, [size, activeSeats]);
+  }, [size, activeSeats, materials]);
 
   /* Seed the resting positions, then queue a hop for whatever the event says
      moved. This runs *during* render on purpose: a flight queued from an effect
      could race the frame loop, which reads the same maps. */
   const renderedFor = useRef<string>('');
+  const lastMoves = useRef(state.moves);
+  if (state.moves < lastMoves.current) {
+    /* a fresh game: nothing from the old one should still be in the air */
+    flights.current.clear();
+    spots.current.clear();
+  }
+  lastMoves.current = state.moves;
   const renderKey = JSON.stringify(state.tokens) + '|' + (state.event ? JSON.stringify(state.event) : '');
   if (renderedFor.current !== renderKey) {
     renderedFor.current = renderKey;
@@ -196,11 +212,31 @@ export function LudoBoard({
         });
       }
 
+      /* Two tokens can legally share a square — a safe square, or the home
+         triangle — so nudge them apart and count them, rather than letting one
+         vanish behind the other. */
+      const occupants = new Map<string, number>();
+      for (const p of positions) {
+        if (p.lift > 0.01) continue;
+        const k = `${Math.round(p.spot.gx * 4)}:${Math.round(p.spot.gy * 4)}`;
+        occupants.set(k, (occupants.get(k) ?? 0) + 1);
+      }
+      const seenCount = new Map<string, number>();
+
       // draw the token that is in the air last, so it passes over the others
       positions.sort((a, b) => a.lift - b.lift);
       for (const p of positions) {
+        const k = `${Math.round(p.spot.gx * 4)}:${Math.round(p.spot.gy * 4)}`;
+        const n = p.lift > 0.01 ? 1 : (occupants.get(k) ?? 1);
+        const i = p.lift > 0.01 ? 0 : (seenCount.get(k) ?? 0);
+        if (p.lift <= 0.01) seenCount.set(k, i + 1);
+        const spread = n > 1 ? 0.3 : 0;
         const drawable: TokenDraw = {
-          gx: p.spot.gx, gy: p.spot.gy, seat: p.seat, lift: p.lift, alpha: p.alpha, scale: p.scale,
+          gx: p.spot.gx + (i - (n - 1) / 2) * spread,
+          gy: p.spot.gy - (n > 1 ? 0.06 * i : 0),
+          seat: p.seat, lift: p.lift, alpha: p.alpha,
+          scale: p.scale * (n > 1 ? 0.86 : 1),
+          stack: n > 1 && i === 0 ? n : 1,
         };
         drawToken(ctx, layout, drawable);
       }
@@ -273,6 +309,8 @@ export function LudoBoard({
         data-ludo-dice={state.dice ?? ''}
         data-ludo-tokens={JSON.stringify(state.tokens)}
         data-ludo-hits={hitTargets}
+        data-ludo-pad={(layout.pad / layout.size).toFixed(6)}
+        data-ludo-cell={(layout.cell / layout.size).toFixed(6)}
         aria-label={`Ludo board. ${waiting ? 'Waiting for the other player' : state.dice === null ? 'Your turn to roll' : `You rolled ${state.dice}`}.`}
         role="img"
         onPointerDown={onPointerDown}

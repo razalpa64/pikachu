@@ -3,7 +3,8 @@ import type { BoardProps } from './types';
 import { LudoBoard as LudoCanvas } from '../../games/ludo/Board';
 import Die from '../../games/ludo/Die';
 import { Button, Icon } from '../ui';
-import { homeCount, ludoRules, type LudoMove, type LudoState } from '../../games/ludo/rules';
+import { homeCount, ludoRules, movableTokens, type LudoMove, type LudoState } from '../../games/ludo/rules';
+import { SEAT_PAINT } from '../../games/ludo/paint';
 
 /**
  * The room's view of the Ludo table.
@@ -14,16 +15,27 @@ import { homeCount, ludoRules, type LudoMove, type LudoState } from '../../games
  */
 export default function LudoBoard({ state, youSlot, onMove, interactive, names }: BoardProps<LudoState>) {
   const canRoll = interactive && state.dice === null;
-  const mustPass = interactive && state.dice !== null && ludoRules.legalMoves(state, youSlot).every((m) => m.t === 'pass');
-  const canMove = interactive && state.dice !== null && !mustPass;
+  /* `[].every(...)` is true, so an empty legal list must never be read as
+     "nothing to move" — that is how the local game locked itself up. */
+  const legal = interactive && state.dice !== null ? ludoRules.legalMoves(state, youSlot) : [];
+  const mustPass = legal.length > 0 && legal.every((m) => m.t === 'pass');
+  const movable = interactive && state.dice !== null ? movableTokens(state, youSlot, state.dice) : [];
+  const canMove = movable.length > 0;
   const you = homeCount(state, youSlot);
+  const seatPaint = SEAT_PAINT[youSlot === 0 ? 0 : 2];
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="flex items-center justify-center gap-3 text-[11.5px] text-cream-300">
-        <span>{names[0]} <span className="text-cream-500">gold</span></span>
+      <div className="flex items-center justify-center gap-2 text-[11.5px] text-cream-300">
+        <span className="flex items-center gap-1">
+          <span aria-hidden className="w-2 h-2 rounded-full" style={{ background: SEAT_PAINT[0].mid }} />
+          {names[0]}
+        </span>
         <span className="text-cream-500" aria-hidden>·</span>
-        <span>{names[1]} <span className="text-cream-500">rose</span></span>
+        <span className="flex items-center gap-1">
+          <span aria-hidden className="w-2 h-2 rounded-full" style={{ background: SEAT_PAINT[2].mid }} />
+          {names[1]}
+        </span>
         <span className="text-cream-500" aria-hidden>·</span>
         <span>{you}/4 home</span>
       </div>
@@ -44,9 +56,32 @@ export default function LudoBoard({ state, youSlot, onMove, interactive, names }
             Nothing to move — pass
           </Button>
         )}
-        {canMove && <span className="text-[11.5px] text-cream-300">Tap a glowing token</span>}
+        {canMove && !mustPass && <span className="text-[11.5px] text-cream-300">Tap a glowing token</span>}
         {!interactive && <span className="text-[11.5px] text-cream-400">Waiting for the other player…</span>}
       </div>
+
+      {/* the same moves as buttons, for keyboards and screen readers */}
+      {canMove && (
+        <div className="flex flex-wrap items-center justify-center gap-1.5" role="group" aria-label={`Move a token ${state.dice}`}>
+          {movable.map((token) => {
+            const at = state.tokens[youSlot][token];
+            const where = at < 0 ? 'yard' : at >= 56 ? 'home' : `${56 - at} to home`;
+            return (
+              <button
+                key={token}
+                type="button"
+                onClick={() => onMove({ t: 'move', token })}
+                aria-label={`Move token ${token + 1} — ${where}`}
+                className="flex items-center gap-1.5 rounded-full border border-volt-600 bg-volt-100/50 px-2.5 py-1 text-[11.5px] font-semibold text-ink-900 hover:bg-volt-200"
+              >
+                <span aria-hidden className="w-2.5 h-2.5 rounded-full" style={{ background: seatPaint.mid }} />
+                Token {token + 1}
+                <span className="text-[10px] font-normal opacity-75 tabnum">{where}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

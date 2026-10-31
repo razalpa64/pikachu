@@ -38,3 +38,7 @@ art-src/berry/
 # Relay match history
 .pikachu-data
 .shots
+
+# Local reference art and browser scratch harnesses
+image-search/
+.e2e-tmp/

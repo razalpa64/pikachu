@@ -23,7 +23,7 @@ const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v)
 const str = (v: unknown): string => (typeof v === 'string' ? v : '');
 
 /** Per-game snapshot of just the numbers we compare between renders. */
-interface Snap {
+export interface Snap {
   moves: number;        // generic "a turn happened" counter
   secondary: number;    // captures / matches / discards — whatever is game-specific
   tertiary: number;     // kings, drawn cards, score
@@ -96,6 +96,17 @@ function snapshot(gameId: string, s: Any | null | undefined): Snap | null {
         tag: '',
       };
     }
+    case 'ludo': {
+      const ev = s.event as Any | null;
+      const kind = ev ? `${str(ev.kind)}:${num(ev.token)}` : '';
+      return { moves: num(s.moves), secondary: 0, tertiary: 0, tag: `${s.dice ?? ''}|${kind}` };
+    }
+    case 'bingo': {
+      const marks = arr(s.marks);
+      const stamped = marks.reduce<number>((n, m) => n + arr(m).filter(Boolean).length, 0);
+      const lines = arr(s.lines).reduce<number>((n, v) => n + num(v), 0);
+      return { moves: arr(s.drawn).length, secondary: stamped, tertiary: lines, tag: '' };
+    }
     case 'trivia':
       return {
         moves: num(s.index) || arr(s.asked).length,
@@ -113,6 +124,124 @@ function myHand(s: Any | null | undefined, slot: 0 | 1): number {
   const hands = arr(s?.hands);
   const mine = hands[slot];
   return Array.isArray(mine) ? mine.length : 0;
+}
+
+/**
+ * Which cues a state change deserves.
+ *
+ * Pure and exported so it can be tested without a renderer — the hook below only
+ * decides *when* to call it and how to space the result.
+ */
+export function diffCues(
+  gameId: string,
+  before: Snap,
+  now: Snap,
+  hand: number,
+  handBefore: number,
+): Cue[] {
+  const fire: Cue[] = [];
+  switch (gameId) {
+    case 'tictactoe':
+      if (now.moves > before.moves) fire.push('place');
+      break;
+    case 'connect4':
+      if (now.moves > before.moves) fire.push('drop');
+      break;
+    case 'memory':
+      if (now.moves > before.moves) fire.push('flip');
+      if (now.secondary > before.secondary) fire.push('coin');
+      else if (now.tag === 'miss' && before.tag !== 'miss') fire.push('miss');
+      break;
+    case 'chess':
+      if (now.moves > before.moves) {
+        const san = now.tag;
+        if (/[+#]/.test(san)) fire.push('check');
+        else if (san.includes('x')) fire.push('capture');
+        else fire.push('move');
+      }
+      break;
+    case 'checkers':
+      if (now.moves > before.moves) {
+        fire.push(now.secondary < before.secondary ? 'capture' : 'move');
+        if (now.tertiary > before.tertiary) fire.push('power');   // crowned
+      }
+      break;
+    case 'battleship': {
+      if (now.tag !== before.tag) {
+        const shot = now.tag.split('|')[1] ?? '';
+        if (shot) {
+          const [, hm, sunk] = shot.split(':');
+          if (sunk) fire.push('sunk');
+          else if (hm === 'h') fire.push('hit');
+          else fire.push('miss');
+        }
+      }
+      if (now.secondary > before.secondary && now.secondary === 2) fire.push('go');
+      break;
+    }
+    case 'reaction':
+      if (now.tag !== before.tag) {
+        if (now.tag === 'signal') fire.push('go');
+        else if (now.tag === 'countdown') fire.push('countdown');
+      }
+      if (now.secondary > before.secondary) fire.push('error');      // false start
+      else if (now.moves > before.moves) fire.push('hit');           // someone pressed
+      break;
+    case 'cards':
+      if (now.moves > before.moves) fire.push('drop');               // a card hit the pile
+      if (hand > handBefore && handBefore >= 0) fire.push('pickup'); // I drew
+      if (now.tag === 'suit' && before.tag !== 'suit') fire.push('spark');
+      break;
+    case 'sketch': {
+      // strokes are far too frequent to voice — only the events that matter
+      if (now.tertiary > before.tertiary) fire.push('coin');         // someone guessed it
+      else if (now.secondary > before.secondary) fire.push('flip');  // a wrong guess landed
+      if (now.tag !== before.tag) {
+        const [phase] = now.tag.split(':');
+        const [wasPhase] = before.tag.split(':');
+        if (phase === 'draw' && wasPhase === 'reveal') fire.push('go');   // next round
+        else if (phase === 'reveal' && now.tertiary === before.tertiary) fire.push('miss');
+      }
+      break;
+    }
+    case 'reversi':
+      if (now.moves > before.moves) fire.push('flip');
+      break;
+    case 'gomoku':
+      if (now.moves > before.moves) fire.push('place');
+      break;
+    case 'dots':
+      if (now.moves > before.moves) fire.push(now.secondary > before.secondary ? 'coin' : 'move');
+      break;
+    case 'mancala':
+      if (now.tertiary > before.tertiary) fire.push('capture');
+      else if (now.moves > before.moves) fire.push(now.secondary > before.secondary ? 'coin' : 'place');
+      break;
+    case 'ludo': {
+      /* a roll and a move arrive as separate states, so both cues can breathe */
+      const [dice, kind] = now.tag.split('|');
+      const [wasDice, wasKind] = before.tag.split('|');
+      if (dice !== wasDice && dice !== '') fire.push('die');
+      if (kind !== wasKind) {
+        const k = kind.split(':')[0];
+        if (k === 'capture') fire.push('capture');
+        else if (k === 'home' || k === 'out') fire.push('coin');
+        else if (k === 'burn') fire.push('error');
+        else if (k === 'move' || k === 'six') fire.push('hop');
+        else if (k === 'pass') fire.push('cue');       // nothing to move: a soft tick
+      }
+      break;
+    }
+    case 'bingo':
+      if (now.tertiary > before.tertiary) fire.push('coin');         // a line landed
+      else if (now.moves > before.moves) fire.push('flip');          // a ball was called
+      break;
+    case 'trivia':
+      if (now.moves > before.moves) fire.push('flip');               // next question
+      else if (now.secondary > before.secondary) fire.push('coin');  // someone scored
+      break;
+  }
+  return fire;
 }
 
 export function useMatchCues(
@@ -147,89 +276,7 @@ export function useMatchCues(
     // a reset (rematch) runs the counters backwards — never sound on that
     if (now.moves < before.moves || now.secondary < before.secondary) return;
 
-    const fire: Cue[] = [];
-    switch (gameId) {
-      case 'tictactoe':
-        if (now.moves > before.moves) fire.push('place');
-        break;
-      case 'connect4':
-        if (now.moves > before.moves) fire.push('drop');
-        break;
-      case 'memory':
-        if (now.moves > before.moves) fire.push('flip');
-        if (now.secondary > before.secondary) fire.push('coin');
-        else if (now.tag === 'miss' && before.tag !== 'miss') fire.push('miss');
-        break;
-      case 'chess':
-        if (now.moves > before.moves) {
-          const san = now.tag;
-          if (/[+#]/.test(san)) fire.push('check');
-          else if (san.includes('x')) fire.push('capture');
-          else fire.push('move');
-        }
-        break;
-      case 'checkers':
-        if (now.moves > before.moves) {
-          fire.push(now.secondary < before.secondary ? 'capture' : 'move');
-          if (now.tertiary > before.tertiary) fire.push('power');   // crowned
-        }
-        break;
-      case 'battleship': {
-        if (now.tag !== before.tag) {
-          const shot = now.tag.split('|')[1] ?? '';
-          if (shot) {
-            const [, hm, sunk] = shot.split(':');
-            if (sunk) fire.push('sunk');
-            else if (hm === 'h') fire.push('hit');
-            else fire.push('miss');
-          }
-        }
-        if (now.secondary > before.secondary && now.secondary === 2) fire.push('go');
-        break;
-      }
-      case 'reaction':
-        if (now.tag !== before.tag) {
-          if (now.tag === 'signal') fire.push('go');
-          else if (now.tag === 'countdown') fire.push('countdown');
-        }
-        if (now.secondary > before.secondary) fire.push('error');      // false start
-        else if (now.moves > before.moves) fire.push('hit');           // someone pressed
-        break;
-      case 'cards':
-        if (now.moves > before.moves) fire.push('drop');               // a card hit the pile
-        if (hand > handBefore && handBefore >= 0) fire.push('pickup'); // I drew
-        if (now.tag === 'suit' && before.tag !== 'suit') fire.push('spark');
-        break;
-      case 'sketch': {
-        // strokes are far too frequent to voice — only the events that matter
-        if (now.tertiary > before.tertiary) fire.push('coin');         // someone guessed it
-        else if (now.secondary > before.secondary) fire.push('flip');  // a wrong guess landed
-        if (now.tag !== before.tag) {
-          const [phase] = now.tag.split(':');
-          const [wasPhase] = before.tag.split(':');
-          if (phase === 'draw' && wasPhase === 'reveal') fire.push('go');   // next round
-          else if (phase === 'reveal' && now.tertiary === before.tertiary) fire.push('miss');
-        }
-        break;
-      }
-      case 'reversi':
-        if (now.moves > before.moves) fire.push('flip');
-        break;
-      case 'gomoku':
-        if (now.moves > before.moves) fire.push('place');
-        break;
-      case 'dots':
-        if (now.moves > before.moves) fire.push(now.secondary > before.secondary ? 'coin' : 'move');
-        break;
-      case 'mancala':
-        if (now.tertiary > before.tertiary) fire.push('capture');
-        else if (now.moves > before.moves) fire.push(now.secondary > before.secondary ? 'coin' : 'place');
-        break;
-      case 'trivia':
-        if (now.moves > before.moves) fire.push('flip');               // next question
-        else if (now.secondary > before.secondary) fire.push('coin');  // someone scored
-        break;
-    }
+    const fire = diffCues(gameId ?? '', before, now, hand, handBefore);
     // at most two cues per state change; a pile-up just sounds like a glitch
     fire.slice(0, 2).forEach((c, i) => {
       if (i === 0) sfx(c);

@@ -19,7 +19,9 @@ export type Cue =
   | 'join' | 'notify' | 'open'
   /* arcade + snake + puzzle */
   | 'pickup' | 'power' | 'swipe' | 'jump' | 'block'
-  | 'tone0' | 'tone1' | 'tone2' | 'tone3' | 'tone4';
+  | 'tone0' | 'tone1' | 'tone2' | 'tone3' | 'tone4'
+  /* board games: real wood, real ivory, real holes */
+  | 'cue' | 'coinHit' | 'rail' | 'pocket' | 'flick' | 'die' | 'hop' | 'gather';
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -343,6 +345,47 @@ export function play(cue: Cue) {
     case 'jump':    tone({ freq: 380, to: 820, dur: 0.12, type: 'triangle', gain: 0.11 }); break;
     case 'block':   tone({ freq: 220, to: 140, dur: 0.16, type: 'triangle', gain: 0.1 });
                     noise(0.1, { gain: 0.08, hp: 1200 }); break;
+    /* --- carrom and ludo ------------------------------------------------
+       These are the sounds a board makes, not the sounds a menu makes, so they
+       are built from short noise bursts (a click is a transient, not a note) over
+       a low body tone. The gains are deliberately uneven: a rail hit is a dull
+       wooden thump, two coins meeting is a bright ivory tick, and the striker
+       leaving the hand is the sharpest thing on the table. */
+    case 'flick':
+      noise(0.035, { gain: 0.16, hp: 2600, sweep: 1200 });
+      tone({ freq: 640, to: 320, dur: 0.05, type: 'triangle', gain: 0.09 });
+      break;
+    case 'cue':
+      noise(0.03, { gain: 0.13, hp: 3400, sweep: 1800 });
+      tone({ freq: 900, to: 520, dur: 0.035, type: 'triangle', gain: 0.07 });
+      break;
+    case 'coinHit':
+      noise(0.026, { gain: 0.11, hp: 4200, sweep: 2400 });
+      tone({ freq: 2100, to: 1500, dur: 0.028, type: 'sine', gain: 0.05 });
+      break;
+    case 'rail':
+      noise(0.05, { gain: 0.1, hp: 700, sweep: 260 });
+      tone({ freq: 190, to: 120, dur: 0.07, type: 'sine', gain: 0.09 });
+      break;
+    case 'pocket':
+      noise(0.13, { gain: 0.14, hp: 1500, sweep: 320 });
+      tone({ freq: 440, to: 90, dur: 0.2, type: 'triangle', gain: 0.12 });
+      noise(0.05, { gain: 0.06, hp: 900, delay: 0.16 });
+      break;
+    case 'die':
+      /* three knocks, each quieter and higher as the die settles */
+      [[0, 0.16], [0.09, 0.12], [0.19, 0.08]].forEach(([d, g]) => {
+        noise(0.03, { gain: g, hp: 2400, sweep: 1200, delay: d });
+        tone({ freq: 380 + d * 900, to: 200, dur: 0.04, type: 'triangle', gain: g * 0.5, delay: d });
+      });
+      break;
+    case 'hop':
+      noise(0.022, { gain: 0.08, hp: 2200, sweep: 1200 });
+      tone({ freq: 520, to: 330, dur: 0.05, type: 'triangle', gain: 0.09 });
+      break;
+    case 'gather':
+      [0, 0.06, 0.12].forEach((d, i) => noise(0.04, { gain: 0.07 - i * 0.015, hp: 3000 - i * 500, delay: d }));
+      break;
     case 'tone0':   tone({ freq: 392, dur: 0.22, type: 'sine', gain: 0.13 }); break;
     case 'tone1':   tone({ freq: 494, dur: 0.22, type: 'sine', gain: 0.13 }); break;
     case 'tone2':   tone({ freq: 587, dur: 0.22, type: 'sine', gain: 0.13 }); break;

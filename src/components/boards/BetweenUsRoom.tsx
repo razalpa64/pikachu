@@ -4,6 +4,7 @@ import type { BetweenUsView } from '../../games/betweenus/rules';
 import type { BeuMove } from '../../games/betweenus/rules';
 import type { RoomHandle } from '../../games/betweenus/scene';
 import { BoardStage } from './BoardStage';
+import { useStore } from '../../lib/store';
 
 /**
  * The room's view of BETWEEN US.
@@ -14,6 +15,7 @@ import { BoardStage } from './BoardStage';
  * that tells you which half of the truth you are holding, and the HUD.
  */
 export default function BetweenUsRoom({ state, youSlot, onMove, names }: BoardProps<BetweenUsView>) {
+  const { sfx } = useStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const roomRef = useRef<RoomHandle | null>(null);
   const [ready, setReady] = useState(false);
@@ -69,6 +71,24 @@ export default function BetweenUsRoom({ state, youSlot, onMove, names }: BoardPr
       eventKey: `${state.round}:${state.strikes}:${state.over ? 1 : 0}:${state.moves ?? 0}`,
     });
   }, [ready, state, station]);
+
+  /* The room's soundtrack: the lever, a dial clicking over, a glyph landing and
+     a strike all have to be audible on *both* screens, so the cues come from the
+     state that everyone sees rather than from the person who pressed something. */
+  const lastCue = useRef('');
+  useEffect(() => {
+    const key = `${state.round}:${state.strikes ?? 0}:${(state.dials ?? [0, 0, 0]).join('')}:${state.over ? 1 : 0}:${state.solved ? 1 : 0}`;
+    if (key === lastCue.current) return;
+    const wasFirst = lastCue.current === '';
+    const prev = lastCue.current.split(':');
+    lastCue.current = key;
+    if (wasFirst) return;
+    if ((state.strikes ?? 0) > Number(prev[1] ?? 0)) { sfx('error'); return; }
+    if (state.solved) { sfx('win'); return; }
+    if (state.over) { sfx('lose'); return; }
+    if ((state.dials ?? []).join('') !== (prev[2] ?? '')) { sfx('toggle'); return; }
+    if ((state.round ?? 1) > Number(prev[0] ?? 1)) sfx('open');
+  }, [state.round, state.strikes, state.dials, state.over, state.solved, sfx]);
 
   const strikesLeft = state.strikesLeft ?? 3;
 

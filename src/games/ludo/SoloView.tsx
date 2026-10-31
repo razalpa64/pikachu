@@ -48,7 +48,7 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
       if (s.over) return s;
       return ludoRules.applyMove(s, s.turn, move) as LudoState;
     });
-    sfx(move.t === 'roll' ? 'click' : 'move');
+    sfx(move.t === 'roll' ? 'die' : 'hop');
   }, [sfx]);
 
   /* The machine rolls and plays, with a pause that reads as thought rather than
@@ -69,14 +69,14 @@ export default function LudoSolo({ game }: { game: GameMeta }) {
         setRolling(true);
         window.setTimeout(() => setRolling(false), 520);
         setState(ludoRules.applyMove(s, 1, { t: 'roll' }) as LudoState);
-        sfx('click');
+        sfx('die');
         return;
       }
       const token = chooseToken(s, 1, difficulty);
       const mv: LudoMove = token === null ? { t: 'pass' } : { t: 'move', token };
       setState(ludoRules.applyMove(s, 1, mv) as LudoState);
       setThinking(false);
-      sfx(token === null ? 'select' : 'move');
+      sfx(token === null ? 'cue' : 'hop');
     }, delay);
     return () => clearTimeout(t);
   }, [isAiTurn, state.turn, state.dice, state.moves, difficulty, sfx]);

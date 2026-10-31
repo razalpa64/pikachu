@@ -34,6 +34,21 @@ async function tab(label) {
   const p = await (await browser.newContext({ viewport: { width: 1280, height: 950 } })).newPage();
   p.on('console', (m) => { if (m.type() === 'error') errs.push(`${label}: ${m.text()}`); });
   p.on('pageerror', (e) => errs.push(`${label} PAGEERROR: ${e.message}`));
+  await p.addInitScript(() => {
+    /* count the audio nodes the page makes, so "the room is audible" is a fact
+       this file checks rather than a claim in a commit message */
+    window.__snd = 0;
+    const C = window.AudioContext;
+    window.AudioContext = class extends C {
+      constructor(...a) {
+        super(...a);
+        const o = this.createOscillator.bind(this);
+        this.createOscillator = (...x) => { window.__snd++; return o(...x); };
+        const b = this.createBufferSource.bind(this);
+        this.createBufferSource = (...x) => { window.__snd++; return b(...x); };
+      }
+    };
+  });
   await p.goto(B + '/');
   await p.evaluate(() => sessionStorage.setItem('pikachu.intro.v1', '1'));
   return p;
@@ -41,6 +56,7 @@ async function tab(label) {
 const bodyText = (p) => p.evaluate(() => document.body.innerText);
 const action = async (p) => (await bodyText(p)).match(/striker at [^\n]*/i)?.[0] ?? '';
 const coinsKey = (p) => p.$eval('canvas[data-coins]', (el) => el.getAttribute('data-coins'));
+const snd = (p) => p.evaluate(() => window.__snd || 0);
 
 const host = await tab('host');
 const guest = await tab('guest');
@@ -75,6 +91,10 @@ t('the table is on screen for the guest', await until(async () => (await guest.l
 const before = await coinsKey(host);
 t('both players start with the same nineteen coins', before === (await coinsKey(guest)) && before.length === 19, before);
 
+/* `data-carrom-playing` is set while a shot's frames are running — it is how this
+   file proves a shot is animated rather than snapped, on either side. */
+const playing = (p) => p.$eval('canvas[data-coins]', (el) => el.dataset.carromPlaying === '1');
+
 // the host (white) shoots: press the striker, pull back, release
 const box = await host.$eval('canvas[data-coins]', (el) => {
   const r = el.getBoundingClientRect();
@@ -86,12 +106,14 @@ await host.mouse.down();
 await host.mouse.move(cx, cy + box.h * 0.26, { steps: 10 });
 await host.mouse.up();
 
+const sndHostBefore = await snd(host);
+const sndGuestBefore = await snd(guest);
+t('the shooter watches their own shot', await until(async () => playing(host), 3000, 30));
 t('the shot reached the server', await until(async () => (await action(host)).length > 0));
 
 /* The complaint this guards against: the opponent's shot arriving as a single
    jump, so you never see what they did. The receiving tab must spend real time
    playing the shot back, frame by frame, from the same simulation. */
-const playing = (p) => p.$eval('canvas[data-coins]', (el) => el.dataset.carromPlaying === '1');
 const fingerprint = (p) => p.$eval('canvas[data-coins]', (el) => {
   const ctx = el.getContext('2d');
   const d = ctx.getImageData(0, 0, el.width, el.height).data;
@@ -104,6 +126,9 @@ const frameHashes = [];
 for (let i = 0; i < 7; i++) { frameHashes.push(await fingerprint(guest)); await sleep(90); }
 t('the board moves over several frames rather than jumping', new Set(frameHashes).size >= 3, `${new Set(frameHashes).size} distinct of ${frameHashes.length}`);
 t('the playback finishes', await until(async () => !(await playing(guest)), 12000, 100));
+await host.waitForTimeout(400);
+t('the shot is audible to the player who took it', (await snd(host)) > sndHostBefore, `${sndHostBefore} → ${await snd(host)}`);
+t('the shot is audible to the player watching it back', (await snd(guest)) > sndGuestBefore, `${sndGuestBefore} → ${await snd(guest)}`);
 t('the other player is told what was played', await until(async () => (await action(guest)).length > 0), await action(guest));
 t('both boards still agree after the shot', await until(async () => (await coinsKey(host)) === (await coinsKey(guest))));
 console.log('    last action:', await action(host));

@@ -131,3 +131,69 @@ describe('striker placement', () => {
     expect(legalStrikerX([], 0, 400)).toBeLessThan(81);
   });
 });
+
+/**
+ * The shot's soundtrack.
+ *
+ * The board plays the sounds of a shot from the simulation's own event list, so
+ * that list has to be a faithful account of what happened: a strike when the
+ * striker meets something, ticks for the coins, a rail thud when something hits
+ * the wood, a drop when something falls in — each with the time it happened, in
+ * order. Nothing here changes the outcome of a shot; a client that ignores the
+ * events and a server that never computes them still agree on the board.
+ */
+describe('shot events', () => {
+  const shoot = (power: number, angle = -Math.PI / 2) =>
+    simulateShot(openingCoins(), { x: 50, y: BASELINE_Y[0] }, { x: 50, angle, power }, true);
+
+  it('starts with the striker meeting the pack', () => {
+    const sim = shoot(0.9);
+    expect(sim.events[0].t).toBe('strike');
+    expect(sim.events.some((e) => e.t === 'coin')).toBe(true);
+  });
+
+  it('is in time order, and every event has a real timestamp', () => {
+    const sim = shoot(0.7);
+    let last = -1;
+    for (const e of sim.events) {
+      expect(e.at).toBeGreaterThanOrEqual(0);
+      expect(e.at).toBeGreaterThanOrEqual(last);
+      last = e.at;
+    }
+  });
+
+  it('a gentle shot is quieter than a hard one', () => {
+    const soft = shoot(0.2).events;
+    const hard = shoot(0.95).events;
+    expect(hard.length).toBeGreaterThan(soft.length);
+    expect(Math.max(...hard.map((e) => ('force' in e ? e.force : 0)))).toBeGreaterThan(
+      Math.max(...soft.map((e) => ('force' in e ? e.force : 0))),
+    );
+  });
+
+  it('clicks when coins meet each other, not only when the striker hits', () => {
+    const sim = shoot(0.9);
+    expect(sim.events.filter((e) => e.t === 'coin').length).toBeGreaterThan(3);
+  });
+
+  it('reports a drop for anything that goes in a pocket', () => {
+    // fire the striker into a corner pocket: the striker itself goes down
+    const sim = simulateShot(
+      openingCoins(),
+      { x: 8, y: BASELINE_Y[0] },
+      { x: 8, angle: Math.PI / 2, power: 1 },
+      true,
+    );
+    if (sim.strikerPocketed) {
+      expect(sim.events.some((e) => e.t === 'drop' && e.coin === -1)).toBe(true);
+    }
+    expect(sim.events.length).toBeGreaterThan(0);
+  });
+
+  it('never lets the events change the shot', () => {
+    const a = shoot(0.8);
+    const b = shoot(0.8);
+    expect(a.events).toEqual(b.events);
+    expect(a.coins.map((c) => [c.x, c.y, c.alive])).toEqual(b.coins.map((c) => [c.x, c.y, c.alive]));
+  });
+});

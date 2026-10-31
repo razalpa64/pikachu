@@ -131,6 +131,17 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'Stay near the middle of the meadow. Corners kill more runs than speed does.',
   },
+  'betweenus': {
+    goal: 'Carry three frequencies through the signal room together, before three bad pulls put the lights out.',
+    steps: [
+      'You and your partner stand at different stations. One of you is at the signal wall, one at the console — and each of you can only see your own.',
+      'The listener sees three glyphs lit on the wall. Say out loud what they look like: the ring, the fork, the wave, the eye, the key, the spiral, the cross, the gate.',
+      'The operator has the dials and a legend plate that gives each glyph a number from 0 to 7. Turn the three dials to those numbers — tap the right half of a dial to go up, the left half to go down.',
+      'Pull the lever. Right, and the wall shows the next frequency. Wrong, and the room goes red — three of those and it is over.',
+      'Nothing about this works without talking. That is the game.',
+    ],
+    tip: 'Describe the shape, never the number: the listener cannot see the plate, and the operator cannot see the wall.',
+  },
   ludo: {
     goal: 'Bring all four of your tokens home before your opponent brings theirs.',
     steps: [

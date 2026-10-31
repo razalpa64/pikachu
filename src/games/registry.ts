@@ -160,6 +160,13 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
+    id: 'betweenus', slug: 'betweenus', title: 'Between Us',
+    tagline: 'Two stations, half the truth each',
+    description: 'A two-player co-op puzzle in a bunker, in 3D. One of you stands at the signal wall and can see three glyphs; the other stands at the console with three dials and a legend plate that turns a glyph into a number — and no way to see which glyphs are lit. Talk, translate, set the dials, pull the lever. Three frequencies to carry, three bad pulls and the room goes dark.',
+    genre: 'puzzle', modes: ['online'], players: [2, 2], duration: 8,
+    accent: '#2f6f7a', artKey: 'betweenUs', status: 'live', serverRefereed: true,
+  },
+  {
     id: 'carrom', slug: 'carrom-table', title: 'Carrom Table',
     tagline: 'Flick, cut, pocket',
     description: 'Real carrom physics: a proper striker, coins that cut off each other, four corner pockets and a queen you have to cover. Aim with a drag, break the pack, and play the board rather than the animation — every shot is simulated, so a clip off the rail is a clip you can see coming.',

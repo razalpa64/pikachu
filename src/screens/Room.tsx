@@ -761,6 +761,8 @@ function isMyTurn(gameId: string, state: any, slot: 0 | 1): boolean {
   switch (gameId) {
     case 'chess': return (state.fen?.split(' ')[1] === 'w' ? 0 : 1) === slot;
     case 'reaction': return true;                                     // both may press
+    /* co-op: both stations work at once, which is the point of the game */
+    case 'betweenus': return true;
     // simultaneous: the drawer draws and the guesser guesses, all round long
     case 'sketch': return state.phase === 'draw';
     // simultaneous: you may act whenever a question is open and you have not answered
@@ -787,6 +789,8 @@ function scoreFor(gameId: string, state: any, s: 0 | 1) {
     case 'dots': return state.scores?.[s] ?? 0;
     // counted from the coins themselves, so a redacted state cannot lie
     case 'carrom': return `${(state.coins ?? []).filter((c: any) => !c.alive && c.kind === (s === 0 ? 'white' : 'black')).length}/9`;
+    // how many frequencies are already carried
+    case 'betweenus': return `${Math.max(0, (state.round ?? 1) - (state.solved ? 0 : 1))}/${state.rounds ?? 3}`;
     // tokens home, straight off the board
     case 'ludo': return `${(state.tokens?.[s] ?? []).filter((p: number) => p >= 56).length}/4`;
     // a player's store is the one past their own row of pits

@@ -2,44 +2,80 @@
  * How carrom looks.
  *
  * Painted, not shipped as a picture, because the board has to be sharp at any
- * size and because the pieces on it move. But painted *from photographs*: the
- * rosewood of the rails and the birch ply of the bed are generated textures in
- * `public/art/carrom`, because grain drawn in code is what made this look like a
- * diagram of a carrom board rather than a carrom board.
+ * size and because the pieces on it move. It is painted *from a real board*: the
+ * reference is the printed tournament board everyone pictures — cream table, a
+ * wide dark walnut rail with the pockets drilled into its corners, a pale tan
+ * bed, a double rule with a red dot in a pale disc at each inner corner, a
+ * diagonal from each of those to a hook-and-circle volute, and an eight-pointed
+ * red rosette at the centre.
  *
- * Three passes have gone into making it read as furniture:
+ * Everything below was measured off that board rather than invented, and the two
+ * measurements that matter most are the ones the previous version got wrong:
  *
- *   • **scale** — the pieces were a third too small. A real set on a 74 cm bed
- *     has a coin 3.18 cm across, a striker 4.13 and a pocket 4.45; the old radii
- *     drew undersized pieces with a wide empty field between them.
- *   • **the rail** — real boards cut the four rails mitred, chamfer the inner
- *     corner at each pocket, and leave a hairline shadow where the rail meets the
- *     bed. The bed is about 89% of the board, not 83%.
- *   • **the pieces** — carrom coins are turned beech with a shallow recess and a
- *     lacquer, not glass marbles. The gloss was the giveaway: a hard white
- *     highlight reads as plastic. These are matte, with a turned groove and a
- *     warm shadow underneath.
+ *   • **the rail is a sixth of the board**, not a thin frame. A real board is
+ *     mostly rail, and the pockets sit *in* it — which is what makes the corners
+ *     read as holes rather than as decoration.
+ *   • **the bed is a flat tan** (#d2ae7c), not near-white ply. A photographed
+ *     surface brought its own lighting and banded under the board's lamp, so the
+ *     bed is a tint with a drawn figure and the only photograph left is the
+ *     rail's grain, recoloured with a `color` blend.
+ *
+ * The pocket holes are the one place the painting is bent to the referee: the
+ * simulation kills a coin when its centre comes within `POCKET_R` of a corner, so
+ * the hole straddles that corner rather than sitting wholly out in the rail where
+ * a printer's board has it. A hole drawn in the wrong place is a hole a coin
+ * vanishes short of.
  *
  * The static table is painted once into an offscreen canvas and blitted every
  * frame; only the coins and the striker are drawn per frame.
  */
-import { BOARD, COIN_R, POCKETS, POCKET_R, STRIKER_R } from './physics';
+import { BASELINE_Y, BOARD, COIN_R, POCKETS, STRIKER_R } from './physics';
 import type { CoinKind } from './physics';
 import { rng } from '../types';
 import { carromArt } from './materials';
 
-const INK = '#8a2b1e';
-const INK_SOFT = 'rgba(138,43,30,.5)';
+/* The board the painter copies.
+ *
+ * Every number below was measured off a photograph of a real board rather than
+ * guessed — the reference is a printer's board, the one everybody pictures when
+ * they hear "carrom": cream table, a narrow dark rail, a pale tan bed, a
+ * double rule with a red dot at each corner, a match-cut eight-pointed rosette
+ * in the middle, and four drilled pockets that sit in the rail's corners.
+ *
+ * What it replaces was darker and busier: a rosewood picture frame, near-white
+ * ply, red arrowheads, and pockets painted as bowls. It was a good drawing of a
+ * board. It was not the board, and this is.
+ *
+ *   • **the table** — the board is an object on a surface. A cream margin round
+ *     it is the difference between a texture that fills a canvas and a thing
+ *     lying on a table.
+ *   • **the rail** — narrow (6.3% of the board), dark walnut, mitred, with a lit
+ *     outer arris and a hard shadow line where it meets the bed.
+ *   • **the bed** — pine-tan, not white. The reference's bed is #d2ab76; ours
+ *     was #f0dfc0, which is why it looked like a diagram.
+ *   • **the furniture** — a double rule 13.4 and 18 units in, with the joint disc
+ *     and red dot at each inner corner; a diagonal from each dot toward the
+ *     centre that ends in a hooked volute; and the rosette, eight cut points,
+ *     half of them shaded dark.
+ */
+const INK = '#513a20';
+const INK_SOFT = 'rgba(67,48,27,.62)';
+const RED = '#a8301a';
+const RED_DARK = '#7d2114';
 
-export interface PaintSize { size: number; frame: number; scale: number; origin: number }
+export interface PaintSize { size: number; frame: number; margin: number; scale: number; origin: number }
 
 export function layout(size: number): PaintSize {
-  /* A real board: the rail is about 4.5 cm on an 83 cm frame, so the bed is a
-     little under nine tenths of the width. The old 8.5% drew a picture frame
-     around the game. */
-  const frame = Math.max(9, size * 0.052);
-  const inner = size - frame * 2;
-  return { size, frame, scale: inner / BOARD, origin: frame };
+  /* margin → rail → bed, read off the reference with a ruler rather than
+     guessed: a 4% cream margin, then a *wide* rail — 16.7% of the board, which is
+     where the pockets are drilled — leaving a bed of two thirds of the board.
+     The old board was almost all bed with a thin frame, which is why it read as a
+     diagram: a real printed board is mostly rail. */
+  const margin = size * 0.04;
+  const board = size - margin * 2;
+  const frame = board * 0.167;
+  const inner = board - frame * 2;
+  return { size, frame, margin, scale: inner / BOARD, origin: margin + frame };
 }
 
 const px = (l: PaintSize, v: number) => l.origin + v * l.scale;
@@ -54,18 +90,17 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-/** Tile an image across a box at a given scale. */
-function fillPattern(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, scale: number) {
-  const pattern = ctx.createPattern(img, 'repeat');
-  if (!pattern) return false;
-  const s = (scale * Math.max(w, h)) / Math.max(img.naturalWidth, img.naturalHeight);
-  const m = new DOMMatrix();
-  m.a = s; m.d = s;
-  pattern.setTransform(m);
+/**
+ * One copy of a photograph stretched over a box.
+ *
+ * Tiling a 512px grain over a 1040px canvas leaves a seam across the middle of
+ * every rail — which is exactly what the last version had. Grain has no scale in
+ * a texture this flat, so stretching it once beats repeating it four times.
+ */
+function fillStretched(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  ctx.fillStyle = pattern;
-  ctx.fillRect(x, y, w, h);
+  ctx.drawImage(img, x, y, w, h);
   ctx.restore();
   return true;
 }
@@ -83,293 +118,496 @@ export function buildBoard(size: number, dpr = 1): HTMLCanvasElement {
 }
 
 export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
-  const { size, frame } = l;
-  const random = rng(20261030);
-  const inner = size - frame * 2;
-  const radius = size * 0.016;
+  const { size, frame, margin } = l;
+  const random = rng(20261101);
+  const board = size - margin * 2;
+  const inner = board - frame * 2;
+  const bedX = l.origin;
+  const radius = size * 0.024;
   const rail = carromArt.rail();
-  const bed = carromArt.surface();
 
-  /* --- the room: a dark refectory table under the board ---------------- */
-  const table = ctx.createRadialGradient(size * 0.38, size * 0.3, size * 0.04, size * 0.5, size * 0.55, size * 0.9);
-  table.addColorStop(0, '#3a2415');
-  table.addColorStop(0.55, '#241508');
-  table.addColorStop(1, '#120a04');
+  /* --- the table: warm linen, lit top left, falling away at the edges ---- */
+  const table = ctx.createRadialGradient(size * 0.34, size * 0.2, size * 0.04, size * 0.52, size * 0.58, size * 1.02);
+  table.addColorStop(0, '#d3bb9f');
+  table.addColorStop(0.55, '#c7ac8f');
+  table.addColorStop(1, '#b09677');
   ctx.fillStyle = table;
   ctx.fillRect(0, 0, size, size);
 
-  /* --- the board's own drop shadow ------------------------------------ */
+  // a tooth to the paper, so the margin is not a flat field of colour
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,.72)';
-  ctx.shadowBlur = size * 0.05;
-  ctx.shadowOffsetY = size * 0.014;
-  roundRect(ctx, frame * 0.28, frame * 0.28, size - frame * 0.56, size - frame * 0.56, radius);
-  ctx.fillStyle = '#2b1a0c';
+  for (let i = 0; i < 900; i++) {
+    const x = random() * size, y = random() * size;
+    const a = 0.012 + random() * 0.03;
+    ctx.fillStyle = random() > 0.5 ? `rgba(255,247,225,${a})` : `rgba(96,66,34,${a})`;
+    ctx.fillRect(x, y, 1.1, 1.1);
+  }
+  ctx.restore();
+
+  /* --- the board's shadow on that surface ------------------------------- */
+  ctx.save();
+  ctx.shadowColor = 'rgba(64,40,14,.5)';
+  ctx.shadowBlur = size * 0.032;
+  ctx.shadowOffsetY = size * 0.008;
+  roundRect(ctx, margin, margin, board, board, radius);
+  ctx.fillStyle = '#6b4a24';
   ctx.fill();
   ctx.restore();
 
-  /* --- four rails, mitred --------------------------------------------
-     Real carrom boards are four pieces of wood joined at 45°, with the grain
-     running along each rail. Filling the whole square with one texture and
-     drawing a seam on top looks like wallpaper; filling each rail separately,
-     rotated, looks like a joint. */
-  const inset = frame * 0.28;
-  const outer = { x: inset, y: inset, s: size - inset * 2 };
-  const half = outer.s / 2;
-  const seam = frame * 0.55;
+  /* --- the rail --------------------------------------------------------
+     Walnut, wide, matte: on a real board the rail is a sixth of the board's
+     width and the pockets are drilled into it. Two things are load-bearing and
+     both were wrong before — the width, and the fact that this surface is
+     *flat*. Anything that varies across it fast enough to see reads as moulded
+     plastic, which is how three earlier versions failed. */
+  const seam = frame;
+  const outer = { x: margin, y: margin, s: board };
 
   ctx.save();
   roundRect(ctx, outer.x, outer.y, outer.s, outer.s, radius);
   ctx.clip();
 
-  const railQuad = (pts: [number, number][]) => {
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0], pts[0][1]);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-    ctx.closePath();
-  };
+  const top = outer.y, right = outer.x + outer.s, bottom = outer.y + outer.s, left = outer.x;
 
-  const sides: { pts: [number, number][]; rotate: number }[] = [
-    /* top    */ { pts: [[outer.x, outer.y], [outer.x + outer.s, outer.y], [outer.x + outer.s - seam, outer.y + seam], [outer.x + seam, outer.y + seam]], rotate: 0 },
-    /* right  */ { pts: [[outer.x + outer.s, outer.y], [outer.x + outer.s, outer.y + outer.s], [outer.x + outer.s - seam, outer.y + outer.s - seam], [outer.x + outer.s - seam, outer.y + seam]], rotate: Math.PI / 2 },
-    /* bottom */ { pts: [[outer.x + outer.s, outer.y + outer.s], [outer.x, outer.y + outer.s], [outer.x + seam, outer.y + outer.s - seam], [outer.x + outer.s - seam, outer.y + outer.s - seam]], rotate: 0 },
-    /* left   */ { pts: [[outer.x, outer.y + outer.s], [outer.x, outer.y], [outer.x + seam, outer.y + seam], [outer.x + seam, outer.y + outer.s - seam]], rotate: Math.PI / 2 },
-  ];
+  ctx.save();
+  ctx.fillStyle = '#7c552c';
+  ctx.fillRect(left, top, outer.s, outer.s);
 
-  for (const side of sides) {
-    ctx.save();
-    railQuad(side.pts);
-    ctx.clip();
-    if (rail) {
-      ctx.translate(half, half);
-      ctx.rotate(side.rotate);
-      ctx.translate(-half, -half);
-      fillPattern(ctx, rail, 0, 0, size, size, 0.62);
-    } else {
-      const g = ctx.createLinearGradient(outer.x, outer.y, outer.x + outer.s, outer.y + outer.s);
-      g.addColorStop(0, '#a4682f');
-      g.addColorStop(0.4, '#7d471c');
-      g.addColorStop(0.75, '#94592a');
-      g.addColorStop(1, '#5d3413');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, size, size);
+  ctx.save();
+  roundRect(ctx, left, top, outer.s, outer.s, radius);
+  ctx.clip();
+  /* The photograph, recoloured to the board's own walnut.
+     Drawn grain reads as scratches and a tiled or stretched photograph picks up
+     a seam — but a photograph recoloured with a `color` blend keeps its figure
+     and loses its own lighting, which is the one thing neither of the first two
+     attempts could do at once. */
+  if (rail) {
+    ctx.globalAlpha = 0.6;
+    fillStretched(ctx, rail, left, top, outer.s, outer.s);
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'color';
+    ctx.fillStyle = '#6b4220';
+    ctx.fillRect(left, top, outer.s, outer.s);
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.fillStyle = 'rgba(255,232,196,.1)';
+    ctx.fillRect(left, top, outer.s, outer.s);
+    // the reference's walnut is a good deal darker than the photograph's
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(122,84,44,.34)';
+    ctx.fillRect(left, top, outer.s, outer.s);
+    ctx.globalCompositeOperation = 'source-over';
+  } else {
+    for (let i = 0; i < 500; i++) {
+      const x = left + random() * outer.s, y = top + random() * outer.s;
+      ctx.strokeStyle = random() > 0.45
+        ? `rgba(40,21,6,${0.04 + random() * 0.08})`
+        : `rgba(216,168,108,${0.03 + random() * 0.07})`;
+      ctx.lineWidth = 0.5 + random() * 0.7;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + (random() - 0.5) * 1.5, y + 2 + random() * size * 0.03);
+      ctx.stroke();
     }
-    // polish: lit along the outer edge, deeper towards the bed
-    const sheen = ctx.createLinearGradient(
-      side.rotate ? outer.x : outer.y,
-      side.rotate ? outer.y : outer.y,
-      side.rotate ? outer.x + outer.s : outer.y + seam,
-      side.rotate ? outer.y + seam : outer.y + outer.s * (side.pts[0][1] > half ? -1 : 1),
-    );
-    sheen.addColorStop(0, 'rgba(255,214,150,.16)');
-    sheen.addColorStop(0.5, 'rgba(255,214,150,0)');
-    sheen.addColorStop(1, 'rgba(40,18,4,.22)');
-    ctx.fillStyle = sheen;
-    ctx.fillRect(0, 0, size, size);
-    ctx.restore();
   }
+  ctx.restore();
 
-  // the mitre seams
-  ctx.strokeStyle = 'rgba(28,14,4,.5)';
-  ctx.lineWidth = Math.max(1, size * 0.0022);
+  /* the arris: the lightest thing on the board, a hair inside the outer edge,
+     and the shade the rail drops onto the bed */
+  const arrisW = seam * 0.26;
+  const band = arrisW * 1.5;
+  const arris = ctx.createLinearGradient(0, top, 0, top + arrisW);
+  arris.addColorStop(0, 'rgba(255,228,182,.13)');
+  arris.addColorStop(1, 'rgba(255,228,182,0)');
+  ctx.fillStyle = arris;
+  ctx.fillRect(left, top, outer.s, arrisW);
+  const arrisL = ctx.createLinearGradient(left, 0, left + arrisW, 0);
+  arrisL.addColorStop(0, 'rgba(255,228,182,.13)');
+  arrisL.addColorStop(1, 'rgba(255,228,182,0)');
+  ctx.fillStyle = arrisL;
+  ctx.fillRect(left, top, arrisW, outer.s);
+
+  /* These bands were drawn across the whole canvas at first, so the shadow of
+     the north rail was painted over the east and west rails too — a cross of two
+     dark stripes straight through the frame. Each one is bounded by the board. */
+  const bedEdge = ctx.createLinearGradient(0, top + seam, 0, top + seam - band);
+  bedEdge.addColorStop(0, 'rgba(26,12,2,.30)');
+  bedEdge.addColorStop(1, 'rgba(26,12,2,0)');
+  ctx.fillStyle = bedEdge;
+  ctx.fillRect(left, top + seam - band, outer.s, band);
+
+  const bedEdgeB = ctx.createLinearGradient(0, bottom - seam, 0, bottom - seam + band);
+  bedEdgeB.addColorStop(0, 'rgba(26,12,2,.22)');
+  bedEdgeB.addColorStop(1, 'rgba(26,12,2,0)');
+  ctx.fillStyle = bedEdgeB;
+  ctx.fillRect(left, bottom - seam, outer.s, band);
+
+  const bedEdgeL = ctx.createLinearGradient(left + seam, 0, left + seam - band, 0);
+  bedEdgeL.addColorStop(0, 'rgba(26,12,2,.26)');
+  bedEdgeL.addColorStop(1, 'rgba(26,12,2,0)');
+  ctx.fillStyle = bedEdgeL;
+  ctx.fillRect(left + seam - band, top, band, outer.s);
+
+  const bedEdgeR = ctx.createLinearGradient(right - seam, 0, right - seam + band, 0);
+  bedEdgeR.addColorStop(0, 'rgba(26,12,2,.22)');
+  bedEdgeR.addColorStop(1, 'rgba(26,12,2,0)');
+  ctx.fillStyle = bedEdgeR;
+  ctx.fillRect(right - seam, top, band, outer.s);
+
+  // the mitre seams, from each outer corner in
+  ctx.strokeStyle = 'rgba(30,16,4,.07)';
+  ctx.lineWidth = Math.max(0.7, size * 0.001);
   for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
-    const x0 = sx > 0 ? outer.x : outer.x + outer.s;
-    const y0 = sy > 0 ? outer.y : outer.y + outer.s;
+    const x0 = sx > 0 ? left : right;
+    const y0 = sy > 0 ? top : bottom;
     ctx.beginPath();
     ctx.moveTo(x0, y0);
-    ctx.lineTo(x0 + sx * frame * 1.1, y0 + sy * frame * 1.1);
+    ctx.lineTo(x0 + sx * seam, y0 + sy * seam);
     ctx.stroke();
   }
+
+  // the arris: a bright hairline just inside the outer edge, and a dark one
+  // outside it, which is what reads as a chamfer at this size
+  roundRect(ctx, outer.x + size * 0.0035, outer.y + size * 0.0035, outer.s - size * 0.007, outer.s - size * 0.007, radius);
+  ctx.strokeStyle = 'rgba(255,226,178,.34)';
+  ctx.lineWidth = Math.max(1, size * 0.0022);
+  ctx.stroke();
   ctx.restore();
 
-  // the chamfered outer edge: a hairline of bright wood on the lit side, a dark
-  // bevel everywhere else, so the board has thickness instead of a plastic rim
-  ctx.save();
   roundRect(ctx, outer.x, outer.y, outer.s, outer.s, radius);
-  ctx.strokeStyle = 'rgba(28,14,4,.7)';
-  ctx.lineWidth = Math.max(1.5, size * 0.005);
+  ctx.strokeStyle = 'rgba(30,16,4,.55)';
+  ctx.lineWidth = Math.max(1, size * 0.0018);
   ctx.stroke();
-  roundRect(ctx, outer.x + size * 0.004, outer.y + size * 0.004, outer.s - size * 0.008, outer.s - size * 0.008, radius);
-  ctx.strokeStyle = 'rgba(255,214,160,.28)';
-  ctx.lineWidth = Math.max(1, size * 0.0028);
-  ctx.stroke();
-  ctx.restore();
 
-  /* --- the bed --------------------------------------------------------- */
+  /* --- the bed ---------------------------------------------------------
+     Corners are cut, not square: on a real board the rail is relieved at each
+     pocket so a coin can run into the hole. Drawing the bed square left the
+     holes sitting on plain wood with nothing to explain them. */
+  const mouth = MOUTH * l.scale;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(frame, frame, inner, inner);
+  roundRect(ctx, bedX, bedX, inner, inner, mouth);
   ctx.clip();
-  if (bed) {
-    fillPattern(ctx, bed, frame, frame, inner, inner, 0.92);
-    // keep it pale and warm: raw ply is a touch grey on screen
-    ctx.fillStyle = 'rgba(255,246,224,.28)';
-    ctx.fillRect(frame, frame, inner, inner);
-  } else {
-    const surface = ctx.createRadialGradient(size * 0.42, size * 0.34, size * 0.06, size / 2, size / 2, size * 0.66);
-    surface.addColorStop(0, '#fdf3d9');
-    surface.addColorStop(0.45, '#f7e5c0');
-    surface.addColorStop(0.78, '#eed6a9');
-    surface.addColorStop(1, '#dcbb87');
-    ctx.fillStyle = surface;
-    ctx.fillRect(frame, frame, inner, inner);
+  /* An even tan with a faint ply figure drawn in.
+     The photograph of a real bed carries its own lighting, and stretched over
+     this board it banded the surface — a flat printed board has no such thing,
+     so the figure is drawn: long, very low-contrast bands. */
+  ctx.fillStyle = '#d2ae7c';
+  ctx.fillRect(bedX, bedX, inner, inner);
+  for (let i = 0; i < 54; i++) {
+    const y = bedX + random() * inner;
+    const h = 1 + random() * 2.6;
+    ctx.fillStyle = random() > 0.5
+      ? `rgba(172,128,74,${0.02 + random() * 0.04})`
+      : `rgba(255,240,208,${0.02 + random() * 0.05})`;
+    ctx.beginPath();
+    ctx.ellipse(bedX + inner * (0.2 + random() * 0.6), y, inner * (0.14 + random() * 0.32), h, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 
-  // lamplight pooled over the middle, and the rail's shadow on the bed
-  const lamp = ctx.createRadialGradient(size * 0.46, size * 0.38, size * 0.02, size * 0.5, size * 0.5, size * 0.56);
-  lamp.addColorStop(0, 'rgba(255,250,232,.3)');
-  lamp.addColorStop(0.5, 'rgba(255,246,222,.1)');
-  lamp.addColorStop(1, 'rgba(255,240,210,0)');
+  // lamp light pooled slightly above centre, and the bed darkening at its edges
+  const lamp = ctx.createRadialGradient(size * 0.44, size * 0.36, size * 0.02, size * 0.5, size * 0.52, size * 0.62);
+  lamp.addColorStop(0, 'rgba(255,248,226,.10)');
+  lamp.addColorStop(0.55, 'rgba(255,246,220,.03)');
+  lamp.addColorStop(1, 'rgba(120,80,34,.07)');
   ctx.fillStyle = lamp;
-  ctx.fillRect(frame, frame, inner, inner);
+  ctx.fillRect(bedX, bedX, inner, inner);
+  // a last clean pass so the bed is a surface, not a photo under glass
+  ctx.fillStyle = 'rgba(222,186,132,.34)';
+  ctx.fillRect(bedX, bedX, inner, inner);
 
-  const shadeW = Math.max(3, size * 0.026);
-  const top = ctx.createLinearGradient(0, frame, 0, frame + shadeW);
-  top.addColorStop(0, 'rgba(58,32,8,.42)');
-  top.addColorStop(1, 'rgba(58,32,8,0)');
-  ctx.fillStyle = top;
-  ctx.fillRect(frame, frame, inner, shadeW);
-  const left = ctx.createLinearGradient(frame, 0, frame + shadeW, 0);
-  left.addColorStop(0, 'rgba(58,32,8,.38)');
-  left.addColorStop(1, 'rgba(58,32,8,0)');
-  ctx.fillStyle = left;
-  ctx.fillRect(frame, frame, shadeW, inner);
+  /* the rail's shadow, falling onto the bed: hard at each edge, gone within a
+     few millimetres — a soft wide gradient here reads as a vignette instead */
+  const shadeW = Math.max(2.5, size * 0.012);
+  const edgeShade = (x0: number, y0: number, x1: number, y1: number, a: number) => {
+    const g = ctx.createLinearGradient(x0, y0, x1, y1);
+    g.addColorStop(0, `rgba(74,44,14,${a})`);
+    g.addColorStop(1, 'rgba(74,44,14,0)');
+    ctx.fillStyle = g;
+  };
+  edgeShade(bedX, bedX, bedX, bedX + shadeW, 0.34);
+  ctx.fillRect(bedX, bedX, inner, shadeW);
+  edgeShade(bedX, bedX, bedX + shadeW, bedX, 0.3);
+  ctx.fillRect(bedX, bedX, shadeW, inner);
+  edgeShade(bedX, bedX + inner, bedX, bedX + inner - shadeW, 0.2);
+  ctx.fillRect(bedX, bedX + inner - shadeW, inner, shadeW);
+  edgeShade(bedX + inner, bedX, bedX + inner - shadeW, bedX, 0.16);
+  ctx.fillRect(bedX + inner - shadeW, bedX, shadeW, inner);
+  ctx.restore();
 
-  const vignette = ctx.createRadialGradient(size / 2, size / 2, size * 0.3, size / 2, size / 2, size * 0.76);
-  vignette.addColorStop(0, 'rgba(120,80,32,0)');
-  vignette.addColorStop(1, 'rgba(104,64,24,.16)');
-  ctx.fillStyle = vignette;
-  ctx.fillRect(frame, frame, inner, inner);
+  /* the hard line where the rail ends and the bed begins */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(38,20,4,.16)';
+  ctx.lineWidth = Math.max(0.8, size * 0.0016);
+  roundRect(ctx, bedX, bedX, inner, inner, mouth);
+  ctx.stroke();
   ctx.restore();
 
   /* --- the painted furniture ------------------------------------------ */
   paintMarkings(ctx, l);
 
-  // the rule inside the rail, drawn *on* the bed, as on a real board
-  const insetRule = l.scale * (POCKET_MOUTH_RULE);
-  ctx.save();
-  ctx.strokeStyle = INK_SOFT;
-  ctx.lineWidth = Math.max(0.8, l.scale * 0.22);
-  ctx.strokeRect(frame + insetRule * 0.55, frame + insetRule * 0.55, inner - insetRule * 1.1, inner - insetRule * 1.1);
-  ctx.restore();
-
   for (const p of POCKETS) paintPocket(ctx, l, p.x, p.y);
 }
 
-/** The bed's inner rule sits clear of the pocket mouths. */
-const POCKET_MOUTH_RULE = 0;
+/* ---------------------------------------------------------------- markings */
 
-/** The painted furniture: centre rosette, baselines, corner arrows. */
+/** The double rule in from the bed's edge, in board units. */
+const RULE_OUTER = 4.6;
+const RULE_INNER = 10.4;
+/** how far the rail is relieved at each pocket, in board units */
+const MOUTH = 2.2;
+/** The volute at the end of each corner diagonal. */
+const CURL = { at: 22.6, r: 5.7 };
+
+/** The painted furniture: double rule, corner joints, corner volutes, rosette. */
 function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
   const cx = px(l, 50), cy = px(l, 50);
-  const r = 13 * l.scale;
+  const unit = l.scale;
 
   ctx.save();
   ctx.strokeStyle = INK;
   ctx.fillStyle = INK;
-  ctx.lineWidth = Math.max(1, l.scale * 0.42);
+  ctx.lineCap = 'round';
 
-  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(cx, cy, r * 0.62, 0, Math.PI * 2); ctx.stroke();
-  for (let i = 0; i < 8; i++) {
-    const a = (Math.PI / 4) * i;
-    ctx.beginPath();
-    ctx.ellipse(cx + Math.cos(a) * r * 0.31, cy + Math.sin(a) * r * 0.31, r * 0.12, r * 0.055, a, 0, Math.PI * 2);
-    ctx.fill();
+  /* --- the double rule ------------------------------------------------ */
+  ctx.lineWidth = Math.max(0.6, unit * 0.26);
+  const o0 = px(l, RULE_OUTER), o1 = px(l, 100 - RULE_OUTER);
+  ctx.strokeRect(o0, o0, o1 - o0, o1 - o0);
+  ctx.lineWidth = Math.max(0.55, unit * 0.24);
+  const i0 = px(l, RULE_INNER), i1 = px(l, 100 - RULE_INNER);
+  ctx.strokeRect(i0, i0, i1 - i0, i1 - i0);
+
+  /* --- a joint disc and a red dot at each inner corner ------------------ */
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+    const x = px(l, sx > 0 ? RULE_OUTER : 100 - RULE_OUTER);
+    const y = px(l, sy > 0 ? RULE_OUTER : 100 - RULE_OUTER);
+    const r = unit * 2.0;
+    // the pale disc the rails are jointed with
+    const disc = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
+    disc.addColorStop(0, '#f3e6c9');
+    disc.addColorStop(0.62, '#e6d3ab');
+    disc.addColorStop(1, '#d3bb92');
+    ctx.fillStyle = disc;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(58,40,18,.5)';
+    ctx.lineWidth = Math.max(0.5, unit * 0.16);
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    // the dot
+    const dot = ctx.createRadialGradient(x - r * 0.16, y - r * 0.2, r * 0.05, x, y, r * 0.62);
+    dot.addColorStop(0, '#c1482a');
+    dot.addColorStop(0.7, RED);
+    dot.addColorStop(1, RED_DARK);
+    ctx.fillStyle = dot;
+    ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(64,20,8,.45)';
+    ctx.lineWidth = Math.max(0.4, unit * 0.12);
+    ctx.beginPath(); ctx.arc(x, y, r * 0.55, 0, Math.PI * 2); ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(cx, cy, r * 0.1, 0, Math.PI * 2); ctx.fill();
 
-  ctx.strokeStyle = INK_SOFT;
-  ctx.lineWidth = Math.max(0.6, l.scale * 0.2);
-  ctx.beginPath(); ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2); ctx.stroke();
+  /* --- the corner volutes --------------------------------------------- */
+  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(sx, sy);
+    ctx.translate(-cx, -cy);
+    paintVolute(ctx, l);
+    ctx.restore();
+  }
 
-  // baselines, one per player, with the striker's circles at each end
-  for (const y of [18, 82]) {
-    const y0 = px(l, y), x0 = px(l, 20), x1 = px(l, 80);
+  /* --- the baselines ---------------------------------------------------
+     The reference is a printer's board and has none, but the striker lives on
+     them and a player has to see where they may put it, so they are drawn in the
+     board's own ink: a hairline between the two extremes of the legal span, a
+     small red dot at each, and a tick every few units. Circles at the ends were
+     the first attempt; they collided with the corner volutes and turned the
+     board's four corners into a mess. */
+  for (const y of BASELINE_Y) {
+    const y0 = px(l, y);
+    /* the line runs between the corner volutes; the striker's legal extremes sit
+       just outside it, and are marked with a dot each so the limit is still
+       visible without drawing a rule straight through the ornament */
+    const x0 = px(l, CURL.at + CURL.r * 1.1), x1 = px(l, 100 - CURL.at - CURL.r * 1.1);
     ctx.strokeStyle = INK;
-    ctx.lineWidth = Math.max(1, l.scale * 0.34);
+    ctx.lineWidth = Math.max(0.6, unit * 0.26);
     ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.stroke();
-    for (const cx2 of [20, 80]) {
-      ctx.beginPath(); ctx.arc(px(l, cx2), y0, l.scale * 2.6, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(px(l, cx2), y0, l.scale * 0.9, 0, Math.PI * 2); ctx.fill();
-    }
     for (let i = 1; i <= 6; i++) {
-      if (i === 3 || i === 6) continue;
-      ctx.beginPath(); ctx.arc(px(l, 20 + (60 / 7) * i), y0, l.scale * 0.55, 0, Math.PI * 2); ctx.fill();
+      const tx = x0 + ((x1 - x0) / 7) * i;
+      if (i === 3) continue;
+      ctx.beginPath(); ctx.moveTo(tx, y0 - unit * 0.75); ctx.lineTo(tx, y0 + unit * 0.75); ctx.stroke();
+    }
+    ctx.fillStyle = RED;
+    for (const tx of [x0, x1]) {
+      ctx.beginPath(); ctx.arc(tx, y0, unit * 0.95, 0, Math.PI * 2); ctx.fill();
     }
   }
 
-  // corner arrows pointing at the centre
-  for (const [ax, ay] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
-    const from = { x: px(l, ax > 0 ? 13 : 87), y: px(l, ay > 0 ? 13 : 87) };
-    const to = { x: px(l, ax > 0 ? 34 : 66), y: px(l, ay > 0 ? 34 : 66) };
-    ctx.lineWidth = Math.max(1, l.scale * 0.3);
-    ctx.beginPath(); ctx.moveTo(from.x, from.y); ctx.lineTo(to.x, to.y); ctx.stroke();
-    const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    const head = l.scale * 2.4;
-    ctx.beginPath();
-    ctx.moveTo(to.x, to.y);
-    ctx.lineTo(to.x - Math.cos(angle - 0.4) * head, to.y - Math.sin(angle - 0.4) * head);
-    ctx.lineTo(to.x - Math.cos(angle + 0.4) * head, to.y - Math.sin(angle + 0.4) * head);
-    ctx.closePath(); ctx.fill();
-  }
+  /* --- the rosette ----------------------------------------------------- */
+  const R = unit * 19.2;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(0.6, unit * 0.24);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = INK_SOFT;
+  ctx.lineWidth = Math.max(0.45, unit * 0.14);
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.925, 0, Math.PI * 2); ctx.stroke();
+  paintStar(ctx, cx, cy, unit * 17.3, unit * 14.5, unit * 5.6, unit);
   ctx.restore();
 }
 
 /**
+ * One corner of the reference board: a shaft from the corner dot toward the
+ * centre, ending inside a circle with a hooked volute at each of its two open
+ * ends. Drawn in the top-left orientation and mirrored into the other three.
+ */
+function paintVolute(ctx: CanvasRenderingContext2D, l: PaintSize) {
+  const unit = l.scale;
+  const cx = px(l, CURL.at), cy = px(l, CURL.at);
+  const r = CURL.r * unit;
+
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(0.65, unit * 0.26);
+  ctx.lineCap = 'round';
+
+  /* the shaft: from the dot, straight down the diagonal, out through the far
+     side of the circle — it runs *past* the circle's centre, as on the board */
+  const shaftEnd = px(l, CURL.at + CURL.r * 1.05);
+  const shaftFrom = px(l, RULE_OUTER);
+  ctx.beginPath(); ctx.moveTo(shaftFrom, shaftFrom); ctx.lineTo(shaftEnd, shaftEnd); ctx.stroke();
+
+  /* The circle, open on the side facing the corner. Canvas angles run with y
+     downwards, so for the top-left corner "up-left" is -135°. */
+  const gap = -Math.PI * 0.75;
+  const half = Math.PI * 0.17;
+  const a0 = gap + half;
+  const a1 = gap - half + Math.PI * 2;
+  ctx.beginPath(); ctx.arc(cx, cy, r, a0, a1); ctx.stroke();
+
+  /* At each open end the stroke turns back on itself, inside the circle: the
+     double curl is the whole of the ornament. Read off the reference, the hooks
+     sit *within* the circle with their tips pointing at its centre — flared
+     outside it, the corner looks like a cloud. */
+  for (const [angle, dir] of [[a0, 1], [a1, -1]] as const) {
+    const ex = cx + Math.cos(angle) * r;
+    const ey = cy + Math.sin(angle) * r;
+    const hr = r * 0.26;
+    // tangent to the arc, tucked inside it
+    /* tangent to the arc from the inside, so the stroke turns smoothly into the
+       curl instead of crossing it */
+    const hx = cx + Math.cos(angle) * (r - hr);
+    const hy = cy + Math.sin(angle) * (r - hr);
+    const start = Math.atan2(ey - hy, ex - hx);
+    ctx.beginPath();
+    ctx.arc(hx, hy, hr, start, start + dir * Math.PI * 1.65, dir < 0);
+    ctx.stroke();
+  }
+}
+
+/**
+ * The eight-pointed rosette.
+ *
+ * A compass star, as it is printed on the board: eight points, the ones on the
+ * axes longer than the ones on the diagonals, each point a triangle whose two
+ * base corners sit at the same radius as its neighbours' — so the star is one
+ * solid shape with concave notches, not eight separate spikes. Each point is
+ * filled as two halves split along its own median, one lighter than the other,
+ * which is what makes it look carved rather than printed.
+ */
+function paintStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, long: number, short: number, base: number, unit: number) {
+  const half = Math.PI / 8;
+  ctx.save();
+  for (let i = 0; i < 8; i++) {
+    const a = (Math.PI / 4) * i - Math.PI / 2;
+    const reach = i % 2 === 0 ? long : short;
+    const tipX = cx + Math.cos(a) * reach, tipY = cy + Math.sin(a) * reach;
+    const lx = cx + Math.cos(a + half) * base, ly = cy + Math.sin(a + half) * base;
+    const rx = cx + Math.cos(a - half) * base, ry = cy + Math.sin(a - half) * base;
+
+    ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(lx, ly); ctx.lineTo(cx, cy); ctx.closePath();
+    ctx.fillStyle = '#ab3f27'; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(rx, ry); ctx.lineTo(cx, cy); ctx.closePath();
+    ctx.fillStyle = '#8a2a18'; ctx.fill();
+
+    // the median, which reads as the fold of the cut
+    ctx.strokeStyle = 'rgba(58,26,10,.45)';
+    ctx.lineWidth = Math.max(0.45, unit * 0.1);
+    ctx.beginPath(); ctx.moveTo(tipX, tipY); ctx.lineTo(cx, cy); ctx.stroke();
+    // and the notch between this point and the next
+    ctx.strokeStyle = 'rgba(58,26,10,.3)';
+    ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(rx, ry); ctx.stroke();
+  }
+  const hub = ctx.createRadialGradient(cx, cy, 0, cx, cy, unit * 1.5);
+  hub.addColorStop(0, '#33200f');
+  hub.addColorStop(0.55, 'rgba(74,38,18,.9)');
+  hub.addColorStop(1, 'rgba(74,38,18,0)');
+  ctx.fillStyle = hub;
+  ctx.beginPath(); ctx.arc(cx, cy, unit * 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/* ----------------------------------------------------------------- pockets */
+
+/**
  * A pocket.
  *
- * A hole in the corner: a dark mouth, a lit bevel on the arc that faces the play,
- * and the rail's shadow falling into it. The *visual* centre is inset from the
- * corner while the physics' pocket stays exactly at the corner, because a hole
- * drawn dead-centre on the corner is half outside the board — which is what made
- * two earlier attempts look like a hole punched through the frame.
+ * The reference board drills them into the rail's corners: a clean dark hole
+ * that bites a little out of the bed and a little out of each rail, with a hard
+ * lit lip on the bed side and nothing else — no ring, no scallop, no brass.
  *
- * The tempting embellishments are all wrong here. A brass ring around the mouth
- * reads as a coin slot; a scalloped cut of the whole corner reads as damage. The
- * only thing a real board has is bare wood, chamfered, and a dark hole.
+ * The mouth stays where the simulation puts it (`POCKET_MOUTH` from each corner)
+ * so a coin that dies is inside the hole the eye sees.
  */
 function paintPocket(ctx: CanvasRenderingContext2D, l: PaintSize, x: number, y: number) {
-  const r = POCKET_R * l.scale;
+  /* The hole is drilled in the *rail's* corner, so its centre is the bed's
+     corner, not a point inside the bed: two thirds of it sits over the rail and
+     a quarter bites into the bed, which is exactly where a coin disappears. */
+  /* Measured off the reference: the hole sits *in the rail*, just outside the
+     bed's corner, and only its inner edge bites the bed — which is why the red
+     dot of the corner joint is never swallowed by it. */
+  const r = 4.6 * l.scale;
   const inx = x === 0 ? 1 : -1;
   const iny = y === 0 ? 1 : -1;
-  const cxp = px(l, x) + inx * r * 0.72;
-  const cyp = px(l, y) + iny * r * 0.72;
+  /* The reference drills the hole 10 units out into the rail, clear of the bed.
+     That reads beautifully and lies about the game: the simulation swallows a
+     coin when its centre comes within `POCKET_R` of the corner, so a hole that
+     far out would have coins vanishing a hole's width short of it. Pulled in to
+     4.6 units the hole still sits mostly in the relief but its lip reaches the
+     corner, which is where the coin actually dies. */
+  /* The hole is centred just outside the bed's corner and straddles it, because
+     that is where the simulation actually kills a coin: its centre within
+     `POCKET_R` of the corner. A hole drawn wholly in the rail — which is where a
+     printer's board puts it — looks right and lies: coins would vanish short of
+     it. Straddling, the death zone is inside the black. */
+  const cxp = px(l, x) - inx * 1.5 * l.scale;
+  const cyp = px(l, y) - iny * 1.5 * l.scale;
   const facing = Math.atan2(iny, inx);
 
-  // the rail's shadow, falling away from the mouth across the bed
-  const spill = ctx.createRadialGradient(cxp, cyp, r * 0.95, cxp, cyp, r * 1.85);
-  spill.addColorStop(0, 'rgba(40,22,8,.36)');
-  spill.addColorStop(1, 'rgba(40,22,8,0)');
+  // the shadow the lip throws onto the bed
+  const spill = ctx.createRadialGradient(cxp, cyp, r * 0.98, cxp, cyp, r * 1.9);
+  spill.addColorStop(0, 'rgba(54,32,10,.11)');
+  spill.addColorStop(1, 'rgba(54,32,10,0)');
   ctx.fillStyle = spill;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.85, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.22, 0, Math.PI * 2); ctx.fill();
 
-  // the hole: deepest towards the corner
-  const hole = ctx.createRadialGradient(cxp + inx * r * 0.34, cyp + iny * r * 0.34, r * 0.04, cxp, cyp, r * 1.04);
-  hole.addColorStop(0, '#060403');
-  hole.addColorStop(0.5, '#120c07');
-  hole.addColorStop(0.84, '#251608');
-  hole.addColorStop(1, '#3d2611');
+  // the hole: black, with the faintest warmth at the far wall
+  const hole = ctx.createRadialGradient(cxp + inx * r * 0.3, cyp + iny * r * 0.3, r * 0.05, cxp, cyp, r);
+  hole.addColorStop(0, '#060504');
+  hole.addColorStop(0.62, '#100b06');
+  hole.addColorStop(0.92, '#221507');
+  hole.addColorStop(1, '#33200e');
   ctx.fillStyle = hole;
-  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.04, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cxp, cyp, r, 0, Math.PI * 2); ctx.fill();
 
-  // chamfer: lit on the arc facing the play, dark behind it, nothing in between
-  ctx.lineWidth = Math.max(1, r * 0.13);
-  ctx.strokeStyle = 'rgba(255,232,190,.5)';
-  ctx.beginPath();
-  ctx.arc(cxp, cyp, r * 1.02, facing - 1.2, facing + 1.2);
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(28,16,6,.75)';
-  ctx.beginPath();
-  ctx.arc(cxp, cyp, r * 1.05, facing + 1.9, facing + 4.4);
-  ctx.stroke();
-
-  // and the hard inner edge where wood meets nothing
-  ctx.strokeStyle = 'rgba(0,0,0,.55)';
-  ctx.lineWidth = Math.max(0.8, r * 0.06);
-  ctx.beginPath();
-  ctx.arc(cxp, cyp, r * 0.9, 0, Math.PI * 2);
-  ctx.stroke();
+  // the hard lip, lit on the arc facing the play and dark behind it
+  /* A hole in wood has a soft dark rim where the drill tore the grain, and only
+     the thinnest catch of light on the edge facing the lamp — anything brighter
+     and it becomes a metal socket. */
+  const rim = ctx.createRadialGradient(cxp, cyp, r * 0.965, cxp, cyp, r * 1.035);
+  rim.addColorStop(0, 'rgba(18,9,2,.65)');
+  rim.addColorStop(0.5, 'rgba(18,9,2,.3)');
+  rim.addColorStop(1, 'rgba(18,9,2,0)');
+  ctx.fillStyle = rim;
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.035, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = Math.max(0.8, r * 0.03);
+  ctx.strokeStyle = 'rgba(255,238,206,.09)';
+  ctx.beginPath(); ctx.arc(cxp, cyp, r * 1.0, facing - 0.5, facing + 0.5); ctx.stroke();
 }
 
 /* ------------------------------------------------------------------ pieces */

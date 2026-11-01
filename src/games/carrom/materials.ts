@@ -1,23 +1,21 @@
 /**
  * The carrom table's materials.
  *
- * Two generated photographs: the rosewood the rails are made of, and the pale
- * birch ply of the playing surface. Drawn grain in code was the reason the
- * board looked like a diagram — real carrom is a piece of furniture, and code
- * cannot invent the figure of a cut board, but a photograph of one has it.
+ * One photograph: the grain of the rail, recoloured to the board's walnut with a
+ * `color` blend. That is the only place a photograph earns its keep — the bed is
+ * a flat printed tan with a drawn figure, because a photographed surface brought
+ * its own lighting and banded under the board's lamp.
  *
- * Falls back silently: if either file is missing the painter keeps the
- * procedural wood it used before, in the same place.
+ * Falls back silently: if the file is missing, the painter draws short grain
+ * strokes instead.
  */
 import { art, loadArt, onArtLoad, artReady } from '../../lib/artCache';
 
 const RAIL = '/art/carrom/rail.webp';
-const SURFACE = '/art/carrom/surface.webp';
 
 export const carromArt = {
   rail: () => art(RAIL),
-  surface: () => art(SURFACE),
-  ready: () => artReady([RAIL, SURFACE]).join(','),
-  load: () => loadArt([RAIL, SURFACE]),
+  ready: () => artReady([RAIL]).join(','),
+  load: () => loadArt([RAIL]),
   onChange: onArtLoad,
 };

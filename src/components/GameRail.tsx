@@ -85,13 +85,19 @@ function ShelfTile({ game }: { game: GameMeta }) {
     nav(soloable ? `/solo/${game.slug}` : `/together?game=${game.id}`);
   };
 
+  /* On a wide screen the row is a fixed width and the tiles were a fixed
+     196 px, so six fitted and a seventh was cut in half at the edge — which
+     reads as a broken layout, not as "there is more". The tiles now share the
+     row exactly (five up to `xl`, six above it) so a resting rail ends on a
+     whole card, and the arrows still reach the rest. The phone keeps its 176 px
+     tile and the swipe. */
   return (
     <button
       onClick={go}
       onMouseEnter={() => prefetchGame(game.id)}
       onFocus={() => prefetchGame(game.id)}
       onTouchStart={() => prefetchGame(game.id)}
-      className="group relative w-[176px] sm:w-[196px] shrink-0 snap-start text-left panel notch-sm overflow-hidden no-tap
+      className="group relative w-[176px] sm:w-[196px] lg:w-[calc((100%_-_48px)/5)] xl:w-[calc((100%_-_60px)/6)] shrink-0 snap-start text-left panel notch-sm overflow-hidden no-tap
                  transition-all duration-300 hover:-translate-y-1 hover:border-blush-300"
       aria-label={`Play ${game.title} — ${game.tagline}`}
     >

@@ -123,7 +123,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
 
       {/* ---------------- top bar ---------------- */}
       {!consolePage && (
-      <header className={`sticky top-0 z-50 safe-t bg-[#fffaf1]/92 border-b-2 border-ink-600 backdrop-blur-md blur-heavy ${ownBar ? 'max-lg:hidden' : ''}`}>
+      <header className={`sticky-chrome sticky top-0 z-50 safe-t bg-[#fffaf1]/92 border-b-2 border-ink-600 backdrop-blur-md blur-heavy ${ownBar ? 'max-lg:hidden' : ''}`}>
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] h-[58px] lg:h-[58px] h-[52px] flex items-center gap-3">
           <button onClick={() => { sfx('click'); haptic('tap'); nav('/'); }} className="flex items-center gap-2 shrink-0 no-tap group" aria-label="PIKACHU home">
             <span className="relative w-[36px] h-[36px] max-lg:w-[30px] max-lg:h-[30px] grid place-items-center transition-transform duration-300 group-hover:-rotate-6">

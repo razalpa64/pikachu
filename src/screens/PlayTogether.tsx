@@ -81,7 +81,7 @@ export default function PlayTogether() {
   };
 
   return (
-    <div className="mx-auto max-w-[1180px] px-[var(--shell-pad)] py-7">
+    <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-7">
       <header className="mb-6 flex items-end justify-between gap-5 flex-wrap">
         <div>
           <p className="eyebrow text-blush-600 mb-1.5">Two of us, one little room</p>
@@ -233,9 +233,15 @@ export default function PlayTogether() {
                 return (
                   <button key={g.id} onClick={() => { sfx('click'); setPicked(g); }} aria-pressed={active}
                     className={`relative h-[130px] panel notch-sm overflow-hidden text-left no-tap transition-all
-                      ${active ? 'border-volt-400 -translate-y-0.5' : 'hover:border-ink-400'}`}>
-                    <GameArtwork artKey={g.artKey} className={active ? 'opacity-85' : 'opacity-50'} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/55 to-transparent" />
+                      ${active ? 'border-volt-400 -translate-y-0.5 lg:ring-2 lg:ring-volt-400 lg:ring-offset-2 lg:ring-offset-ink-900' : 'hover:border-ink-400'}`}>
+                    {/* On a wide screen the covers are the only colour on this
+                        page and there are twenty of them, so a 50 % veil over
+                        every unselected one turned the whole wall into faded
+                        paper. The art stays at full strength from `lg` up and
+                        the selected card carries a ring instead; the heavier
+                        veil is still what a phone gets. */}
+                    <GameArtwork artKey={g.artKey} className={`${active ? 'opacity-85' : 'opacity-50'} lg:opacity-100`} />
+                    <div className="absolute inset-0 bg-gradient-to-t from-ink-900 via-ink-900/55 to-transparent lg:bg-[linear-gradient(to_top,#fff8ec_0%,rgba(255,248,236,.94)_32%,rgba(255,248,236,0)_62%)]" />
                     <div className="relative h-full p-3 flex flex-col justify-end">
                       <p className="display text-[15px] text-cream-100">{g.title}</p>
                       <p className="text-[10.5px] uppercase tracking-wider font-bold" style={{ color: g.accent }}>{g.tagline}</p>

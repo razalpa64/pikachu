@@ -75,6 +75,12 @@
 :root {
   --shell-pad: clamp(14px, 3vw, 34px);
   --hud-h: 66px;
+  /* How tall the site header actually is: 58px of bar, the 3px progress line
+     under it, and its 2px rule. Every sticky bar that parks *under* the header
+     pins to this number instead of guessing the bar height, which left a 5px
+     transparent seam for the page to scroll through. The phone layout is
+     frozen, so it keeps the old 58px value below `lg` and nothing shifts. */
+  --topbar-h: 58px;
   --ink: #5c4035;
   --line: #e0c3a2;
   --line-strong: #c89b78;
@@ -84,6 +90,12 @@
   --shadow-soft: 0 1px 2px -1px rgba(120, 80, 55, .16), 0 14px 30px -18px rgba(140, 94, 70, .55);
   --shadow-pop: 0 4px 0 0 var(--line-strong);
   color-scheme: light;
+}
+
+/* The wide bar is `lg` up, and there the header is 5px taller than on a phone,
+   so the sticky bars under it move down by exactly that much. */
+@media (min-width: 1024px) {
+  :root { --topbar-h: 63px; }
 }
 
 * { box-sizing: border-box; }
@@ -347,6 +359,14 @@ html[data-quality="performance"] .noise::before { display: none; }
 html[data-quality="performance"] .scanlines::after { display: none; }
 html[data-quality="performance"] .hearts::before { display: none; }
 html[data-quality="performance"] .blur-heavy { backdrop-filter: none !important; }
+/* A sticky bar is 92 % opaque *because* the blur behind it does the rest. With
+   the blur switched off on the performance tier the same bar became a window
+   that card art ghosted through while you scrolled, so the chrome goes fully
+   opaque instead of see-through. Scoped to the wide layout: the phone chrome is
+   unchanged. */
+@media (min-width: 1024px) {
+  html[data-quality="performance"] .sticky-chrome { background-color: var(--color-ink-900) !important; }
+}
 html[data-quality="balanced"] .fx-heavy { opacity: .6; }
 
 /* safe areas */
@@ -2057,6 +2077,12 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
 
 @media (min-width: 900px) {
   .dos-papers { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+}
+/* Side by side, the two sheets were stretched to the taller one, which left the
+   key list with ~400 px of empty paper under it on a desktop. Each sheet is as
+   tall as its own text from `lg` up; the phone still gets one column. */
+@media (min-width: 1024px) {
+  .dos-papers { align-items: start; }
 }
 
 /* The loading skeleton. Two tones and a slow sweep, so it reads as "filling in"

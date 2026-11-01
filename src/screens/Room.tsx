@@ -179,7 +179,7 @@ export default function Room() {
       {/* ---------------- room header ---------------- */}
       {/* The room's own bar is the app bar on a phone (the site header is hidden
           there), and tucks under it on a wide screen. */}
-      <div className="border-b border-ink-600 bg-ink-850/90 sticky top-0 lg:top-[58px] z-30 backdrop-blur-md blur-heavy">
+      <div className="sticky-chrome border-b border-ink-600 bg-ink-850/90 sticky top-0 lg:top-[var(--topbar-h)] z-30 backdrop-blur-md blur-heavy">
         {/* One row on a phone. Wrapped, this bar was 116px and, stacked under the
             58px header, permanently covered a sixth of the screen during play.
             The room name and the series chip return from `sm` up; the code stays

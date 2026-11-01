@@ -10,7 +10,7 @@ export type ArtKey =
   | 'checkers' | 'battleship' | 'snake' | 'puzzle' | 'arcade'
   | 'trivia' | 'dare' | 'imposter' | 'detective' | 'cards' | 'sketch'
   | 'reversi' | 'gomoku' | 'dots' | 'mancala' | 'wyr' | 'wordbomb' | 'daily' | 'berry' | 'bluff' | 'spyfall'
-  | 'bingo' | 'sudoku' | 'carrom' | 'ludo' | 'betweenUs';
+  | 'bingo' | 'sudoku' | 'carrom' | 'ludo' | 'betweenUs' | 'vanta';
 
 export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   chess:      { src: '/art/game/chess.webp',      alt: 'A pastel chess set on a honey chequerboard' },
@@ -39,6 +39,7 @@ export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   berry:      { src: '/art/game/berry.webp',      alt: 'A woven picnic basket overflowing with ripe golden berries' },
   spyfall:    { src: '/art/game/spyfall.webp',    alt: 'A row of blank name cards on a table, one turned face down' },
   bluff:      { src: '/art/game/bluff.webp',      alt: 'Two teacups and a folded card on a wooden table, one cup suspiciously swapped' },
+  vanta:      { src: '/art/game/vanta.webp',      alt: 'A dark seven-by-seven stone table lit by a single overhead lamp, ivory and coral markers poised over its relays' },
   betweenUs:  { src: '/art/game/between-us.webp', alt: 'A bunker signal room lit by a hanging lamp, a console of brass dials below a wall of glowing glyphs' },
   ludo:       { src: '/art/game/ludo.webp',       alt: 'A carved walnut ludo board with blue and rose pawns, the die mid-tumble' },
   carrom:     { src: '/art/game/carrom.webp',     alt: 'A polished carrom board with cream, ebony and red coins, the striker on its baseline' },

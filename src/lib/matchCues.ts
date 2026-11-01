@@ -30,7 +30,7 @@ export interface Snap {
   tag: string;          // a string signal: phase, last shot, last SAN
 }
 
-function snapshot(gameId: string, s: Any | null | undefined): Snap | null {
+export function snapshot(gameId: string, s: Any | null | undefined): Snap | null {
   if (!s || typeof s !== 'object') return null;
   switch (gameId) {
     case 'tictactoe':
@@ -114,6 +114,23 @@ function snapshot(gameId: string, s: Any | null | undefined): Snap | null {
         tertiary: num(s.streak),
         tag: '',
       };
+    case 'vanta': {
+      /* a round is one "turn" for both seats, so the counter is the round number
+         and the score signal is the two influence totals added together. Only
+         the public report is read here — a redacted state still carries both
+         seats' outcomes once the round has resolved. */
+      const report = s.lastRound as Any | null;
+      const results = arr(report?.results) as Any[];
+      const lines = arr(report?.lines).join(' ');
+      const trap = /snare|caught/.test(lines);
+      const read = /read it right/i.test(lines);
+      return {
+        moves: num(s.round),
+        secondary: num(arr(s.influence)[0]) + num(arr(s.influence)[1]),
+        tertiary: results.length,
+        tag: `${num(report?.round ?? 0)}|${read ? 'read' : ''}|${trap ? 'trap' : ''}`,
+      };
+    }
     default:
       return null;
   }
@@ -240,6 +257,15 @@ export function diffCues(
       if (now.moves > before.moves) fire.push('flip');               // next question
       else if (now.secondary > before.secondary) fire.push('coin');  // someone scored
       break;
+    case 'vanta': {
+      if (now.moves > before.moves) fire.push('place');              // the round resolved
+      if (now.tag !== before.tag) {
+        if (now.tag.includes('trap')) fire.push('capture');
+        else if (now.tag.includes('read')) fire.push('spark');
+      }
+      if (now.secondary > before.secondary && now.moves > before.moves) fire.push('coin');
+      break;
+    }
   }
   return fire;
 }

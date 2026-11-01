@@ -315,6 +315,16 @@ export const HOW_TO: Record<string, HowTo> = {
     ],
     tip: 'Answer honestly as the chooser. The moment you start picking what you think they expect, the game stops being about you.',
   },
+  vanta: {
+    goal: 'Reach twelve influence, or take the table away from them — three bolted relays for three rounds running, or every road to their core.',
+    steps: [
+      'Every round you send one plan: an agent, an action, a target, and a read of what they will play.',
+      'Both plans lock in secret and resolve at the same time. You cannot react to them this round — only out-read them.',
+      'Move is free, Claim steps and plants your flag, Anchor bolts the square you stand on, Feint jumps two and leaves a decoy, Snare traps a square for a round.',
+      'Territory, relays and a correct read all pay influence. Energy on the HUD is only spent when an action actually happens.',
+    ],
+    tip: 'You cannot defend everywhere. Pick the relay you are willing to lose, and make the other four impossible.',
+  },
   dare: {
     goal: 'Two people, a deck of cards, and no score to keep.',
     steps: [

@@ -768,6 +768,9 @@ function isMyTurn(gameId: string, state: any, slot: 0 | 1): boolean {
     // simultaneous: you may act whenever a question is open and you have not answered
     case 'trivia': return state.phase === 'question' && state.picked?.[slot] == null;
     case 'battleship': return state.phase === 'placement' ? !state.ready[slot] : state.turn === slot;
+    /* VANTA: simultaneous. You are on turn until your plan for the round is in —
+       and the opponent's plan is never in the state you are given. */
+    case 'vanta': return state.plans?.[slot] == null;
     default: return state.turn === slot;
   }
 }
@@ -795,12 +798,23 @@ function scoreFor(gameId: string, state: any, s: 0 | 1) {
     case 'ludo': return `${(state.tokens?.[s] ?? []).filter((p: number) => p >= 56).length}/4`;
     // a player's store is the one past their own row of pits
     case 'mancala': return state.board?.[s === 0 ? state.pits : state.pits * 2 + 1] ?? 0;
+    // influence is the scoreboard, and it is public in every round report
+    case 'vanta': return state.influence?.[s] ?? 0;
     default: return state.cells ? state.cells.filter((c: any) => c === s).length : 0;
   }
 }
 function metaFor(gameId: string, state: any, slot: 0 | 1): Record<string, unknown> {
   if (!state) return {};
   if (gameId === 'memory') return { memoryStreak: state.streak?.[slot] ?? 0 };
+  if (gameId === 'vanta') {
+    /* the seat's own reads and its own insight list survive redaction */
+    return {
+      vantaReads: state.myPredictions ?? 0,
+      vantaInsight: (state.myInsight ?? []).length,
+      vantaInfluence: state.influence?.[slot] ?? 0,
+      vantaReason: state.reason ?? '',
+    };
+  }
   if (gameId === 'chess') return { moves: state.pgnMoves?.length ?? 0 };
   if (gameId === 'reaction') {
     const best = (state.rounds ?? []).map((r: any) => r.responses?.[slot]).filter((x: any) => typeof x === 'number');

@@ -34,6 +34,10 @@ export function levelFor(xp: number) {
 export interface Achievement { slug: string; name: string; description: string; icon: string; secret?: boolean }
 export const ACHIEVEMENTS: Achievement[] = [
   { slug: 'first-spark', name: 'First Spark', description: 'Finish your very first match.', icon: 'bolt' },
+  { slug: 'vanta-mind-reader', name: 'Mind Reader', description: 'Crack all five action categories in one VANTA match.', icon: 'brain' },
+  { slug: 'vanta-ghost', name: 'Ghost', description: 'Win a VANTA match by holding three bolted relays for three rounds running.', icon: 'shield' },
+  { slug: 'vanta-strategist', name: 'Strategist', description: 'Win VANTA against a real opponent online.', icon: 'crown' },
+  { slug: 'vanta-dominator', name: 'Dominator', description: 'Win VANTA by closing every road to the enemy core.', icon: 'diagonal' },
   { slug: 'arena-opener', name: 'Arena Opener', description: 'Create a private room.', icon: 'door' },
   { slug: 'two-of-us', name: 'Two of Us', description: 'Complete an online match against a real opponent.', icon: 'heart' },
   { slug: 'checkmate', name: 'Checkmate', description: 'Win a game of Chess Arena.', icon: 'crown' },
@@ -197,6 +201,14 @@ export function recordMatch(p: ProgressState, rec: MatchRecord): { next: Progres
   if (meta.ttt_expert_draw) unlock('unbeatable');
   if (meta.rematchWin) unlock('comeback');
   if (meta.puzzleKinds && Array.isArray(meta.puzzleKinds) && (meta.puzzleKinds as string[]).length >= 5) unlock('puzzler');
+  /* VANTA — reads, relay sweeps and ring closures are all in the report */
+  if (rec.gameId === 'vanta') {
+    if ((meta.vantaInsight as number) >= 5) unlock('vanta-mind-reader');
+    const reason = String(meta.vantaReason ?? '');
+    if (rec.result === 'win' && /relays/.test(reason)) unlock('vanta-ghost');
+    if (rec.result === 'win' && /core/.test(reason)) unlock('vanta-dominator');
+    if (rec.result === 'win' && rec.mode === 'online') unlock('vanta-strategist');
+  }
 
   // daily challenge ticking
   const tick = (id: string, by = 1) => { next.dailyProgress[id] = (next.dailyProgress[id] ?? 0) + by; };

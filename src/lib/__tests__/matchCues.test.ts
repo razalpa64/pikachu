@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { diffCues, type Snap } from '../matchCues';
+import { diffCues, snapshot, type Snap } from '../matchCues';
 
 /**
  * The room's soundtrack, tested where it can be: `diffCues` is the pure half of
@@ -69,5 +69,36 @@ describe('diffCues', () => {
 
   it('says nothing for a game it does not know', () => {
     expect(diffCues('betweenus', none, snap({ moves: 9 }), 0, 0)).toEqual([]);
+  });
+});
+
+/* VANTA is simultaneous: one state change per round, and the only things worth
+   voicing are the round landing, a read, and a trap going off. */
+describe('VANTA cues', () => {
+  const vanta = (round: number, extra: Record<string, unknown> = {}) => ({
+    round,
+    influence: [3, 2],
+    lastRound: {
+      round: round - 1,
+      results: [{ outcome: 'Ivory stepped to d4.' }, { outcome: 'Coral held.' }],
+      lines: ['1. Ivory stepped to d4.', '1. Coral held.'],
+      ...extra,
+    },
+  });
+
+  it('voices the round resolving exactly once', () => {
+    const fire = diffCues('vanta', snapshot('vanta', vanta(1))!, snapshot('vanta', vanta(2))!, 0, 0);
+    expect(fire).toContain('place');
+  });
+
+  it('adds a spark on a read and a capture on a sprung trap', () => {
+    const readTurn = vanta(2, { lines: ['2. Ivory read it right.', '2. Coral held.'] });
+    expect(diffCues('vanta', snapshot('vanta', vanta(1))!, snapshot('vanta', readTurn)!, 0, 0)).toContain('spark');
+    const trapTurn = vanta(2, { lines: ['2. Ivory held.', '2. An agent is caught in a snare.'] });
+    expect(diffCues('vanta', snapshot('vanta', vanta(1))!, snapshot('vanta', trapTurn)!, 0, 0)).toContain('capture');
+  });
+
+  it('says nothing when the state has not changed', () => {
+    expect(diffCues('vanta', snapshot('vanta', vanta(3))!, snapshot('vanta', vanta(3))!, 0, 0)).toEqual([]);
   });
 });

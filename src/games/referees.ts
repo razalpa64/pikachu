@@ -20,6 +20,7 @@ import { bingoRules } from './bingo/rules';
 import { carromRules } from './carrom/rules';
 import { ludoRules } from './ludo/rules';
 import { betweenUsRules } from './betweenus/rules';
+import { vantaRules } from './vanta/rules';
 
 /**
  * The server's rulebook, in one place.
@@ -51,4 +52,5 @@ export const REFEREES: Record<string, TurnGameRules<any, any>> = {
   carrom: carromRules,
   ludo: ludoRules,
   'betweenus': betweenUsRules,
+  vanta: vantaRules,
 };

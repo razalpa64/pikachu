@@ -160,6 +160,19 @@ export const GAMES: GameMeta[] = [
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
   },
   {
+    id: 'vanta', slug: 'vanta', title: 'VANTA',
+    tagline: 'Two plans, one table, no second chances',
+    description: 'An original two-player table game about reading people. Seven by seven, three agents a side, five relays, one core and one secret objective each. Both players write a plan in secret — one agent, one action, one target, and a guess at what the other will do — and the server resolves them at the same instant. Move, claim, anchor, feint, snare; twelve rounds to reach twelve influence, or bolt three relays and keep them bolted for three rounds running, or close every road to their core.',
+    genre: 'strategy', modes: ['ai', 'online'], players: [2, 2], duration: 10,
+    accent: '#F16B61', artKey: 'vanta', status: 'live', serverRefereed: true,
+    difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
+    settings: [
+      { key: 'rounds', label: 'Rounds', type: 'select', default: 12, options: [
+        { value: 8, label: 'Short · 8 rounds' }, { value: 12, label: 'Standard · 12 rounds' }, { value: 16, label: 'Long · 16 rounds' },
+      ] },
+    ],
+  },
+  {
     id: 'betweenus', slug: 'betweenus', title: 'Between Us',
     tagline: 'Two stations, half the truth each',
     description: 'A two-player co-op puzzle in a bunker, in 3D. One of you stands at the signal wall and can see three glyphs; the other stands at the console with three dials and a legend plate that turns a glyph into a number — and no way to see which glyphs are lit. Talk, translate, set the dials, pull the lever. Three frequencies to carry, three bad pulls and the room goes dark.',

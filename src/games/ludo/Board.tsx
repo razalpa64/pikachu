@@ -39,10 +39,14 @@ interface Flight {
 
 const keyOf = (slot: number, token: number) => `${slot}:${token}`;
 
+/** The middle of a square. Track coordinates are square indices — a square with
+ *  index `i` spans `[i, i+1]` — so a piece sits at `i + 0.5`. */
+const centreOf = (x: number, y: number): Spot => ({ gx: x + 0.5, gy: y + 0.5 });
+
 /** Where a token belongs when it is not moving. */
 function restingSpot(slot: Slot, seat: number, progress: number, token: number): Spot {
   const cell = progress < 0 ? YARDS[seat][token] : cellFor(seat, progress);
-  return { gx: cell![0], gy: cell![1] };
+  return centreOf(cell![0], cell![1]);
 }
 
 export function LudoBoard({
@@ -125,14 +129,14 @@ export function LudoBoard({
       const from = ev.from ?? -1;
       const to = ev.to ?? 0;
       const queue: Spot[] = [];
-      if (from < 0) queue.push(seen.get(key) ?? { gx: 0, gy: 0 });
+      if (from < 0) queue.push(seen.get(key) ?? centreOf(0, 0));
       else if (to >= HOME_STEP) {
-        for (const [gx, gy] of pathBetween(seat, from + 1, HOME_STEP - 1)) queue.push({ gx, gy });
-        queue.push({ gx: 7, gy: 7 });
+        for (const [gx, gy] of pathBetween(seat, from + 1, HOME_STEP - 1)) queue.push(centreOf(gx, gy));
+        queue.push(centreOf(7, 7));
       } else {
-        for (const [gx, gy] of pathBetween(seat, from + 1, to)) queue.push({ gx, gy });
+        for (const [gx, gy] of pathBetween(seat, from + 1, to)) queue.push(centreOf(gx, gy));
       }
-      const current = spots.current.get(key) ?? seen.get(key) ?? { gx: 0, gy: 0 };
+      const current = spots.current.get(key) ?? seen.get(key) ?? centreOf(0, 0);
       flights.current.set(key, {
         key, seat, queue, startedAt: performance.now(), from: current, fromAt: 0,
         alpha: 1, scale: 1, duration: HOP_MS,
@@ -142,12 +146,12 @@ export function LudoBoard({
       for (const c of ev.captured ?? []) {
         const ck = keyOf(c.slot, c.token);
         const cseat = seatOf(c.slot);
-        const home = YARDS[cseat][c.token];
+        const home = centreOf(YARDS[cseat][c.token][0], YARDS[cseat][c.token][1]);
         flights.current.set(ck, {
           key: ck, seat: cseat,
-          queue: [{ gx: home[0], gy: home[1] }],
+          queue: [home],
           startedAt: performance.now(),
-          from: spots.current.get(ck) ?? { gx: home[0], gy: home[1] },
+          from: spots.current.get(ck) ?? home,
           fromAt: 0, alpha: 1, scale: 1, duration: FLY_MS,
         });
       }

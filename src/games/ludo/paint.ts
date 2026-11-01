@@ -1,57 +1,85 @@
 /**
- * Ludo, painted — properly.
+ * Ludo, painted — a flat printed board.
  *
- * The board is expensive: a veneered walnut frame with a brass inlay, a marble
- * bed, sixty-four tiles with their own lighting, embossed yards, a gilt star in
- * the middle. None of that changes while a token hops, so it is painted once into
- * an offscreen canvas and blitted every frame. Only the pieces move on top.
+ * The board this replaced was a *table*: veneered walnut, brass inlay, marble,
+ * lacquer, a gilt star. It was pretty and it was wrong — the reference board is
+ * a printed sheet, and a printed sheet has no highlights in it. So this painter
+ * has almost no gradients in it at all:
  *
- * Materials come in two flavours. Where a generated texture exists (`materials.ts`)
- * it is used; where it does not — or has not arrived yet — the gradients that were
- * here first still paint a credible board. Both paths draw the same furniture in
- * the same places, so the board does not jump when the textures land.
+ *   · cream paper stock, one ink (`#2e2a22`), four seat colours;
+ *   · four flat corner yards, each with the creature that owns it;
+ *   · ivory squares outlined in ink, exactly as a printed grid is;
+ *   · a pinwheel rosette in the middle where the four lanes arrive;
+ *   · motifs in the margin — flame, leaf, wave, bolt — cut from the same shapes
+ *     the pieces use.
  *
- * Everything is in squares (the 15×15 grid) and `Layout` turns a square into
- * pixels. One function, `place`, is the only place that multiplies by the cell
- * size.
+ * The board is expensive and never changes while a token hops, so it is painted
+ * once into an offscreen canvas and blitted every frame. Only the pieces move on
+ * top.
+ *
+ * Coordinates: everything is in *squares* of the 15×15 grid, and `Layout` turns
+ * a square into pixels. A tile with index `i` occupies `[i, i+1]`, so its centre
+ * is `i + 0.5` — that is the convention the token coordinates use, and it is the
+ * only place the half-square lives.
  */
 import { HOME_LANES, RING, SAFE, START, YARD_CORNER } from './track';
-import { material } from './materials';
+import { material, type MaterialId } from './materials';
 
 export interface Layout { size: number; pad: number; cell: number; ox: number; oy: number }
 
+/** A grid coordinate (a tile's left edge, or a token's centre) in pixels. */
 export const place = (l: Layout, gx: number) => l.ox + gx * l.cell;
 
 export function boardLayout(size: number): Layout {
-  /* A real board has a proper frame: the playing field fills most of the object,
-     with a band of wood around it and a hairline of brass between the two. */
-  const pad = size * 0.088;
+  /* A printed board is a sheet of card with a margin: the field fills most of
+     it, a band of paper is left around for the border motifs and the rules. */
+  const pad = size * 0.094;
   const inner = size - pad * 2;
   return { size, pad, cell: inner / 15, ox: pad, oy: pad };
 }
 
+/* ------------------------------------------------------------------ palette */
+
+/** Cream stock. */
+export const PAPER = '#f4ecdb';
+/** One ink for every line on the board — this is what makes it read as print. */
+export const INK = '#2e2a22';
+/** The pale square. */
+const TILE = '#f9f2e2';
+/** The olive rule used in the margin. */
+const RULE = '#b99f6e';
+
+export type Glyph = 'flame' | 'leaf' | 'drop' | 'bolt';
+
 export interface SeatPaint {
-  /** what the player is called: "Blue", "Red" */
+  /** what the player is called: "Blue", "Rose" */
   name: string;
   light: string;
   mid: string;
   deep: string;
   glow: string;
   ink: string;
-  /** the image key for this seat's pawn */
-  pawn: 'pawn-blue' | 'pawn-red';
+  /** the creature printed in this seat's yard */
+  creature: MaterialId;
+  /** the shape printed on this seat's pieces */
+  glyph: Glyph;
 }
 
+/**
+ * Four colours, taken off the reference board: a deep red, a sage green, a
+ * marine blue, a mustard gold. They are flat — the old set had a `light` stop
+ * near white that turned every yard into a plastic gradient.
+ *
+ * Seat order is fixed by the rules (seat 0 is the player who opens, and the UI
+ * calls them Blue), so the colours are assigned to the seats rather than to the
+ * corners of the picture.
+ */
 export const SEAT_PAINT: SeatPaint[] = [
-  { name: 'Blue', light: '#9dc0ea', mid: '#2f5fae', deep: '#0d1f42', glow: '#7fb0ff', ink: '#081428', pawn: 'pawn-blue' },
-  { name: 'Amber', light: '#f0c25c', mid: '#c07f16', deep: '#4a3005', glow: '#ffd27b', ink: '#2a1a03', pawn: 'pawn-red' },
-  { name: 'Rose', light: '#f0948c', mid: '#bd3529', deep: '#520b0e', glow: '#ff7b6b', ink: '#320306', pawn: 'pawn-red' },
-  { name: 'Green', light: '#7dc47a', mid: '#2c6b3a', deep: '#0a2612', glow: '#7fd07f', ink: '#062412', pawn: 'pawn-blue' },
+  { name: 'Blue', light: '#7fa3cf', mid: '#3f5f9e', deep: '#28406e', glow: '#a7c8f5', ink: '#16233c', creature: 'yard-water', glyph: 'drop' },
+  { name: 'Amber', light: '#f0ca6a', mid: '#d9a832', deep: '#9c7414', glow: '#ffdd8b', ink: '#3a2a06', creature: 'yard-spark', glyph: 'bolt' },
+  { name: 'Rose', light: '#d67a5f', mid: '#b0442f', deep: '#7c2c1d', glow: '#ff9c7c', ink: '#3a110a', creature: 'yard-fire', glyph: 'flame' },
+  { name: 'Green', light: '#94bc96', mid: '#5d8b63', deep: '#3a5c40', glow: '#aedcb0', ink: '#17301d', creature: 'yard-leaf', glyph: 'leaf' },
 ];
-
-const GOLD = '#b98f2e';
-const GOLD_LIGHT = '#e8cf8c';
-const GOLD_DARK = '#6f5313';
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -66,10 +94,18 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.closePath();
 }
 
-function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, outer: number, inner = outer * 0.44) {
+/** Mix two hex colours; `t` 0 gives `a`, 1 gives `b`. */
+function mix(a: string, b: string, t: number): string {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16));
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16));
+  const c = pa.map((v, i) => Math.round(v + (pb[i] - v) * t));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, outer: number, inner = outer * 0.42, points = 5) {
   ctx.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const a = (Math.PI / 5) * i - Math.PI / 2;
+  for (let i = 0; i < points * 2; i++) {
+    const a = (Math.PI / points) * i - Math.PI / 2;
     const r = i % 2 === 0 ? outer : inner;
     const x = cx + Math.cos(a) * r;
     const y = cy + Math.sin(a) * r;
@@ -78,36 +114,183 @@ function starPath(ctx: CanvasRenderingContext2D, cx: number, cy: number, outer: 
   ctx.closePath();
 }
 
-/** Tile one image across a box, keeping the aspect ratio of the source. */
-function fillPattern(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number, scale = 1) {
-  const pattern = ctx.createPattern(img, 'repeat');
-  if (!pattern) return false;
-  const m = new DOMMatrix();
-  const s = (scale * Math.max(w, h)) / Math.max(img.naturalWidth, img.naturalHeight);
-  m.a = s; m.d = s;
-  pattern.setTransform(m);
-  ctx.save();
+/**
+ * The four shapes the print is built from: a flame, a leaf, a drop, a bolt.
+ *
+ * They are drawn on a unit square centred on the origin, `s` being the half
+ * height, so the same path can be a 20 px piece emblem or a 9 px margin motif.
+ */
+function glyphPath(ctx: CanvasRenderingContext2D, kind: Glyph, s: number) {
   ctx.beginPath();
-  ctx.rect(x, y, w, h);
-  ctx.clip();
-  ctx.fillStyle = pattern;
-  ctx.fillRect(x, y, w, h);
-  ctx.restore();
-  return true;
+  if (kind === 'flame') {
+    ctx.moveTo(0, s * 1.02);
+    ctx.bezierCurveTo(-s * 0.72, s * 1.02, -s * 1.10, s * 0.42, -s * 0.86, -s * 0.16);
+    ctx.bezierCurveTo(-s * 0.74, -s * 0.52, -s * 0.42, -s * 0.62, -s * 0.34, -s * 0.40);
+    ctx.bezierCurveTo(-s * 0.26, -s * 0.86, -s * 0.02, -s * 0.96, s * 0.14, -s * 1.08);
+    ctx.bezierCurveTo(s * 0.14, -s * 0.68, s * 0.52, -s * 0.58, s * 0.66, -s * 0.18);
+    ctx.bezierCurveTo(s * 1.00, s * 0.42, s * 0.72, s * 1.02, 0, s * 1.02);
+    ctx.closePath();
+  } else if (kind === 'bolt') {
+    ctx.moveTo(s * 0.30, -s * 1.02);
+    ctx.lineTo(-s * 0.56, s * 0.10);
+    ctx.lineTo(-s * 0.04, s * 0.10);
+    ctx.lineTo(-s * 0.30, s * 1.02);
+    ctx.lineTo(s * 0.58, -s * 0.16);
+    ctx.lineTo(s * 0.04, -s * 0.16);
+    ctx.closePath();
+  } else if (kind === 'leaf') {
+    ctx.moveTo(0, s * 1.04);
+    ctx.bezierCurveTo(-s * 1.24, s * 0.36, -s * 1.02, -s * 0.86, 0, -s * 1.04);
+    ctx.bezierCurveTo(s * 1.02, -s * 0.86, s * 1.24, s * 0.36, 0, s * 1.04);
+    ctx.closePath();
+  } else {
+    ctx.moveTo(0, -s * 1.06);
+    ctx.bezierCurveTo(s * 0.60, -s * 0.36, s * 0.94, s * 0.08, s * 0.72, s * 0.50);
+    ctx.bezierCurveTo(s * 0.44, s * 0.98, -s * 0.44, s * 0.98, -s * 0.72, s * 0.50);
+    ctx.bezierCurveTo(-s * 0.94, s * 0.08, -s * 0.60, -s * 0.36, 0, -s * 1.06);
+    ctx.closePath();
+  }
 }
 
-/** A brass line: bright on the top-left, dim on the bottom-right. */
-function brassStroke(ctx: CanvasRenderingContext2D, path: () => void, width: number, span: number) {
+/** Fill and ink a glyph, the way the print does: flat colour, one thick edge. */
+function drawGlyph(
+  ctx: CanvasRenderingContext2D, kind: Glyph, cx: number, cy: number, s: number,
+  fill: string, stroke: string, lw: number, alpha = 1,
+) {
   ctx.save();
-  ctx.lineWidth = width;
-  const g = ctx.createLinearGradient(0, 0, span, span);
-  g.addColorStop(0, GOLD_LIGHT);
-  g.addColorStop(0.4, GOLD);
-  g.addColorStop(1, GOLD_DARK);
-  ctx.strokeStyle = g;
-  path();
+  ctx.globalAlpha *= alpha;
+  ctx.translate(cx, cy);
+  glyphPath(ctx, kind, s);
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = lw;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = stroke;
   ctx.stroke();
+  if (kind === 'flame') {
+    /* the printed flame has a hot core inside it */
+    ctx.save();
+    ctx.translate(cx, cy + s * 0.30);
+    ctx.scale(0.5, 0.5);
+    glyphPath(ctx, 'flame', s);
+    ctx.globalAlpha *= 0.62;
+    ctx.fillStyle = '#fbf6ea';
+    ctx.fill();
+    ctx.restore();
+  }
+  if (kind === 'leaf') {
+    ctx.beginPath();
+    ctx.moveTo(0, s * 0.86);
+    ctx.quadraticCurveTo(s * 0.10, 0, 0, -s * 0.82);
+    ctx.lineWidth = Math.max(0.4, lw * 0.7);
+    ctx.globalAlpha *= 0.75;
+    ctx.stroke();
+  }
+  if (kind === 'drop') {
+    /* a highlight on the shoulder, so a 14px drop still reads as wet */
+    ctx.beginPath();
+    ctx.arc(-s * 0.30, s * 0.30, s * 0.20, Math.PI * 0.9, Math.PI * 1.9);
+    ctx.lineWidth = Math.max(0.4, lw * 0.8);
+    ctx.strokeStyle = 'rgba(251,246,234,.75)';
+    ctx.globalAlpha *= 0.8;
+    ctx.stroke();
+  }
   ctx.restore();
+}
+
+/* ------------------------------------------------------------------ paper */
+
+/**
+ * The tooth of the stock: a scatter of tiny darker specks. It is deterministic,
+ * so repainting the board on a resize does not make the paper crawl.
+ */
+function paperTooth(ctx: CanvasRenderingContext2D, l: Layout) {
+  let seed = 20261101;
+  const rnd = () => {
+    seed = (seed * 1664525 + 1013904223) % 4294967296;
+    return seed / 4294967296;
+  };
+  ctx.save();
+  ctx.fillStyle = 'rgba(120,96,60,.055)';
+  const n = Math.round(l.size * 1.1);
+  for (let i = 0; i < n; i++) {
+    const x = rnd() * l.size;
+    const y = rnd() * l.size;
+    const r = 0.4 + rnd() * 0.9;
+    ctx.fillRect(x, y, r, r);
+  }
+  ctx.restore();
+}
+
+/** A whisper of warmth at the edges, so the sheet is not a flat fill. */
+function paperVignette(ctx: CanvasRenderingContext2D, l: Layout) {
+  const g = ctx.createRadialGradient(l.size * 0.46, l.size * 0.42, l.size * 0.24, l.size * 0.5, l.size * 0.5, l.size * 0.78);
+  g.addColorStop(0, 'rgba(120,96,60,0)');
+  g.addColorStop(1, 'rgba(120,96,60,.10)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, l.size, l.size);
+}
+
+/* ------------------------------------------------------------------ margin */
+
+/**
+ * The margin: two rules and a run of motifs, one motif per side of each corner,
+ * in the colour of the yard nearest it. This is the part of the reference that
+ * makes it look like something off a shelf rather than a UI widget.
+ */
+function paintMargin(ctx: CanvasRenderingContext2D, l: Layout, paints: SeatPaint[]) {
+  const { size, pad, cell } = l;
+  const band = pad;
+  const mid = size / 2;
+  const seat = (i: number) => paints[i] ?? SEAT_PAINT[i];
+
+  const run = (kind: Glyph, colour: string, x0: number, y0: number, len: number, across: boolean, rot: number) => {
+    const n = Math.max(2, Math.min(4, Math.round(len / (cell * 1.90))));
+    const gap = len / n;
+    const half = Math.min(cell * 0.52, gap * 0.44, band * 0.40);
+    for (let i = 0; i < n; i++) {
+      const x = x0 + (across ? gap * (i + 0.5) : 0);
+      const y = y0 + (across ? 0 : gap * (i + 0.5));
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(rot);
+      drawGlyph(ctx, kind, 0, 0, half, colour, INK, Math.max(0.6, half * 0.11), 0.94);
+      ctx.restore();
+    }
+  };
+
+  const lane = band * 0.70;              // the middle of the margin band
+  const from = pad + cell * 0.34;        // where a run may start
+  const to = mid - cell * 0.30;          // and where it must stop
+  const span = Math.max(cell, to - from);
+
+  /* the corners: flame top-left, leaf top-right, drop bottom-left, bolt bottom-right */
+  const rose = seat(2), green = seat(3), blue = seat(0), amber = seat(1);
+
+  // top edge
+  run('flame', rose.mid, from, lane, span, true, 0);
+  run('leaf', green.mid, mid + cell * 0.30, lane, span, true, 0);
+  // bottom edge
+  run('drop', blue.mid, from, size - lane, span, true, 0);
+  run('bolt', amber.mid, mid + cell * 0.30, size - lane, span, true, 0);
+  // left edge
+  run('flame', rose.mid, lane, from, span, false, Math.PI / 2);
+  run('drop', blue.mid, lane, mid + cell * 0.30, span, false, Math.PI / 2);
+  // right edge
+  run('leaf', green.mid, size - lane, from, span, false, -Math.PI / 2);
+  run('bolt', amber.mid, size - lane, mid + cell * 0.30, span, false, -Math.PI / 2);
+
+  /* one four-point spark in each outer corner, as the reference has */
+  const spark = [[band * 0.42, band * 0.42, rose], [size - band * 0.42, band * 0.42, green], [band * 0.42, size - band * 0.42, blue], [size - band * 0.42, size - band * 0.42, amber]] as const;
+  for (const [x, y, p] of spark) {
+    const s = Math.min(cell * 0.22, band * 0.24);
+    starPath(ctx, x, y, s, s * 0.30, 4);
+    ctx.fillStyle = p.mid;
+    ctx.fill();
+    ctx.lineWidth = Math.max(0.4, s * 0.22);
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+  }
 }
 
 /* ------------------------------------------------------------------ the board */
@@ -123,308 +306,160 @@ export function buildBoard(size: number, active: number[], dpr: number, seatColo
 }
 
 export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: number[], paints: SeatPaint[]) {
-  const { size } = l;
-  /* Every seat's colour is on the board whether or not that seat is occupied:
-     a printed board has four colours on it, and washing two of them out is what
-     made the first version look half-finished. */
-  const paintSeat = (seat: number) => paints[seat] ?? SEAT_PAINT[seat];
-  const wood = material('wood');
-  const ivory = material('ivory');
+  const { size, cell } = l;
+  const field = l.pad;
+  const fieldW = size - field * 2;
+  const seat = (i: number) => paints[i] ?? SEAT_PAINT[i];
 
-  /* --- the table the board sits on ------------------------------------ */
-  const velvet = material('velvet');
-  if (velvet) {
-    fillPattern(ctx, velvet, 0, 0, size, size, 1.4);
-    ctx.save();
-    const shade = ctx.createRadialGradient(size / 2, size * 0.4, size * 0.2, size / 2, size / 2, size * 0.78);
-    shade.addColorStop(0, 'rgba(10,22,40,0)');
-    shade.addColorStop(1, 'rgba(3,8,18,.78)');
-    ctx.fillStyle = shade;
-    ctx.fillRect(0, 0, size, size);
-    ctx.restore();
-  } else {
-    const bg = ctx.createRadialGradient(size * 0.45, size * 0.36, size * 0.08, size * 0.5, size * 0.5, size * 0.8);
-    bg.addColorStop(0, '#24405f');
-    bg.addColorStop(0.6, '#142639');
-    bg.addColorStop(1, '#0a141f');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, size, size);
-  }
+  /* --- the stock ------------------------------------------------------ */
+  ctx.fillStyle = PAPER;
+  ctx.fillRect(0, 0, size, size);
+  paperTooth(ctx, l);
+  paperVignette(ctx, l);
 
-  /* the frame: an outer shadow line, the walnut band, then the brass inlay */
-  const frame = l.pad * 0.5;
-  const radius = size * 0.022;
-
-  /* --- the frame: veneered walnut, brass inlay, mitred corners -------- */
+  /* --- the rules around the margin ------------------------------------ */
   ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,.75)';
-  ctx.shadowBlur = size * 0.045;
-  ctx.shadowOffsetY = size * 0.012;
-  roundRect(ctx, frame, frame, size - frame * 2, size - frame * 2, radius);
-  ctx.fillStyle = '#2a1a10';
-  ctx.fill();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1, size * 0.0032);
+  ctx.strokeRect(field * 0.26, field * 0.26, size - field * 0.52, size - field * 0.52);
+  ctx.strokeStyle = RULE;
+  ctx.lineWidth = Math.max(0.7, size * 0.0016);
+  ctx.strokeRect(field * 0.46, field * 0.46, size - field * 0.92, size - field * 0.92);
   ctx.restore();
 
-  ctx.save();
-  roundRect(ctx, frame, frame, size - frame * 2, size - frame * 2, radius);
-  ctx.clip();
-  if (wood) {
-    fillPattern(ctx, wood, frame, frame, size - frame * 2, size - frame * 2, 0.55);
-    // darken the corners so the frame reads as four pieces of wood meeting
-    const vig = ctx.createRadialGradient(size / 2, size / 2, size * 0.3, size / 2, size / 2, size * 0.74);
-    vig.addColorStop(0, 'rgba(20,10,4,0)');
-    vig.addColorStop(1, 'rgba(20,10,4,.5)');
-    ctx.fillStyle = vig;
-    ctx.fillRect(frame, frame, size - frame * 2, size - frame * 2);
-  } else {
-    const g = ctx.createLinearGradient(0, frame, size, size - frame);
-    g.addColorStop(0, '#8b5a2b');
-    g.addColorStop(0.25, '#6a3f1e');
-    g.addColorStop(0.55, '#8a5a2c');
-    g.addColorStop(0.8, '#5c3617');
-    g.addColorStop(1, '#40240f');
-    ctx.fillStyle = g;
-    ctx.fillRect(frame, frame, size - frame * 2, size - frame * 2);
-  }
-  ctx.restore();
+  paintMargin(ctx, l, paints);
 
-  // mitre seams at the corners
-  ctx.save();
-  ctx.strokeStyle = 'rgba(24,12,4,.5)';
-  ctx.lineWidth = Math.max(1, size * 0.0026);
-  for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
-    const x0 = sx > 0 ? frame : size - frame;
-    const y0 = sy > 0 ? frame : size - frame;
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x0 + sx * frame * 0.62, y0 + sy * frame * 0.62);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // brass pin in each corner of the frame
-  for (const [cx, cy] of [[frame * 1.55, frame * 1.55], [size - frame * 1.55, frame * 1.55], [frame * 1.55, size - frame * 1.55], [size - frame * 1.55, size - frame * 1.55]]) {
-    const r = size * 0.0055;
-    const pin = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, 0, cx, cy, r);
-    pin.addColorStop(0, '#fff6d8');
-    pin.addColorStop(0.55, GOLD);
-    pin.addColorStop(1, '#6d4f10');
-    ctx.fillStyle = pin;
-    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-  }
-
-  /* --- brass inlay, both sides of the walnut band -------------------- */
-  brassStroke(ctx, () => roundRect(ctx, frame + size * 0.008, frame + size * 0.008, size - frame * 2 - size * 0.016, size - frame * 2 - size * 0.016, radius), Math.max(1, size * 0.0035), size);
-  brassStroke(ctx, () => roundRect(ctx, l.pad - size * 0.007, l.pad - size * 0.007, (size - l.pad * 2) + size * 0.014, (size - l.pad * 2) + size * 0.014, size * 0.01), Math.max(1, size * 0.0035), size);
-
-  /* --- the bed ------------------------------------------------------- */
-  const bedW = size - l.pad * 2;
-  ctx.save();
-  roundRect(ctx, l.pad, l.pad, bedW, bedW, size * 0.008);
-  ctx.fillStyle = '#f6ecd8';
-  ctx.fill();
-  ctx.restore();
-  if (ivory) {
-    fillPattern(ctx, ivory, l.pad, l.pad, bedW, bedW, 0.9);
-    // keep the marble pale so tiles read against it
-    ctx.save();
-    roundRect(ctx, l.pad, l.pad, bedW, bedW, size * 0.008);
-    ctx.clip();
-    ctx.fillStyle = 'rgba(255,248,230,.5)';
-    ctx.fillRect(l.pad, l.pad, bedW, bedW);
-    ctx.restore();
-  }
-  // a soft shadow from the frame onto the bed
-  ctx.save();
-  roundRect(ctx, l.pad, l.pad, bedW, bedW, size * 0.008);
-  ctx.clip();
-  const inner = ctx.createLinearGradient(0, l.pad, 0, l.pad + size * 0.045);
-  inner.addColorStop(0, 'rgba(48,28,8,.3)');
-  inner.addColorStop(1, 'rgba(48,28,8,0)');
-  ctx.fillStyle = inner;
-  ctx.fillRect(l.pad, l.pad, bedW, size * 0.05);
-  const innerL = ctx.createLinearGradient(l.pad, 0, l.pad + size * 0.045, 0);
-  innerL.addColorStop(0, 'rgba(48,28,8,.26)');
-  innerL.addColorStop(1, 'rgba(48,28,8,0)');
-  ctx.fillStyle = innerL;
-  ctx.fillRect(l.pad, l.pad, size * 0.05, bedW);
-  ctx.restore();
+  /* --- the field ------------------------------------------------------ */
+  ctx.fillStyle = mix(PAPER, '#ffffff', 0.35);
+  ctx.fillRect(field, field, fieldW, fieldW);
 
   /* --- the yards ------------------------------------------------------
-     A printed Ludo board colours all four corners whether or not four people
-     are playing — the board is the board. Painting the idle corners a washed-out
-     beige made the whole thing look unfinished (and matched nothing you can buy),
-     so every corner is lacquered, and the seat on turn simply glows. */
-  for (let seat = 0; seat < 4; seat++) {
-    const [cx, cy] = YARD_CORNER[seat];
-    const p = paints[seat] ?? SEAT_PAINT[seat];
-    const inset = 0.06;
-    const x = place(l, cx + inset), y = place(l, cy + inset);
-    const w = l.cell * (6 - inset * 2);
-    const rad = l.cell * 0.16;
+     Four flat corners of colour, all four printed whether or not four people
+     are playing — the board is the board. The seat on turn is marked live by
+     `drawTurnGlow`, not by washing the other three out. */
+  for (let s = 0; s < 4; s++) {
+    const [cx, cy] = YARD_CORNER[s];
+    const p = seat(s);
+    const x = place(l, cx), y = place(l, cy), w = cell * 6;
 
-    ctx.save();
-    ctx.shadowColor = 'rgba(30,18,6,.45)';
-    ctx.shadowBlur = l.cell * 0.28;
-    ctx.shadowOffsetY = l.cell * 0.07;
-    roundRect(ctx, x, y, w, w, rad);
-    const g = ctx.createLinearGradient(x, y, x + w, y + w);
-    g.addColorStop(0, p.light);
-    g.addColorStop(0.3, p.mid);
-    g.addColorStop(1, p.deep);
-    ctx.fillStyle = g;
-    ctx.fill();
-    ctx.restore();
-
-    // chalky lacquer: brighter along the top-left, deeper into the corner
-    ctx.save();
-    roundRect(ctx, x, y, w, w, rad);
-    ctx.clip();
-    const lacquer = ctx.createLinearGradient(x, y, x + w * 0.7, y + w * 0.8);
-    lacquer.addColorStop(0, 'rgba(255,255,255,.22)');
-    lacquer.addColorStop(0.45, 'rgba(255,255,255,.02)');
-    lacquer.addColorStop(1, 'rgba(0,0,0,.22)');
-    ctx.fillStyle = lacquer;
+    ctx.fillStyle = p.mid;
     ctx.fillRect(x, y, w, w);
-    ctx.restore();
 
-    // a thin ivory keyline, the way a printed board frames each yard
-    ctx.strokeStyle = 'rgba(255,250,238,.5)';
-    ctx.lineWidth = Math.max(0.7, l.cell * 0.03);
-    roundRect(ctx, x + l.cell * 0.1, y + l.cell * 0.1, w - l.cell * 0.2, w - l.cell * 0.2, rad);
-    ctx.stroke();
-
-    /* the seat's name, printed across the top of its yard */
+    /* a cream keyline just inside the colour, with a bracket in each corner */
+    const k = cell * 0.26;
     ctx.save();
-    ctx.globalAlpha = 0.95;
-    ctx.fillStyle = 'rgba(255,252,242,.96)';
-    ctx.font = `700 ${Math.round(l.cell * 0.33)}px ui-serif, Georgia, 'Times New Roman', serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.letterSpacing = `${l.cell * 0.12}px`;
-    ctx.fillText(p.name.toUpperCase(), x + w / 2, y + w * 0.105);
+    ctx.strokeStyle = 'rgba(251,246,234,.60)';
+    ctx.lineWidth = Math.max(0.8, cell * 0.045);
+    ctx.strokeRect(x + k, y + k, w - k * 2, w - k * 2);
+
+    /* a bracket in each corner of the keyline, as the reference has */
+    const b = cell * 0.42;
+    const k2 = k + cell * 0.14;
+    ctx.strokeStyle = 'rgba(251,246,234,.42)';
+    ctx.lineWidth = Math.max(0.7, cell * 0.038);
+    for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
+      const px = sx > 0 ? x + k2 : x + w - k2;
+      const py = sy > 0 ? y + k2 : y + w - k2;
+      ctx.beginPath();
+      ctx.moveTo(px + sx * b, py);
+      ctx.lineTo(px, py);
+      ctx.lineTo(px, py + sy * b);
+      ctx.stroke();
+    }
     ctx.restore();
 
-    /* four ivory sockets where the pawns wait — pale discs, not dark holes:
-       a real yard is four white circles on colour */
-    for (const [sx, sy] of [[1.75, 1.75], [4.25, 1.75], [1.75, 4.25], [4.25, 4.25]]) {
-      const px2 = place(l, cx + sx), py2 = place(l, cy + sy);
-      const r = l.cell * 0.52;
+    /* the creature: as big as it can be without touching the keyline */
+    const art = material(p.creature);
+    const as = w * 0.80;
+    if (art) {
       ctx.save();
-      ctx.shadowColor = 'rgba(20,10,2,.4)';
-      ctx.shadowBlur = l.cell * 0.16;
-      ctx.shadowOffsetY = l.cell * 0.04;
-      const disc = ctx.createRadialGradient(px2 - r * 0.3, py2 - r * 0.36, r * 0.08, px2, py2, r);
-      disc.addColorStop(0, '#fffefb');
-      disc.addColorStop(0.55, '#f1e7d3');
-      disc.addColorStop(0.92, '#cbb99a');
-      disc.addColorStop(1, '#b7a180');
-      ctx.fillStyle = disc;
-      ctx.beginPath(); ctx.arc(px2, py2, r, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 0.98;
+      ctx.drawImage(art, x + (w - as) / 2, y + (w - as) / 2 + cell * 0.06, as, as);
       ctx.restore();
-      // a faint inner ring, so the socket looks turned rather than printed
-      ctx.strokeStyle = 'rgba(120,92,52,.22)';
-      ctx.lineWidth = Math.max(0.5, l.cell * 0.02);
-      ctx.beginPath(); ctx.arc(px2, py2, r * 0.72, 0, Math.PI * 2); ctx.stroke();
+    } else {
+      /* before the picture lands — or if it never does — an emblem, printed in
+         the same place at the same size, so nothing pops when it arrives */
+      drawGlyph(ctx, p.glyph, x + w / 2, y + w / 2, w * 0.24, 'rgba(251,246,234,.30)', 'rgba(251,246,234,.45)', Math.max(0.8, cell * 0.05));
+    }
+
+    /* two printed sparks, in the gaps the sockets leave */
+    for (const [sx, sy, k] of [[3, 0.95, 0.9], [3, 5.05, 1.15]] as const) {
+      const px = place(l, cx + sx), py = place(l, cy + sy);
+      const sz = cell * 0.20 * k;
+      ctx.save();
+      ctx.globalAlpha = 0.55;
+      starPath(ctx, px, py, sz, sz * 0.32, 4);
+      ctx.fillStyle = mix(p.mid, TILE, 0.72);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    /* four sockets where the pieces wait — pushed out to the corners, so the
+       creature in the middle stays whole */
+    for (const [sx, sy] of [[1.25, 1.25], [4.75, 1.25], [1.25, 4.75], [4.75, 4.75]]) {
+      const px = place(l, cx + sx), py = place(l, cy + sy);
+      const r = cell * 0.38;
+      ctx.save();
+      /* The socket is a *spot*, not a piece: a pale wash and an ink ring, with
+         a dot in the middle. A piece sitting on it is a cream disc with a
+         coloured rim, so the two never read as the same thing. */
+      ctx.globalAlpha = 0.78;
+      ctx.lineWidth = Math.max(0.9, cell * 0.055);
+      ctx.strokeStyle = INK;
+      ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 0.50;
+      ctx.fillStyle = INK;
+      ctx.beginPath(); ctx.arc(px, py, r * 0.15, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
   }
 
-  /* --- the tiles ------------------------------------------------------ */
-  const drawTile = (gx: number, gy: number, kind: 'ring' | 'lane' | 'start' | 'star', seat: number, dir = 0, override?: SeatPaint) => {
-    const pad2 = l.cell * 0.045;
-    const x = place(l, gx) + pad2;
-    const y = place(l, gy) + pad2;
-    const s = l.cell - pad2 * 2;
-    const r = l.cell * 0.1;
-    const p = override ?? paintSeat(seat);
+  /* --- the squares ----------------------------------------------------
+     Ivory stock, one ink edge. The edges of neighbouring squares are drawn
+     separately and nearly touch, which is how a printed grid reads: a dark
+     lattice with cream in the holes. */
+  const drawTile = (gx: number, gy: number, kind: 'ring' | 'safe' | 'start' | 'lane', s: number, dir = 0) => {
+    const p = seat(s);
+    const x = place(l, gx), y = place(l, gy);
 
-    ctx.save();
-    ctx.shadowColor = 'rgba(60,36,10,.3)';
-    ctx.shadowBlur = l.cell * 0.1;
-    ctx.shadowOffsetY = l.cell * 0.03;
-    roundRect(ctx, x, y, s, s, r);
-    if (kind === 'ring' || kind === 'star') {
-      const g = ctx.createLinearGradient(x, y, x + s, y + s);
-      g.addColorStop(0, '#fffefb');
-      g.addColorStop(0.65, '#fbf5e8');
-      g.addColorStop(1, '#f0e5cf');
-      ctx.fillStyle = g;
-    } else {
-      /* A printed board's coloured square is a flat, slightly chalky lacquer, not
-         a glossy gradient — the gradient is what made the first version read as
-         glass. Flat fill, a subtle rounded highlight, and a band of the seat's
-         colour is what a real board looks like. */
-      ctx.fillStyle = p.mid;
-    }
-    ctx.fill();
-    ctx.restore();
+    /* Squares butt up against each other and their edges are the same line: the
+       half-width of each stroke overlaps its neighbour's, so the grid reads as
+       one ink lattice with cream in the holes — which is what a printed board
+       actually looks like. */
+    ctx.fillStyle = kind === 'lane' || kind === 'start' ? p.mid : TILE;
+    ctx.fillRect(x, y, cell, cell);
+    ctx.lineWidth = Math.max(1, cell * 0.052);
+    ctx.strokeStyle = INK;
+    ctx.strokeRect(x, y, cell, cell);
 
-    if (kind !== 'ring' && kind !== 'star') {
-      // chalky depth: slightly darker at the outer edge, lighter at the middle
-      const face = ctx.createLinearGradient(x, y, x, y + s);
-      face.addColorStop(0, 'rgba(255,255,255,.16)');
-      face.addColorStop(0.55, 'rgba(255,255,255,0)');
-      face.addColorStop(1, 'rgba(0,0,0,.16)');
-      ctx.save();
-      roundRect(ctx, x, y, s, s, r);
-      ctx.clip();
-      ctx.fillStyle = face;
-      ctx.fillRect(x, y, s, s);
-      ctx.restore();
-    }
-
-    // inner keyline, gold on the coloured tiles, sepia on the plain ones
-    ctx.lineWidth = Math.max(0.5, l.cell * 0.016);
-    ctx.strokeStyle = kind === 'ring' || kind === 'star' ? 'rgba(146,116,68,.34)' : 'rgba(255,238,198,.55)';
-    roundRect(ctx, x, y, s, s, r);
-    ctx.stroke();
-
-    // top light
-    const top = ctx.createLinearGradient(x, y, x, y + s * 0.55);
-    top.addColorStop(0, 'rgba(255,255,255,.3)');
-    top.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.save();
-    roundRect(ctx, x, y, s, s, r);
-    ctx.clip();
-    ctx.fillStyle = top;
-    ctx.fillRect(x, y, s, s);
-    ctx.restore();
-
-    if (kind === 'star') {
-      const cx2 = x + s / 2, cy2 = y + s / 2;
-      ctx.save();
-      ctx.shadowColor = 'rgba(120,86,12,.55)';
-      ctx.shadowBlur = l.cell * 0.12;
-      starPath(ctx, cx2, cy2, l.cell * 0.28);
-      const gg = ctx.createLinearGradient(cx2, cy2 - l.cell * 0.3, cx2, cy2 + l.cell * 0.3);
-      gg.addColorStop(0, GOLD_LIGHT);
-      gg.addColorStop(0.55, GOLD);
-      gg.addColorStop(1, '#8a6a14');
-      ctx.fillStyle = gg;
+    if (kind === 'safe') {
+      /* a flat ink star: the printed board's safe square */
+      starPath(ctx, x + cell / 2, y + cell / 2, cell * 0.26, cell * 0.11);
+      ctx.fillStyle = INK;
       ctx.fill();
-      ctx.restore();
-      ctx.strokeStyle = 'rgba(110,80,12,.6)';
-      ctx.lineWidth = Math.max(0.5, l.cell * 0.018);
-      starPath(ctx, cx2, cy2, l.cell * 0.28);
-      ctx.stroke();
     }
 
     if (kind === 'start') {
-      // a chevron pointing the way a token actually leaves this square
-      const cx2 = x + s / 2, cy2 = y + s / 2;
-      const k = l.cell * 0.3;
+      /* a chevron pointing the way a piece actually leaves this square */
+      const k = cell * 0.30;
       ctx.save();
-      ctx.translate(cx2, cy2);
+      ctx.translate(x + cell / 2, y + cell / 2);
       ctx.rotate(dir);
-      ctx.globalAlpha = 0.95;
-      ctx.strokeStyle = 'rgba(255,252,240,.95)';
-      ctx.lineWidth = Math.max(1, l.cell * 0.075);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(-k * 0.7, -k * 0.62);
-      ctx.lineTo(k * 0.35, 0);
-      ctx.lineTo(-k * 0.7, k * 0.62);
+      const arrow = () => {
+        ctx.beginPath();
+        ctx.moveTo(-k * 0.66, -k * 0.62);
+        ctx.lineTo(k * 0.40, 0);
+        ctx.lineTo(-k * 0.66, k * 0.62);
+      };
+      ctx.strokeStyle = INK;
+      ctx.lineWidth = Math.max(1.2, cell * 0.13);
+      arrow();
+      ctx.stroke();
+      ctx.strokeStyle = TILE;
+      ctx.lineWidth = Math.max(0.9, cell * 0.07);
+      arrow();
       ctx.stroke();
       ctx.restore();
     }
@@ -436,97 +471,110 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
     return Math.atan2(b[1] - a[1], b[0] - a[0]);
   };
 
-  RING.forEach((cell, i) => {
-    const seat = [0, 1, 2, 3].find((s2) => START[s2] === i);
-    drawTile(cell[0], cell[1], seat !== undefined ? 'start' : SAFE.has(i) ? 'star' : 'ring', seat ?? 0, headingAt(i));
+  RING.forEach(([x, y], i) => {
+    const start = [0, 1, 2, 3].find((s) => START[s] === i);
+    drawTile(x, y, start !== undefined ? 'start' : SAFE.has(i) ? 'safe' : 'ring', start ?? 0, headingAt(i));
   });
-  for (let seat = 0; seat < 4; seat++) {
-    HOME_LANES[seat].forEach(([x, y], i) => {
-      /* the lane deepens towards home, which is how a printed board draws the
-         run-in: a soft colour at the mouth, near-black at the centre */
-      const base = paints[seat] ?? SEAT_PAINT[seat];
-      const tone: SeatPaint = i >= 3 ? { ...base, mid: base.deep, light: base.mid } : base;
-      drawTile(x, y, 'lane', seat, 0, tone);
-    });
+  for (let s = 0; s < 4; s++) {
+    /* the lane is one flat colour from the mouth to the rosette — a printed
+       board does not shade a run-in, it just colours it */
+    for (const [x, y] of HOME_LANES[s]) drawTile(x, y, 'lane', s);
   }
 
-  /* --- the middle: four triangles meeting under a gilt star -----------
-     On a printed board the centre is where the four home lanes arrive, so it is
-     split into four triangles pointing inwards, each in its seat's colour, with
-     the star over the join. Filling only the two *occupied* seats left two
-     triangles as bare marble, which read as a mistake rather than a design. */
-  const cx0 = place(l, 6), cy0 = place(l, 6), box = l.cell * 3;
+  /* --- the rosette -----------------------------------------------------
+     Three squares by three, divided into the four quadrants that the yards sit
+     in, with an inscribed circle carrying an eight-slice pinwheel and a turned
+     hub. The corners of the quadrants — the spandrels outside the circle — are
+     the only part of the colour you see, exactly as on the reference. */
+  const ox = place(l, 6), oy = place(l, 6), box = cell * 3;
   ctx.save();
-  roundRect(ctx, cx0, cy0, box, box, l.cell * 0.1);
-  ctx.fillStyle = '#fbf4e4';
-  ctx.fill();
-  ctx.restore();
-  if (ivory) {
-    ctx.save();
-    roundRect(ctx, cx0, cy0, box, box, l.cell * 0.1);
-    ctx.clip();
-    fillPattern(ctx, ivory, cx0, cy0, box, box, 0.42);
-    ctx.fillStyle = 'rgba(255,250,236,.55)';
-    ctx.fillRect(cx0, cy0, box, box);
-    ctx.restore();
+  ctx.beginPath();
+  ctx.rect(ox, oy, box, box);
+  ctx.clip();
+  for (let q = 0; q < 4; q++) {
+    const left = q === 0 || q === 3;
+    const top = q === 0 || q === 1;
+    ctx.fillStyle = seat(q).mid;
+    ctx.fillRect(ox + (left ? 0 : box / 2), oy + (top ? 0 : box / 2), box / 2, box / 2);
   }
+  ctx.restore();
 
-  const mc = { x: cx0 + box / 2, y: cy0 + box / 2 };
-  const corners: [number, number][] = [
-    [cx0, cy0], [cx0 + box, cy0], [cx0 + box, cy0 + box], [cx0, cy0 + box],
-  ];
-  /* one triangle per edge of the centre: left, top, right, bottom — matching the
-     four home lanes that arrive there */
-  const WEDGE: [number, number][][] = [
-    [corners[0], corners[3]], // left
-    [corners[0], corners[1]], // top
-    [corners[1], corners[2]], // right
-    [corners[3], corners[2]], // bottom
-  ];
-  /* lane 0 arrives from the left, 1 from the top, 2 from the right, 3 from the
-     bottom, so the seat that owns each triangle is the same index */
-  for (let seat = 0; seat < 4; seat++) {
-    const p = paints[seat] ?? SEAT_PAINT[seat];
-    const [a, b] = WEDGE[seat];
-    ctx.save();
+  const c = { x: place(l, 7.5), y: place(l, 7.5) };
+  const R = cell * 1.5;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
+  ctx.clip();
+  const slices = 8;
+  for (let k = 0; k < slices; k++) {
+    const a0 = (k * Math.PI * 2) / slices - Math.PI / 2 - Math.PI / 8;
+    const a1 = a0 + (Math.PI * 2) / slices;
     ctx.beginPath();
-    ctx.moveTo(a[0], a[1]);
-    ctx.lineTo(b[0], b[1]);
-    ctx.lineTo(mc.x, mc.y);
+    ctx.moveTo(c.x, c.y);
+    ctx.arc(c.x, c.y, R, a0, a1);
     ctx.closePath();
-    const g = ctx.createLinearGradient(a[0], a[1], mc.x, mc.y);
-    g.addColorStop(0, p.mid);
-    g.addColorStop(1, p.deep);
-    ctx.fillStyle = g;
+    /* the four colours twice each, so no two neighbours match — a pinwheel, not
+       four quadrants with spokes drawn over them */
+    ctx.fillStyle = seat(k % 4).mid;
     ctx.fill();
-    ctx.restore();
-    ctx.strokeStyle = 'rgba(255,250,232,.7)';
-    ctx.lineWidth = Math.max(0.8, l.cell * 0.028);
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(mc.x, mc.y); ctx.stroke();
   }
-
-  // the gilt star, with a fine dark edge and a highlight along its upper arms
-  ctx.save();
-  ctx.shadowColor = 'rgba(60,38,6,.55)';
-  ctx.shadowBlur = l.cell * 0.3;
-  starPath(ctx, mc.x, mc.y, l.cell * 0.78, l.cell * 0.32);
-  const gs = ctx.createLinearGradient(mc.x - l.cell * 0.5, mc.y - l.cell * 0.6, mc.x + l.cell * 0.5, mc.y + l.cell * 0.6);
-  gs.addColorStop(0, '#fff0c2');
-  gs.addColorStop(0.45, '#d8ae45');
-  gs.addColorStop(1, '#8a6512');
-  ctx.fillStyle = gs;
-  ctx.fill();
+  /* the spokes of the pinwheel, one ink line each */
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(0.8, cell * 0.038);
+  for (let k = 0; k < slices; k++) {
+    const a = (k * Math.PI * 2) / slices - Math.PI / 2 - Math.PI / 8;
+    ctx.beginPath();
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(c.x + Math.cos(a) * R, c.y + Math.sin(a) * R);
+    ctx.stroke();
+  }
   ctx.restore();
-  ctx.strokeStyle = 'rgba(74,52,6,.7)';
-  ctx.lineWidth = Math.max(0.8, l.cell * 0.026);
-  starPath(ctx, mc.x, mc.y, l.cell * 0.78, l.cell * 0.32);
-  ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,250,226,.6)';
-  ctx.lineWidth = Math.max(0.6, l.cell * 0.018);
-  starPath(ctx, mc.x - l.cell * 0.02, mc.y - l.cell * 0.02, l.cell * 0.7, l.cell * 0.29);
+
+  /* the rim of the rosette, in the same heavy ink as the grid */
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1.2, cell * 0.085);
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, R, 0, Math.PI * 2);
   ctx.stroke();
 
-  return;
+  /* a cream hairline just inside the rim — the printed board's second ring */
+  ctx.strokeStyle = mix(TILE, INK, 0.15);
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = Math.max(0.6, cell * 0.022);
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, R * 0.90, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  /* the hub: a cream boss, a sage ring, a hole */
+  const hub = cell * 0.46;
+  ctx.fillStyle = TILE;
+  ctx.beginPath(); ctx.arc(c.x, c.y, hub, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = Math.max(0.9, cell * 0.05);
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+  ctx.fillStyle = '#9a9464';
+  ctx.beginPath(); ctx.arc(c.x, c.y, hub * 0.66, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = mix(INK, '#9a9464', 0.2);
+  ctx.lineWidth = Math.max(0.6, cell * 0.026);
+  ctx.stroke();
+  ctx.fillStyle = TILE;
+  ctx.beginPath(); ctx.arc(c.x, c.y, hub * 0.30, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(0.5, cell * 0.022);
+  ctx.stroke();
+
+  /* --- the frame of the field, drawn last so it sits over every tile --- */
+  ctx.save();
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(2, cell * 0.13);
+  ctx.strokeRect(field, field, fieldW, fieldW);
+  ctx.restore();
+
+  /* `active` is kept in the signature: the Board re-paints when the seats
+     change, and the four corners are printed either way. */
+  void active;
 }
 
 /* ------------------------------------------------------------------ pieces */
@@ -543,13 +591,12 @@ export interface TokenDraw {
 }
 
 /**
- * One pawn.
+ * One piece.
  *
- * The artwork is a photograph: a turned, lacquered pawn with a gold crown, keyed
- * off its background and tinted per seat. A drawn marble was never going to beat
- * that, so it does not try — but if the picture has not arrived (or a browser
- * blocks it) the old painted counter is still drawn, in the same place and the
- * same size, so nothing pops.
+ * The sheet this is modelled on prints round tokens: a flat disc in the seat's
+ * colour, a heavy ink edge, and an emblem in cream. Nothing is glossed — the
+ * only depth is a hard shadow printed under the disc, which is what makes a
+ * piece read as *on* the board rather than painted into it.
  */
 export function drawToken(ctx: CanvasRenderingContext2D, l: Layout, t: TokenDraw, paints: SeatPaint[] = SEAT_PAINT) {
   const p = paints[t.seat] ?? SEAT_PAINT[0];
@@ -557,117 +604,119 @@ export function drawToken(ctx: CanvasRenderingContext2D, l: Layout, t: TokenDraw
   if (alpha <= 0.01) return;
   const lift = t.lift ?? 0;
   const scale = t.scale ?? 1;
-  const x = place(l, t.gx);
-  /* A piece stands *on* its square, not behind it: its foot sits low in the cell
-     and its body overlaps the square above, the way a chess piece does. With the
-     foot at the cell's bottom edge instead, a token on row 8 looked like it was
-     standing on row 7 — which, on a board where row 7 is somebody's home lane,
-     reads as a lie about the position. */
-  const groundY = place(l, t.gy) + l.cell * 0.7;
-  const img = material(p.pawn);
+  const cx = place(l, t.gx);
+  const cy = place(l, t.gy) - lift * l.cell * 0.34;
+  const r = l.cell * 0.385 * scale * (1 + lift * 0.10);
 
-  const h = l.cell * 1.32 * scale;
-  const w = h * 0.62;
-
-  /* contact shadow — tight on the board, wide and soft in the air */
+  /* the shadow stays on the board while the piece rises off it */
   ctx.save();
-  ctx.globalAlpha = alpha;
-  const spread = 1 + lift * 0.55;
-  const shadow = ctx.createRadialGradient(x, groundY, l.cell * 0.03, x, groundY, l.cell * 0.36 * spread);
-  shadow.addColorStop(0, `rgba(16,10,4,${0.34 - lift * 0.12})`);
-  shadow.addColorStop(0.6, `rgba(16,10,4,${0.13 - lift * 0.05})`);
-  shadow.addColorStop(1, 'rgba(16,10,4,0)');
-  ctx.fillStyle = shadow;
+  ctx.globalAlpha = alpha * Math.max(0.06, 0.22 - lift * 0.06);
+  ctx.fillStyle = INK;
   ctx.beginPath();
-  ctx.ellipse(x, groundY, l.cell * 0.32 * spread, l.cell * 0.14 * spread, 0, 0, Math.PI * 2);
+  ctx.ellipse(place(l, t.gx) + r * 0.12, place(l, t.gy) + l.cell * 0.22, r * (1 + lift * 0.35), r * (0.40 + lift * 0.2), 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
 
-  const bottom = groundY + l.cell * 0.02 - lift * l.cell * 0.55;
+  /* The disc: a ring of the seat's colour around a cream face, the emblem in
+     the middle. A piece has to be legible on a cream square *and* on its own
+     coloured yard, and a disc of one colour can only manage one of those. */
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = p.mid;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
 
-  if (img) {
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(img, x - w / 2, bottom - h, w, h);
-    ctx.restore();
-  } else {
-    /* the fallback counter: a domed disc in the seat's colours */
-    const r = l.cell * 0.38 * scale;
-    const y = bottom - r;
-    const body = ctx.createRadialGradient(x - r * 0.36, y - r * 0.44, r * 0.12, x, y, r * 1.05);
-    body.addColorStop(0, '#ffffff');
-    body.addColorStop(0.2, p.light);
-    body.addColorStop(0.62, p.mid);
-    body.addColorStop(1, p.deep);
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = body;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = Math.max(0.8, r * 0.12);
-    ctx.strokeStyle = 'rgba(30,14,4,.45)';
-    ctx.beginPath(); ctx.arc(x, y, r * 0.96, 0, Math.PI * 2); ctx.stroke();
-    const gloss = ctx.createRadialGradient(x - r * 0.34, y - r * 0.42, 0, x - r * 0.34, y - r * 0.42, r * 0.72);
-    gloss.addColorStop(0, 'rgba(255,255,255,.95)');
-    gloss.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = gloss;
-    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-  }
+  ctx.fillStyle = TILE;
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.70, 0, Math.PI * 2); ctx.fill();
+
+  /* the ink edges — the heavy one outside, a hairline round the face */
+  ctx.lineWidth = Math.max(1, r * 0.17);
+  ctx.strokeStyle = INK;
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = Math.max(0.6, r * 0.07);
+  ctx.beginPath(); ctx.arc(cx, cy, r * 0.70, 0, Math.PI * 2); ctx.stroke();
+
+  /* the emblem, in the seat's own ink */
+  drawGlyph(ctx, p.glyph, cx, cy, r * 0.46, p.mid, p.ink, Math.max(0.7, r * 0.08));
+  ctx.restore();
 
   if (t.stack && t.stack > 1) {
     ctx.save();
     ctx.globalAlpha = alpha;
-    const bx = x + w * 0.34, by = bottom - h * 0.3;
-    ctx.fillStyle = 'rgba(16,10,4,.85)';
-    ctx.beginPath(); ctx.arc(bx, by, l.cell * 0.17, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff6e2';
-    ctx.font = `700 ${Math.round(l.cell * 0.24)}px ui-sans-serif, system-ui, sans-serif`;
+    const bx = cx + r * 0.92, by = cy - r * 0.88;
+    const br = l.cell * 0.20;
+    ctx.fillStyle = TILE;
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(0.8, br * 0.22);
+    ctx.strokeStyle = INK;
+    ctx.stroke();
+    ctx.fillStyle = INK;
+    ctx.font = `700 ${Math.round(br * 1.15)}px ui-sans-serif, system-ui, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(t.stack), bx, by + l.cell * 0.008);
+    ctx.fillText(String(t.stack), bx, by + br * 0.04);
     ctx.restore();
   }
 }
 
 /**
- * The ring drawn on a square a token could move to.
+ * The marker on a square a piece could move to.
  *
- * It lies on the board — an ellipse, not a circle — because the board is a table
- * seen from above and a perfectly round ring under a piece reads as a sticker.
+ * Drawn as an ink ring with a cream ring inside it, so it is visible on the pale
+ * squares *and* on a coloured lane — a single-colour ring always disappears on
+ * one of the two.
  */
 export function drawTarget(ctx: CanvasRenderingContext2D, l: Layout, gx: number, gy: number, colour: string, pulse: number) {
-  const x = place(l, gx), y = place(l, gy) + l.cell * 0.7;
+  const x = place(l, gx), y = place(l, gy);
+  const r = l.cell * (0.47 + pulse * 0.03);
 
   ctx.save();
-  // a warm halo behind the piece, so the eye finds it before the ring
-  const halo = ctx.createRadialGradient(x, y - l.cell * 0.55, 0, x, y - l.cell * 0.55, l.cell * 0.62);
+  /* a warm halo, so the eye finds the piece before it reads the ring */
+  const halo = ctx.createRadialGradient(x, y, l.cell * 0.1, x, y, l.cell * 0.7);
   halo.addColorStop(0, colour);
   halo.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.globalAlpha = 0.3 + pulse * 0.34;
+  ctx.globalAlpha = 0.22 + pulse * 0.30;
   ctx.fillStyle = halo;
-  ctx.beginPath(); ctx.arc(x, y - l.cell * 0.55, l.cell * 0.62, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x, y, l.cell * 0.7, 0, Math.PI * 2); ctx.fill();
 
-  // and the ring at its feet, lying flat on the board
-  const rx = l.cell * (0.42 + pulse * 0.03);
-  ctx.globalAlpha = 0.6 + pulse * 0.4;
-  ctx.strokeStyle = 'rgba(255,244,204,.98)';
-  ctx.lineWidth = Math.max(1, l.cell * 0.032);
-  ctx.beginPath(); ctx.ellipse(x, y, rx, rx * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalAlpha = 0.55 + pulse * 0.35;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = Math.max(1, l.cell * 0.055);
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+
+  ctx.globalAlpha = 0.45 + pulse * 0.5;
+  ctx.strokeStyle = TILE;
+  ctx.lineWidth = Math.max(0.8, l.cell * 0.032);
+  ctx.beginPath(); ctx.arc(x, y, r * 0.82, 0, Math.PI * 2); ctx.stroke();
   ctx.restore();
 }
 
-/** A soft halo behind the yard of whoever is on turn. */
+/**
+ * The yard of whoever is on turn, marked.
+ *
+ * A printed board has no spotlight, so this is a cream keyline drawn just inside
+ * the yard's own one, breathing slowly. It reads at a glance without pretending
+ * the paper is lit.
+ */
 export function drawTurnGlow(ctx: CanvasRenderingContext2D, l: Layout, seat: number, t: number, paints: SeatPaint[] = SEAT_PAINT) {
   const [cx, cy] = YARD_CORNER[seat];
-  const x = place(l, cx + 3), y = place(l, cy + 3);
   const p = paints[seat] ?? SEAT_PAINT[0];
   const pulse = 0.5 + Math.sin(t / 640) * 0.5;
+  const w = l.cell * 6;
+  const x = place(l, cx), y = place(l, cy);
+
   ctx.save();
-  const g = ctx.createRadialGradient(x, y, l.cell * 1.1, x, y, l.cell * 3.4);
-  g.addColorStop(0, 'rgba(255,255,255,0)');
-  g.addColorStop(0.62, `${p.glow}${Math.round((0.06 + pulse * 0.1) * 255).toString(16).padStart(2, '0')}`);
+  /* a soft wash of the seat's own glow, kept well under the ink */
+  const g = ctx.createRadialGradient(x + w / 2, y + w / 2, w * 0.1, x + w / 2, y + w / 2, w * 0.75);
+  g.addColorStop(0, `${p.glow}${Math.round((0.10 + pulse * 0.14) * 255).toString(16).padStart(2, '0')}`);
   g.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(x, y, l.cell * 3.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillRect(x, y, w, w);
+
+  const k = l.cell * 0.14;
+  ctx.globalAlpha = 0.45 + pulse * 0.5;
+  ctx.strokeStyle = TILE;
+  ctx.lineWidth = Math.max(1.2, l.cell * 0.09);
+  roundRect(ctx, x + k, y + k, w - k * 2, w - k * 2, l.cell * 0.12);
+  ctx.stroke();
   ctx.restore();
 }

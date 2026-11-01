@@ -221,9 +221,12 @@ printed Ludo sheet: the walnut-and-marble version was a *table*, and a printed
 board has no highlights in it. It is now flat print — cream stock, one ink
 (`#2e2a22`), four seat colours — with a creature printed in each yard, ivory
 squares in an ink lattice, a pinwheel rosette where the four lanes arrive, and
-flame/leaf/wave/bolt motifs in the margin. The four creatures are generated
-artwork (`public/art/ludo/yard-*.webp`, ~40 KB each, keyed off white and trimmed)
-and are the only images the board needs; everything else is drawn. The board is
+flame/leaf/wave/bolt motifs in the margin. The four creatures are the real cast —
+Charmander, Bulbasaur, Squirtle and Pikachu, one per colour, matching the
+reference sheet — taken from the official artwork set (the `PokeAPI/sprites`
+repo's `other/official-artwork` directory), trimmed to their outlines, squared and
+written to `public/art/ludo/yard-*.webp` at 512 px, ~35–41 KB each. They are the
+only images the board needs; everything else is drawn. The board is
 painted **once** into an offscreen canvas and blitted each frame; only the pieces
 move, so the detail costs nothing per frame. If a creature never arrives the
 painter prints that seat's emblem in the same place instead, so nothing pops.
@@ -257,3 +260,34 @@ for a six or a capture, that home count never falls, that captures happen, and
 that every game ends. **Smoke-tested only:** the visible capture animation (rules
 and relay are covered, but the flight home was not caught on camera), and the
 stacked-token badge.
+
+## Addendum: the carrom rail, and the ludo cast
+
+Two notes from a pass over the look of both boards:
+
+**The carrom rail was eating the board.** It had been set to 16.7% of the board
+per side to stop the board looking like a diagram, which over-corrected: a third
+of the picture was wood and the playing surface — the part with the game in it —
+looked pinched. It is 12.5% now, which is *narrower* than the reference sheet
+measured at 14%, and the wood was lightened and warmed at the same time. Two
+related faults came out with it: four "rail shadow" bands were being filled
+across the rail's full width and height instead of onto the bed, so the north
+rail's shadow painted a dark cross through the whole frame (the bed paints its
+own edge shadow inside its own clip, so they were also doubling up); and the
+double rule and the corner joint discs were drawn at half the weight and half the
+size the reference has them. Nothing about the physics moved: the bed is still
+100 units, the pockets still kill at `POCKET_R`, and `layout()` is the single
+place the bed is mapped to pixels, so aiming and the referee's geometry agree.
+
+**Ludo's yards now hold the actual Pokémon.** The first repaint drew four
+creatures generated for the job; they read as the right animals but they were not
+the cast. They are the official artwork now, keyed on their transparent
+backgrounds and sized to the same optical weight, so the blue yard is Squirtle,
+green is Bulbasaur, red is Charmander and gold is Pikachu — the colour-to-creature
+mapping the reference sheet uses. The shelf cover was regenerated to show the same
+four, so the card and the board agree.
+
+Verified in a real Chromium after both changes: the boards at 840 px and at 362 px
+(phone) and 470 px (desktop carrom) with no console errors; carrom's room pass
+20/20 through the relay (a shot played, both boards agreeing) and ludo's 17/17;
+unit suite 1089/1089; lint, build and seo clean.

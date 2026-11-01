@@ -66,14 +66,14 @@ const RED_DARK = '#7d2114';
 export interface PaintSize { size: number; frame: number; margin: number; scale: number; origin: number }
 
 export function layout(size: number): PaintSize {
-  /* margin → rail → bed, read off the reference with a ruler rather than
-     guessed: a 4% cream margin, then a *wide* rail — 16.7% of the board, which is
-     where the pockets are drilled — leaving a bed of two thirds of the board.
-     The old board was almost all bed with a thin frame, which is why it read as a
-     diagram: a real printed board is mostly rail. */
+  /* margin → rail → bed. The first pass over-corrected: 16.7% of the board per
+     side is a sixth of the wood *each way*, so a third of the picture was rail
+     and the playing surface — the part that matters — looked pinched. A printed
+     board's rail is about an eighth of the board, which leaves three quarters of
+     the piece as bed. */
   const margin = size * 0.04;
   const board = size - margin * 2;
-  const frame = board * 0.167;
+  const frame = board * 0.125;
   const inner = board - frame * 2;
   return { size, frame, margin, scale: inner / BOARD, origin: margin + frame };
 }
@@ -170,7 +170,7 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
   const top = outer.y, right = outer.x + outer.s, bottom = outer.y + outer.s, left = outer.x;
 
   ctx.save();
-  ctx.fillStyle = '#7c552c';
+  ctx.fillStyle = '#7a5230';
   ctx.fillRect(left, top, outer.s, outer.s);
 
   ctx.save();
@@ -186,14 +186,14 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
     fillStretched(ctx, rail, left, top, outer.s, outer.s);
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'color';
-    ctx.fillStyle = '#6b4220';
+    ctx.fillStyle = '#6b4423';
     ctx.fillRect(left, top, outer.s, outer.s);
     ctx.globalCompositeOperation = 'soft-light';
     ctx.fillStyle = 'rgba(255,232,196,.1)';
     ctx.fillRect(left, top, outer.s, outer.s);
     // the reference's walnut is a good deal darker than the photograph's
     ctx.globalCompositeOperation = 'multiply';
-    ctx.fillStyle = 'rgba(122,84,44,.34)';
+    ctx.fillStyle = 'rgba(112,64,26,.32)';
     ctx.fillRect(left, top, outer.s, outer.s);
     ctx.globalCompositeOperation = 'source-over';
   } else {
@@ -213,8 +213,7 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
 
   /* the arris: the lightest thing on the board, a hair inside the outer edge,
      and the shade the rail drops onto the bed */
-  const arrisW = seam * 0.26;
-  const band = arrisW * 1.5;
+  const arrisW = Math.max(size * 0.006, seam * 0.20);
   const arris = ctx.createLinearGradient(0, top, 0, top + arrisW);
   arris.addColorStop(0, 'rgba(255,228,182,.13)');
   arris.addColorStop(1, 'rgba(255,228,182,0)');
@@ -226,32 +225,12 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
   ctx.fillStyle = arrisL;
   ctx.fillRect(left, top, arrisW, outer.s);
 
-  /* These bands were drawn across the whole canvas at first, so the shadow of
-     the north rail was painted over the east and west rails too — a cross of two
-     dark stripes straight through the frame. Each one is bounded by the board. */
-  const bedEdge = ctx.createLinearGradient(0, top + seam, 0, top + seam - band);
-  bedEdge.addColorStop(0, 'rgba(26,12,2,.30)');
-  bedEdge.addColorStop(1, 'rgba(26,12,2,0)');
-  ctx.fillStyle = bedEdge;
-  ctx.fillRect(left, top + seam - band, outer.s, band);
-
-  const bedEdgeB = ctx.createLinearGradient(0, bottom - seam, 0, bottom - seam + band);
-  bedEdgeB.addColorStop(0, 'rgba(26,12,2,.22)');
-  bedEdgeB.addColorStop(1, 'rgba(26,12,2,0)');
-  ctx.fillStyle = bedEdgeB;
-  ctx.fillRect(left, bottom - seam, outer.s, band);
-
-  const bedEdgeL = ctx.createLinearGradient(left + seam, 0, left + seam - band, 0);
-  bedEdgeL.addColorStop(0, 'rgba(26,12,2,.26)');
-  bedEdgeL.addColorStop(1, 'rgba(26,12,2,0)');
-  ctx.fillStyle = bedEdgeL;
-  ctx.fillRect(left + seam - band, top, band, outer.s);
-
-  const bedEdgeR = ctx.createLinearGradient(right - seam, 0, right - seam + band, 0);
-  bedEdgeR.addColorStop(0, 'rgba(26,12,2,.22)');
-  bedEdgeR.addColorStop(1, 'rgba(26,12,2,0)');
-  ctx.fillStyle = bedEdgeR;
-  ctx.fillRect(right - seam, top, band, outer.s);
+  /* The four bands that used to live here were meant to be the rail's shadow
+     falling on the bed, but they were filled across the *rail's* full width and
+     height, so the north rail's shadow was painted over the east and west rails
+     as well — a cross of two dark stripes straight through the frame, which is
+     most of why the wood read as one heavy slab. The bed paints its own edge
+     shadow inside its own clip further down, so they were also doubling up. */
 
   // the mitre seams, from each outer corner in
   ctx.strokeStyle = 'rgba(30,16,4,.07)';
@@ -334,6 +313,14 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: PaintSize) {
   ctx.fillRect(bedX + inner - shadeW, bedX, shadeW, inner);
   ctx.restore();
 
+  /* a lit chamfer on the rail, just outside the bed's edge */
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,226,178,.22)';
+  ctx.lineWidth = Math.max(1, size * 0.0022);
+  roundRect(ctx, bedX - size * 0.0016, bedX - size * 0.0016, inner + size * 0.0032, inner + size * 0.0032, mouth);
+  ctx.stroke();
+  ctx.restore();
+
   /* the hard line where the rail ends and the bed begins */
   ctx.save();
   ctx.strokeStyle = 'rgba(38,20,4,.16)';
@@ -369,10 +356,10 @@ function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
   ctx.lineCap = 'round';
 
   /* --- the double rule ------------------------------------------------ */
-  ctx.lineWidth = Math.max(0.6, unit * 0.26);
+  ctx.lineWidth = Math.max(0.9, unit * 0.42);
   const o0 = px(l, RULE_OUTER), o1 = px(l, 100 - RULE_OUTER);
   ctx.strokeRect(o0, o0, o1 - o0, o1 - o0);
-  ctx.lineWidth = Math.max(0.55, unit * 0.24);
+  ctx.lineWidth = Math.max(0.8, unit * 0.36);
   const i0 = px(l, RULE_INNER), i1 = px(l, 100 - RULE_INNER);
   ctx.strokeRect(i0, i0, i1 - i0, i1 - i0);
 
@@ -380,7 +367,7 @@ function paintMarkings(ctx: CanvasRenderingContext2D, l: PaintSize) {
   for (const [sx, sy] of [[1, 1], [-1, 1], [1, -1], [-1, -1]] as const) {
     const x = px(l, sx > 0 ? RULE_OUTER : 100 - RULE_OUTER);
     const y = px(l, sy > 0 ? RULE_OUTER : 100 - RULE_OUTER);
-    const r = unit * 2.0;
+    const r = unit * 2.9;
     // the pale disc the rails are jointed with
     const disc = ctx.createRadialGradient(x - r * 0.3, y - r * 0.35, r * 0.1, x, y, r);
     disc.addColorStop(0, '#f3e6c9');

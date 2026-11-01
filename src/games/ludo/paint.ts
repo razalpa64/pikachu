@@ -370,11 +370,13 @@ export function paintBoard(ctx: CanvasRenderingContext2D, l: Layout, active: num
 
     /* the creature: as big as it can be without touching the keyline */
     const art = material(p.creature);
-    const as = w * 0.80;
+    /* the figures are trimmed to their own outline, so they fill the box they
+       are given — a little smaller than the keyline keeps the frame readable */
+    const as = w * 0.72;
     if (art) {
       ctx.save();
       ctx.globalAlpha = 0.98;
-      ctx.drawImage(art, x + (w - as) / 2, y + (w - as) / 2 + cell * 0.06, as, as);
+      ctx.drawImage(art, x + (w - as) / 2, y + (w - as) / 2 + cell * 0.02, as, as);
       ctx.restore();
     } else {
       /* before the picture lands — or if it never does — an emblem, printed in

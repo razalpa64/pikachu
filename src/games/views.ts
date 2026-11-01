@@ -40,6 +40,7 @@ export const SOLO_IMPORTERS: Record<string, Importer> = {
   gomoku: () => import('./gomoku/SoloView'),
   dots: () => import('./dots/SoloView'),
   mancala: () => import('./mancala/SoloView'),
+  vanta: () => import('./vanta/SoloView'),
 };
 
 export const SOLO_VIEWS: Record<string, LazyExoticComponent<ComponentType<SoloViewProps>>> =

@@ -184,6 +184,7 @@ function boardFileFor(id: string): string {
     sketch: 'SketchBoard', reversi: 'ReversiBoard', gomoku: 'GomokuBoard',
     dots: 'DotsBoard', mancala: 'MancalaBoard', wyr: 'WouldYouRatherBoard', wordbomb: 'WordBombBoard', bluff: 'BluffTriviaBoard',
     bingo: 'BingoBoard', carrom: 'CarromBoard', ludo: 'LudoBoard', 'betweenus': 'BetweenUsRoom',
+    vanta: 'VantaBoard',
   };
   return `${known[id] ?? 'Unknown'}.tsx`;
 }

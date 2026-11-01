@@ -51,7 +51,7 @@ export default function SoloShell({
           a 58px header, permanently ate ~105px before a single pixel of game.
           Below `sm` it is one 44px row that scrolls away: back, title, restart.
           The tagline, the record chips and "Play online" return from `sm` up. */}
-      <div className="sticky top-0 sm:top-[58px] border-b border-ink-600 bg-ink-850/88 backdrop-blur-md blur-heavy z-30">
+      <div className="sticky-chrome sticky top-0 sm:top-[var(--topbar-h)] border-b border-ink-600 bg-ink-850/88 backdrop-blur-md blur-heavy z-30">
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-1.5 sm:py-2.5 flex items-center gap-2 sm:gap-3 sm:flex-wrap">
           {/* aria-label, not just the visible span: below `sm` the label is hidden and
               an icon-only button would otherwise have no accessible name at all. */}
@@ -113,39 +113,56 @@ export default function SoloShell({
         </div>
       )}
 
-      {/* content */}
+      {/* content.
+          The board is capped by the height it can afford, not by the column, so a
+          1440 x 900 window used to give a 430 px board with the HUD, the rulebook
+          and Pikachu's line stacked above it — about 200 px of chrome spending the
+          very height the board was short of, and 500 px of empty paper beside it.
+          From `lg` up this block becomes a two-column grid: the small print takes
+          a column of its own beside the board, the board column starts at the very
+          top and spans the full height, and the stage re-measures the extra room
+          for itself. Below `lg` nothing is set at all — one column, same order,
+          same boxes. The last grid row is `1fr` on purpose: a spanning item's
+          leftover height is otherwise spread evenly over the rows it spans, which
+          pushed the rulebook and Pikachu's line down the page in three loose
+          bands. The empty `1fr` row absorbs that slack instead, so the small print
+          stacks tightly under the HUD. */}
       <div className={`relative flex-1 mx-auto w-full ${wide ? 'max-w-[1340px]' : 'max-w-[1120px]'} px-[var(--shell-pad)] py-2 sm:py-5`}>
-        {/* The HUD used to stretch the full 1120 px column above a board that is
-            at most ~660 px, which read as a wide pale band over a small board.
-            It is now centred to roughly the board's width (a little wider for the
-            `wide` games, whose HUD carries a clock, move number and eval). */}
-        {hud && (
-          <div className={`hud-strip mb-2 sm:mb-4 sm:mx-auto ${wide ? 'sm:max-w-[1180px]' : 'sm:max-w-[880px]'}`}>{hud}</div>
-        )}
-        <div className="flex flex-col items-center gap-3 sm:gap-5">{children}</div>
-        {/* the rulebook sits under the board, closed: it never pushes the game down
-            the screen, and it is where a puzzled player is already looking */}
-        <div className="mt-3 sm:mt-5 w-full max-w-[560px] mx-auto">
-          <HowToPlay gameId={game.id} gameTitle={game.title} />
-        </div>
-        {(mascotLine || footer) && (
-          <div className="mt-3 sm:mt-7 flex flex-col-reverse sm:flex-row items-center gap-3 sm:gap-4 justify-center">
-            {mascotLine && (
-              <div className="flex items-end gap-2">
-                {/* wrapped, not classed: PikachuMascot hardcodes `inline-block`,
-                    which beats an unprefixed `hidden` in the cascade and renders
-                    both copies at once. */}
-                <span className="sm:hidden"><PikachuMascot state={mascot} size={58} /></span>
-                <span className="hidden sm:inline-block"><PikachuMascot state={mascot} size={92} /></span>
-                {/* role=status: this line is where the game says "chain jump
-                    available", "check", "your turn" — without a live region the
-                    only people who get that information are the ones watching. */}
-                <div className="panel notch-sm px-3 py-2 max-w-[34ch]"><p role="status" className="text-[12.5px] text-cream-100 font-semibold leading-snug">{mascotLine}</p></div>
-              </div>
-            )}
-            {footer}
+        <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:grid-rows-[auto_auto_auto_1fr] lg:gap-x-7 lg:items-start">
+          {/* The HUD used to stretch the full 1120 px column above a board that is
+              at most ~660 px, which read as a wide pale band over a small board.
+              Narrow screens centre it to roughly the board's width. */}
+          {hud && (
+            <div className={`hud-strip mb-2 sm:mb-4 sm:mx-auto ${wide ? 'sm:max-w-[1180px]' : 'sm:max-w-[880px]'} lg:col-start-1 lg:row-start-1 lg:mx-0 lg:mb-0 lg:max-w-none`}>{hud}</div>
+          )}
+          {/* the game */}
+          <div className="flex flex-col items-center gap-3 sm:gap-5 lg:col-start-2 lg:row-span-4 lg:row-start-1">{children}</div>
+          {/* the rulebook sits under the board, closed: it never pushes the game down
+              the screen, and it is where a puzzled player is already looking */}
+          <div className={`mt-3 sm:mt-5 w-full max-w-[560px] mx-auto lg:mx-0 lg:max-w-none lg:col-start-1 lg:mt-4 ${hud ? 'lg:row-start-2' : 'lg:row-start-1'}`}>
+            <HowToPlay gameId={game.id} gameTitle={game.title} />
           </div>
-        )}
+          {(mascotLine || footer) && (
+            <div className={`mt-3 sm:mt-7 flex flex-col-reverse sm:flex-row items-center gap-3 sm:gap-4 justify-center lg:mt-4 lg:flex-col lg:items-start lg:justify-start lg:gap-3 lg:col-start-1 ${hud ? 'lg:row-start-3' : 'lg:row-start-2'}`}>
+              {mascotLine && (
+                <div className="flex items-end gap-2 lg:flex-col lg:items-start lg:gap-2">
+                  {/* wrapped, not classed: PikachuMascot hardcodes `inline-block`,
+                      which beats an unprefixed `hidden` in the cascade and renders
+                      both copies at once. */}
+                  <span className="sm:hidden"><PikachuMascot state={mascot} size={58} /></span>
+                  <span className="hidden sm:inline-block"><PikachuMascot state={mascot} size={92} /></span>
+                  {/* role=status: this line is where the game says "chain jump
+                      available", "check", "your turn" — without a live region the
+                      only people who get that information are the ones watching. */}
+                  <div className="panel notch-sm px-3 py-2 max-w-[34ch]"><p role="status" className="text-[12.5px] text-cream-100 font-semibold leading-snug">{mascotLine}</p></div>
+                </div>
+              )}
+              {footer}
+            </div>
+          )}
+          {/* slack, not content: see the note above */}
+          <div aria-hidden className="hidden lg:block lg:col-start-1 lg:row-start-4" />
+        </div>
       </div>
     </div>
   );

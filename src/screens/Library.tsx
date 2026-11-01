@@ -158,7 +158,7 @@ export default function Library() {
           used to scroll away, so narrowing 20 games meant scrolling back to the
           top to type. `top` is the same 58 px every other sticky bar in the app uses, so the search
           box tucks under the header instead of leaving a sliver of page visible. */}
-      <div className="sticky top-[58px] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-3 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
+      <div className="sticky-chrome sticky top-[var(--topbar-h)] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-3 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
         {/* Search and filters share one row on every screen: stacked, they were
             two 46 px bands of chrome between the title and the first game. */}
         <div className="flex flex-row items-center gap-2.5">

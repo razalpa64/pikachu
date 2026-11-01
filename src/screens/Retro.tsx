@@ -515,7 +515,7 @@ export default function Retro() {
       </header>
 
       {/* ---------------- controls ---------------- */}
-      <div className="sticky top-[58px] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-4 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
+      <div className="sticky-chrome sticky top-[var(--topbar-h)] z-20 -mx-[var(--shell-pad)] px-[var(--shell-pad)] py-2 mb-4 bg-ink-900/92 backdrop-blur-md blur-heavy border-b border-ink-600/70">
         <div className="flex flex-col sm:flex-row gap-2.5 sm:items-center">
           <Segmented
             value={platform}

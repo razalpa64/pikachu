@@ -66,14 +66,14 @@ const RED_DARK = '#7d2114';
 export interface PaintSize { size: number; frame: number; margin: number; scale: number; origin: number }
 
 export function layout(size: number): PaintSize {
-  /* margin → rail → bed. The first pass over-corrected: 16.7% of the board per
-     side is a sixth of the wood *each way*, so a third of the picture was rail
-     and the playing surface — the part that matters — looked pinched. A printed
-     board's rail is about an eighth of the board, which leaves three quarters of
-     the piece as bed. */
-  const margin = size * 0.04;
+  /* margin → rail → bed, measured off the reference sheet along a horizontal
+     through its middle: the walnut is 5.6% of the *picture* each side and the bed
+     is 76% of it. The rail is therefore about a sixteenth of the board, not the
+     sixth the first pass used — and the cream margin came down from 4% to 1.2%
+     at the same time, because the board was floating in its own tablecloth. */
+  const margin = size * 0.012;
   const board = size - margin * 2;
-  const frame = board * 0.125;
+  const frame = board * 0.065;
   const inner = board - frame * 2;
   return { size, frame, margin, scale: inner / BOARD, origin: margin + frame };
 }

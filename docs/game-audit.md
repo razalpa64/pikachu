@@ -268,8 +268,14 @@ Two notes from a pass over the look of both boards:
 **The carrom rail was eating the board.** It had been set to 16.7% of the board
 per side to stop the board looking like a diagram, which over-corrected: a third
 of the picture was wood and the playing surface — the part with the game in it —
-looked pinched. It is 12.5% now, which is *narrower* than the reference sheet
-measured at 14%, and the wood was lightened and warmed at the same time. Two
+looked pinched. 12.5% was still too much, so it was measured instead of guessed:
+a horizontal scan through the reference sheet shows the walnut at 5.6% of the
+picture each side with the bed at 76% of it, so the rail is a sixteenth of the
+board (6.5%) and the cream margin came down from 4% to 1.2% at the same time —
+the board had been floating in its own tablecloth. `layout()` now has a test
+(`src/games/carrom/__tests__/layout.test.ts`) pinning all of that: the bed is
+84%+ of the picture, the rail stays between 5 and 7.5% of the board, the margin
+stays under 2%, and the bed still maps onto the referee's 100 units. Two
 related faults came out with it: four "rail shadow" bands were being filled
 across the rail's full width and height instead of onto the bed, so the north
 rail's shadow painted a dark cross through the whole frame (the bed paints its
@@ -291,3 +297,13 @@ Verified in a real Chromium after both changes: the boards at 840 px and at 362 
 (phone) and 470 px (desktop carrom) with no console errors; carrom's room pass
 20/20 through the relay (a shot played, both boards agreeing) and ludo's 17/17;
 unit suite 1089/1089; lint, build and seo clean.
+
+**The shelf cards were from another art direction.** Every other card in the
+library is soft watercolour — pastel rose, butter, sage and powder blue, a chai
+cup and a knitted blanket in the corner, sparkles near the pieces. The carrom
+card was a hard photographic render of a gold-edged board and the ludo card was a
+flat print mock-up, so those two read as imports from a different game. Both were
+regenerated in the shelf's own world, with the real subject in the frame: carrom
+with its pastel coin ring and red queen, ludo with the four creatures and its
+pinwheel rosette. They now sit next to Checkers, Mancala and Gomoku without
+standing out.

@@ -240,6 +240,15 @@ solo screen and in a room. The canvas publishes the geometry it actually drew
 (`data-ludo-pad`, `data-ludo-cell`) so tests aim at pixels that exist instead of
 re-deriving them.
 
+**Repaint verified** in a real Chromium: the board was captured straight out of
+the dev-server module graph at 840 px and 360 px, and inside the app at 428 px
+(desktop) and 362 px (phone), with pieces in the yards, on the ring, in a home
+lane, at home, stacked two deep and mid-hop; every piece sat in the centre of the
+square the referee had it on. A solo game was then played for real — 18 rolls, 14
+moves, a token out of the yard — with no console errors, and the room pass ran
+17/17 through the relay. The capture animation is still the one thing not caught
+on camera.
+
 **Gameplay-tested** (a real Chromium, real clicks): a full two-player game to a
 win — 164 rolls, 121 moves, 43 passes, **0 dead ends**, "Rose wins", no console
 errors; the same driver in the room, through the relay, 15/15; and 24 whole games

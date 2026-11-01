@@ -3,7 +3,7 @@ import {
   ANCHOR_TAX, CORES, COST, INFLUENCE_TO_WIN, MAX_ENERGY, MAX_ROUNDS, N, OBJECTIVE_BONUS, RELAYS,
   RELAY_WIN_COUNT, RELAY_WIN_STREAK, SHOVE_TAX, SQUARES, START_AGENTS, START_ENERGY, STEAL_COST, TERRITORY_T1,
   EVENT_LABEL, OBJECTIVES, costFor, createInitialState, neighbours, normalisePlan, objectiveById,
-  resolveRound, targetsFor, territoryCount, validatePlan, vantaRules,
+  resolveRound, squareName, targetsFor, territoryCount, validatePlan, vantaRules,
   type ObjectiveId, type VantaPlan, type VantaState,
 } from '../rules';
 import { choosePlan, choosePrediction, evaluate, readDistribution, type VantaStrength } from '../ai';
@@ -199,6 +199,23 @@ describe('VANTA — hidden information', () => {
     expect(done.objectiveDone[1]).toBe(false);
   });
 });
+
+  it('never names a locked plan in the room ticker — that line is broadcast', () => {
+    /* `describeMove` goes to both seats. If it named the agent and the square,
+       the opponent would be handed the exact move they are meant to read blind. */
+    const s = bare();
+    const step = neighbours(START_AGENTS[0][0])[0];
+    const locked = vantaRules.applyMove(s, 0, plan(0, 'move', step));
+    expect(locked.plans[0]).not.toBeNull();
+    const ticker = vantaRules.describeMove!(locked, 0, plan(0, 'move', step));
+    expect(ticker).toBe('Ivory locked a plan');
+    expect(ticker).not.toMatch(/move|claim|anchor|snare|feint/);
+    expect(ticker).not.toContain(squareName(step));
+    /* only once both plans are in does the ticker say what happened */
+    const resolved = vantaRules.applyMove(locked, 1, plan(0, 'hold', null));
+    const after = vantaRules.describeMove!(resolved, 1, plan(0, 'hold', null));
+    expect(after).toMatch(/Ivory|Coral/);
+  });
 
 /* ------------------------------------------------------------------ 4. energy */
 

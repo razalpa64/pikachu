@@ -39,7 +39,7 @@ export const ART: Record<ArtKey, { src: string; alt: string; pos?: string }> = {
   berry:      { src: '/art/game/berry.webp',      alt: 'A woven picnic basket overflowing with ripe golden berries' },
   spyfall:    { src: '/art/game/spyfall.webp',    alt: 'A row of blank name cards on a table, one turned face down' },
   bluff:      { src: '/art/game/bluff.webp',      alt: 'Two teacups and a folded card on a wooden table, one cup suspiciously swapped' },
-  vanta:      { src: '/art/game/vanta.webp',      alt: 'A dark seven-by-seven stone table lit by a single overhead lamp, ivory and coral markers poised over its relays' },
+  vanta:      { src: '/art/game/vanta.webp',      alt: 'A honey-wood seven-by-seven table painted with pale cream squares, butter and blush lacquered markers on its inlaid relays, beside a sprig of eucalyptus and a knitted mint cloth' },
   betweenUs:  { src: '/art/game/between-us.webp', alt: 'A bunker signal room lit by a hanging lamp, a console of brass dials below a wall of glowing glyphs' },
   ludo:       { src: '/art/game/ludo.webp',       alt: 'A carved walnut ludo board with blue and rose pawns, the die mid-tumble' },
   carrom:     { src: '/art/game/carrom.webp',     alt: 'A polished carrom board with cream, ebony and red coins, the striker on its baseline' },

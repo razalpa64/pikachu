@@ -12,6 +12,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { MemoryRouter } from 'react-router-dom';
 import VantaSolo from '../SoloView';
 import { StoreProvider } from '../../../lib/store';
 import { gameById } from '../../registry';
@@ -42,7 +43,8 @@ afterEach(async () => {
 
 const mount = async () => {
   const game = gameById('vanta')!;
-  await act(async () => root.render(createElement(StoreProvider, null, createElement(VantaSolo, { game }))));
+  await act(async () => root.render(createElement(MemoryRouter, { initialEntries: ['/solo/vanta'] },
+    createElement(StoreProvider, null, createElement(VantaSolo, { game })))));
 };
 
 const byText = (re: RegExp) =>
@@ -68,7 +70,10 @@ describe('VANTA solo', () => {
     await mount();
     await act(async () => { byText(/take the table/i)!.click(); });
     expect(host.querySelectorAll('[role="gridcell"]').length).toBe(49);
-    expect(host.textContent).toContain('Round 1 / 12');
+    /* the round clock lives in the game HUD, the same place every other game
+       puts its counters */
+    expect(host.textContent).toMatch(/ROUND|Round/);
+    expect(host.textContent).toContain('1/12');
     expect(host.textContent).toContain('Secret objective');
     expect(host.textContent).toMatch(/Lock plan/i);
     expect(host.textContent).not.toMatch(/Match report/i);
@@ -91,8 +96,10 @@ describe('VANTA solo', () => {
     /* the reveal is deliberately delayed by a beat, then the round is done */
     await act(async () => { await sleep(500); });
     const text = host.textContent ?? '';
-    expect(text).toContain('Round 2 / 12');
+    expect(text).toContain('2/12');
     expect(text).toMatch(/Round 1 resolved/);
+    /* the report speaks in the seats' on-screen names, not the engine's */
+    expect(text).toContain('You · ');
     expect(text, 'the composer is live again').toMatch(/Lock plan/i);
     /* the past round is public, the coming one is not */
     expect(text).not.toMatch(/Their plan/i);

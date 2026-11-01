@@ -164,7 +164,7 @@ export const GAMES: GameMeta[] = [
     tagline: 'Two plans, one table, no second chances',
     description: 'An original two-player table game about reading people. Seven by seven, three agents a side, five relays, one core and one secret objective each. Both players write a plan in secret — one agent, one action, one target, and a guess at what the other will do — and the server resolves them at the same instant. Move, claim, anchor, feint, snare; twelve rounds to reach twelve influence, or bolt three relays and keep them bolted for three rounds running, or close every road to their core.',
     genre: 'strategy', modes: ['ai', 'online'], players: [2, 2], duration: 10,
-    accent: '#F16B61', artKey: 'vanta', status: 'live', serverRefereed: true,
+    accent: '#b07d18', artKey: 'vanta', status: 'live', serverRefereed: true,
     difficulties: ['beginner', 'casual', 'intermediate', 'advanced', 'expert'],
     settings: [
       { key: 'rounds', label: 'Rounds', type: 'select', default: 12, options: [

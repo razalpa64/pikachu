@@ -53,9 +53,11 @@ export const HOME_LANES: readonly (readonly Cell[])[] = [
   [[7, 13], [7, 12], [7, 11], [7, 10], [7, 9]],  // from the bottom
 ];
 
-/** Where each seat's four tokens rest in the yard, in grid-line coordinates
- *  (a value of 1.75 is three-quarters of the way through the first square). */
-const YARD_SPOTS = [[1.75, 1.75], [4.25, 1.75], [1.75, 4.25], [4.25, 4.25]] as const;
+/** Where each seat's four tokens rest in the yard, as square indices. The painter
+ *  puts a piece at the *centre* of a square (index + 0.5), so these read as
+ *  1.25 / 4.75 inside a six-square yard — four sockets pushed to the corners,
+ *  either side of the creature printed in the middle. */
+const YARD_SPOTS = [[0.75, 0.75], [4.25, 0.75], [0.75, 4.25], [4.25, 4.25]] as const;
 /** The top-left corner of each 6×6 yard, in squares. */
 export const YARD_CORNER: readonly Cell[] = [[0, 0], [9, 0], [9, 9], [0, 9]];
 export const YARDS: readonly (readonly Cell[])[] = YARD_CORNER.map(([cx, cy]) =>

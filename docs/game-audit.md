@@ -216,14 +216,23 @@ fixed, and the second pass found five:
 | **The same vacuous-pass bug in the online room** | `legalMoves(...).every(m => m.t === 'pass')` on an empty list is `true`. | Guarded by `legal.length > 0`. |
 | **The hint told you to tap a token that did not exist** | "You rolled 5. Tap a glowing token." appeared even when nothing could move. | The hint has three cases now: tap, nothing-can-use-it, and waiting. |
 
-The art is no longer procedural. A walnut veneer, a slab of ivory marble and a
-night-blue velvet are generated textures (in `public/art/ludo/`, ~95 KB for the
-three), the pawn is a photographed turned piece keyed off a green screen and
-tinted per seat, and both are composited at paint time. The board itself — frame,
-brass inlay, mitred corners, yards, tiles, stars and the gilt centre — is painted
-**once** into an offscreen canvas and blitted each frame; only the pieces move, so
-the detail costs nothing per frame. If a texture never arrives the painter falls
-back to the gradients it used before, in the same places, so nothing pops.
+The art went through a second repaint, after the board was compared against a
+printed Ludo sheet: the walnut-and-marble version was a *table*, and a printed
+board has no highlights in it. It is now flat print — cream stock, one ink
+(`#2e2a22`), four seat colours — with a creature printed in each yard, ivory
+squares in an ink lattice, a pinwheel rosette where the four lanes arrive, and
+flame/leaf/wave/bolt motifs in the margin. The four creatures are generated
+artwork (`public/art/ludo/yard-*.webp`, ~40 KB each, keyed off white and trimmed)
+and are the only images the board needs; everything else is drawn. The board is
+painted **once** into an offscreen canvas and blitted each frame; only the pieces
+move, so the detail costs nothing per frame. If a creature never arrives the
+painter prints that seat's emblem in the same place instead, so nothing pops.
+
+Two geometry faults were found while repainting and fixed: piece positions are
+square *centres* (`index + 0.5`) while squares are drawn from their index, so a
+piece was landing half a square up and left of the square the referee said it was
+on; and the yard sockets now sit in the four corners of each yard (`0.75 … 4.25`)
+instead of under the creature, which is how a printed board lays them out.
 
 The board is a canvas and therefore a picture to a keyboard and a screen reader,
 so every move also exists as a real button ("Token 2 — 14 to home"), on both the

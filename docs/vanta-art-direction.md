@@ -73,3 +73,27 @@ the source PNG stays in `art-src/`.
 The registry accent (`#b07d18`) is a honey ochre sampled from that cover rather
 than the old coral, so the tagline under the game's title is the same family as
 its thumbnail.
+
+## The column
+
+VANTA is the only board whose readouts carry a plan composer, so it is the only
+one where the space *around* the board is part of the game. Two rules keep it
+honest, both measured in the browser rather than eyeballed:
+
+- **One width for the whole column.** The board is height-fitted by `BoardStage`,
+  which means its width is decided at runtime; the readouts and the composer
+  therefore take *that* width, not a hard-coded 560 px. The old fixed wrapper made
+  the cards overhang the board by 53 px a side at 1280 × 900 and 103 px a side at
+  1024 × 800.
+- **Two arrangements, one container.** When the component's own column is at least
+  `VANTA_SPLIT_MIN` (760 px — measured on the container, so a room with the chat
+  rail docked beside it stacks rather than squeezing) the readouts move into a
+  318 px rail beside the board. Below that they stack under it at the board's
+  width. Verified at 1440 × 950, 1280 × 900, 1024 × 800, 820 × 1000, 844 × 390 and
+  390 × 844: board and composer share an edge, and the document never scrolls
+  sideways.
+
+The composer itself is a two-column grid (label | chips) so wrapped action chips
+stay indented under the first chip instead of snapping back to the card edge, and
+its footer carries either the selected action's sentence or the plan's status —
+which is what removed the extra row that used to hold both.

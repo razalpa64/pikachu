@@ -299,7 +299,12 @@ export default function Room() {
 
               {verdict && (
                 <ResultOverlay
-                  verdict={verdict} reason={finished?.reason}
+                  verdict={verdict}
+                  /* the engine's report says Ivory and Coral; the room says two
+                     people's names */
+                  reason={finished?.reason
+                    ? String(finished.reason).replace(/\bIvory\b/g, names[0]).replace(/\bCoral\b/g, names[1])
+                    : finished?.reason}
                   playerA={{ name: names[0], score: scoreFor(room.gameId, match.state, 0), you: slot === 0 }}
                   playerB={{ name: names[1], score: scoreFor(room.gameId, match.state, 1), you: slot === 1 }}
                   rows={[{ label: 'Series', a: room.series.wins[0], b: room.series.wins[1] }, { label: 'Draws', a: room.series.draws, b: room.series.draws }]}
@@ -655,6 +660,8 @@ function MatchHud({ game, state, slot, names, myTurn, lastAction, onResign, onDr
             : game === 'sketch'
               ? state.phase === 'reveal' ? 'Round over'
                 : state.drawer === slot ? 'Draw it' : 'Guess it'
+            : game === 'vanta'
+              ? state.plans?.[slot] ? 'Plan locked' : 'Write your plan'
             : myTurn ? 'Your move' : `${names[oppSlot]}’s move`
         }
       />
@@ -724,9 +731,29 @@ function MatchHud({ game, state, slot, names, myTurn, lastAction, onResign, onDr
             {state.lastCapture > 0 && <Stat label="Last capture" value={`+${state.lastCapture}`} accent="#17795a" />}
           </>
         )}
+        {/* VANTA is simultaneous, so "influence" is the score line both seats
+            read, and the relay count is the only clock that can end the match
+            early. Both belong here with every other game's counters. */}
+        {game === 'vanta' && (
+          <>
+            <Stat label="You" value={state.influence?.[slot] ?? 0} accent="#8d5a05" />
+            <Stat label={names[oppSlot]} value={state.influence?.[oppSlot] ?? 0} accent="#bd2756" />
+            <Stat label="Round" value={`${state.round ?? 1}/${state.maxRounds ?? 12}`} />
+            <Stat label="Bolted" value={`${state.relaysHeld?.[slot] ?? 0}/5`} accent="#17795a" />
+          </>
+        )}
       </div>
       <div className="flex-1" />
-      {lastAction && <span className="text-[11px] text-cream-500 font-mono truncate max-w-[26ch]">{lastAction}</span>}
+      {lastAction && (
+        <span className="text-[11px] text-cream-500 font-mono truncate max-w-[26ch]">
+          {/* VANTA's engine writes its report with the two seat names baked in.
+              In a room the seats are two people with names, so the line says
+              their names instead of "Ivory" and "Coral". */}
+          {game === 'vanta'
+            ? String(lastAction).replace(/\bIvory\b/g, names[0]).replace(/\bCoral\b/g, names[1])
+            : lastAction}
+        </span>
+      )}
       {canDraw && <Button size="sm" variant="ghost" onClick={onDraw} icon={<Icon name="hand" size={13} />}>Offer draw</Button>}
       <Button size="sm" variant="ghost" onClick={onResign} icon={<Icon name="flag" size={13} />}>Resign</Button>
     </Panel>

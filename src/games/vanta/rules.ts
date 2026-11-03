@@ -1021,17 +1021,23 @@ export const vantaRules: TurnGameRules<VantaState, VantaPlan> = {
     };
   },
 
+  /**
+   * One line for the room's action ticker.
+   *
+   * This is broadcast to **both** seats, so it must never describe a plan that
+   * has not resolved yet: naming the agent and square of a locked plan would
+   * hand the opponent the exact move they are supposed to be reading blind. A
+   * half-submitted round therefore says only that a plan is in — which the other
+   * seat's client already knows from `foeHasSubmitted` — and the round is
+   * described in full only once both plans have resolved.
+   */
   describeMove(s, player, move) {
-    /* both plans resolved: the state we were handed is the fresh round, and the
-       report above it is what just happened */
     const report = s.lastRound;
     if (report && !s.plans[0] && !s.plans[1]) {
       return `${report.results[0].outcome} ${report.results[1].outcome}`;
     }
-    const plan = normalisePlan(move);
-    if (!plan) return '';
-    const where = plan.action === 'anchor' ? s.agents[player][plan.agent] : plan.to;
-    return `${seatName(player)}: ${ACTION_LABEL[plan.action].toLowerCase()}${where === null ? '' : ` ${squareName(where)}`}`;
+    if (!normalisePlan(move)) return '';
+    return `${seatName(player)} locked a plan`;
   },
 };
 

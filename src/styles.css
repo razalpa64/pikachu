@@ -499,6 +499,14 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     min-width: 100%;
     justify-content: flex-start !important;
   }
+  /* VANTA's strip carries seven items, so one row both scrolled and clipped the
+     last pill ("Your plan") off the screen. Its own HUD opts out of the strip
+     and wraps onto two centred rows instead. */
+  .hud-strip > .vanta-hud {
+    flex-wrap: wrap !important;
+    width: 100%;
+    justify-content: center !important;
+  }
 }
 @layer components {
 

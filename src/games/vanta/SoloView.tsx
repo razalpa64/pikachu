@@ -275,7 +275,7 @@ export default function VantaSolo({ game }: { game: GameMeta }) {
         </>
       }
       hud={
-        <Panel className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
+        <Panel className="vanta-hud p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
           <Stat label="You" value={state.influence[0]} accent={BUTTER_DEEP} />
           <Stat label="AI" value={foeInfluence} accent={BLUSH_DEEP} />
           <Stat label="Round" value={`${state.round}/${state.maxRounds ?? MAX_ROUNDS}`} />

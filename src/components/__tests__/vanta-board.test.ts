@@ -14,7 +14,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import VantaBoard from '../boards/VantaBoard';
+import VantaBoard, { VANTA_SPLIT_MIN } from '../boards/VantaBoard';
 import { StoreProvider } from '../../lib/store';
 import {
   RELAYS, CORES, START_AGENTS, createInitialState, neighbours, objectiveById, squareName, targetsFor, vantaRules,
@@ -237,6 +237,16 @@ describe('VANTA board', () => {
     expect(cell!.getAttribute('aria-label')).toMatch(/relay/);
     /* and the legend explains what the ring means, because the sweep needs it */
     expect(host.textContent).toMatch(/ring = bolted/);
+  });
+
+  it('only puts the readouts beside the board when the column can afford it', () => {
+    /* The layout is measured against the component's own column, not the window:
+       in a room the chat rail already took a column. Below the breakpoint the
+       panels sit under the board at the board's width — that number is the one
+       this file has to keep honest, because the old 560 px wrapper is what let
+       the cards overhang a height-fitted board. */
+    expect(VANTA_SPLIT_MIN).toBeGreaterThanOrEqual(600);
+    expect(VANTA_SPLIT_MIN + 318).toBeLessThanOrEqual(1100);
   });
 });
 

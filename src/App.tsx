@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Analytics } from '@vercel/analytics/react';
 import { StoreProvider, useStore } from './lib/store';
 import { RoomProvider } from './lib/useRoom';
 import { ToastStack } from './components/ui';
@@ -135,6 +136,7 @@ export default function App() {
           page they asked for while that plays. */}
       <SeoHead />
       <Shell />
+      <Analytics />
     </StoreProvider>
   );
 }

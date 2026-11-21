@@ -1,85 +1,219 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { Difficulty, GameMeta } from '../games/types';
-import { Button, Icon, Segmented, Stat } from './ui';
-import { PikachuMascot, type MascotState } from '../mascot';
-import { useStore, useAmbience } from '../lib/store';
-import { GameArtwork } from './GameArtwork';
-import { HowToPlay } from './HowToPlay';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import { useNavigate } from "react-router-dom";
+import type { Difficulty, GameMeta } from "../games/types";
+import { Button, Icon, Segmented, Stat } from "./ui";
+import { PikachuMascot, type MascotState } from "../mascot";
+import { useStore, useAmbience } from "../lib/store";
+import { GameArtwork } from "./GameArtwork";
+import { HowToPlay } from "./HowToPlay";
 
 export const DIFFS: { value: Difficulty; label: string }[] = [
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'casual', label: 'Casual' },
-  { value: 'intermediate', label: 'Inter' },
-  { value: 'advanced', label: 'Advanced' },
-  { value: 'expert', label: 'Expert' },
+  { value: "beginner", label: "Beginner" },
+  { value: "casual", label: "Casual" },
+  { value: "intermediate", label: "Inter" },
+  { value: "advanced", label: "Advanced" },
+  { value: "expert", label: "Expert" },
 ];
 
 /** Shared chrome for every single-player game: title bar, mode rail, HUD slot, mascot commentary. */
 export default function SoloShell({
-  game, children, hud, controls, mascot = 'idle', mascotLine, onRestart, footer, wide,
+  game,
+  children,
+  hud,
+  controls,
+  mascot = "idle",
+  mascotLine,
+  onRestart,
+  footer,
+  wide,
+  stacked,
 }: {
   game: GameMeta;
   children: ReactNode;
   hud?: ReactNode;
+  /** show the same HUD above the game instead of in the rail column, from `lg` up */
+  hudInline?: boolean;
   controls?: ReactNode;
   mascot?: MascotState;
   mascotLine?: string;
   onRestart?: () => void;
   footer?: ReactNode;
   wide?: boolean;
+  /**
+   * A game whose own panels sit under the board (no sidebar) in the tablet band.
+   *
+   * Below `lg` there is no sidebar to put the small print in, so it lands under
+   * the game — but the HUD and the mascot row were laid out full-bleed while the
+   * game kept its own width. That gave a 834 px tablet four left edges in one
+   * screen (HUD at 25, board at 25, rulebook at 137, read card at 403) and a
+   * 300 px empty band under the board. With this, everything above and below the
+   * game shares one centred column of the board's own width, and the HUD's height
+   * is given back to the board.
+   */
+  stacked?: boolean;
 }) {
   const nav = useNavigate();
   const { progress, favourite, sfx } = useStore();
-  useAmbience('match');
+  useAmbience("match");
   const fav = progress.favourites.includes(game.id);
   const stat = progress.stats[game.id];
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  /* The stacked band sizes everything under the game from the board itself.
+     A game publishes its board as `[data-board-stage]` (the same hook the room
+     uses), so this is measured rather than guessed: at 834 px the table settles
+     at 637 px and the rulebook under it is 637 px wide, not a 560 px island. */
+  const gameCol = useRef<HTMLDivElement | null>(null);
+  const [stackedCol, setStackedCol] = useState({ board: 0, game: 0 });
+  useLayoutEffect(() => {
+    const host = gameCol.current;
+    if (!stacked || !host) return;
+    const measure = () => {
+      const stage = host.querySelector<HTMLElement>("[data-board-stage]");
+      const object = host.querySelector<HTMLElement>("[data-game-object]");
+      /* Two numbers, because the page needs both:
+         - `--board-col`: the table itself, which is what the small print lines up
+           with below `lg`, where the readouts sit *under* the board;
+         - `--game-col`: the game as one object (board + rail), which is what it
+           lines up with from `lg` up. */
+      setStackedCol((prev) => {
+        const board = stage ? Math.round(stage.getBoundingClientRect().width) : 0;
+        const game = object ? Math.round(object.getBoundingClientRect().width) : board;
+        const next = { board: board || game, game: game || board };
+        return prev.board === next.board && prev.game === next.game ? prev : next;
+      });
+    };
+    measure();
+    const RO = (globalThis as { ResizeObserver?: typeof ResizeObserver })
+      .ResizeObserver;
+    const ro = RO ? new RO(measure) : null;
+    if (ro) {
+      if (host.firstElementChild) ro.observe(host.firstElementChild);
+      ro.observe(host);
+    }
+    window.addEventListener("resize", measure);
+    const settle = window.setTimeout(measure, 320);
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+      window.clearTimeout(settle);
+    };
+  }, [stacked]);
 
   return (
     /* On a phone this screen owns the app bar (the site header is hidden), so it
        fills the viewport and its own bar sticks to the very top. */
     <div className="relative min-h-[calc(100dvh-58px)] max-lg:min-h-[100dvh] flex flex-col">
       {/* atmosphere */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
-        <div className="absolute inset-0 opacity-[0.22]"><GameArtwork artKey={game.artKey} /></div>
+      <div
+        className="absolute inset-0 pointer-events-none overflow-hidden"
+        aria-hidden
+      >
+        <div className="absolute inset-0 opacity-[0.22]">
+          <GameArtwork artKey={game.artKey} />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-ink-900/85 via-ink-900/94 to-ink-900" />
       </div>
 
       {/* Title bar. On a phone this wrapped onto two rows and, being sticky under
           a 58px header, permanently ate ~105px before a single pixel of game.
           Below `sm` it is one 44px row that scrolls away: back, title, restart.
-          The tagline, the record chips and "Play online" return from `sm` up. */}
-      <div className="sticky-chrome sticky top-0 sm:top-[var(--topbar-h)] border-b border-ink-600 bg-ink-850/88 backdrop-blur-md blur-heavy z-30">
+          The tagline, the record chips and "Play online" return from `sm` up.
+
+          Opaque, not glass. The bar was a 88 % tint rescued by a backdrop blur,
+          and the blur only exists where `backdrop-filter` does — so on a tier
+          that switches it off (and in any engine without it) the bar became a
+          window: the settings segmented control scrolled up *through* the title
+          row. The tint is now the paper colour at full strength, and the blur is
+          a progressive enhancement on top of it: `@supports` relaxes the
+          background to 92 % only where the blur can actually be drawn. */}
+      <div className="sticky-chrome solo-bar sticky top-0 lg:top-[var(--topbar-h)] border-b border-ink-600 bg-ink-850/88 backdrop-blur-md blur-heavy z-30">
         <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)] py-1.5 sm:py-2.5 flex items-center gap-2 sm:gap-3 sm:flex-wrap">
           {/* aria-label, not just the visible span: below `sm` the label is hidden and
               an icon-only button would otherwise have no accessible name at all. */}
-          <Button size="sm" variant="ghost" cue="back" className="btn-iconish" aria-label="Library"
-            onClick={() => nav('/library')} icon={<Icon name="back" size={14} />}>
+          <Button
+            size="sm"
+            variant="ghost"
+            cue="back"
+            className="btn-iconish"
+            aria-label="Library"
+            onClick={() => nav("/library")}
+            icon={<Icon name="back" size={14} />}
+          >
             <span className="hidden sm:inline">Library</span>
           </Button>
           <div className="min-w-0">
-            <h1 className="display text-[14px] sm:text-[15px] text-cream-100 leading-tight truncate">{game.title}</h1>
-            <p className="hidden sm:block text-[10.5px] uppercase tracking-wider font-bold truncate" style={{ color: game.accent }}>{game.tagline}</p>
+            <h1 className="display text-[14px] sm:text-[15px] text-cream-100 leading-tight truncate">
+              {game.title}
+            </h1>
+            <p
+              className="hidden sm:block text-[10.5px] uppercase tracking-wider font-bold truncate"
+              style={{ color: game.accent }}
+            >
+              {game.tagline}
+            </p>
           </div>
           <div className="flex-1" />
-          {stat?.played > 0 && <div className="hidden sm:block"><Stat label="Record" value={`${stat.wins}W ${stat.losses}L`} /></div>}
-          {stat?.best > 0 && <div className="hidden sm:block"><Stat label="Best" value={stat.best} accent={game.accent} /></div>}
-          <button onClick={() => favourite(game.id)} aria-pressed={fav} aria-label="Favourite"
-            className={`hidden sm:block p-2 no-tap ${fav ? 'text-volt-700' : 'text-cream-500 hover:text-cream-100'}`}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill={fav ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.9" strokeLinejoin="round">
+          {stat?.played > 0 && (
+            <div className="hidden sm:block">
+              <Stat label="Record" value={`${stat.wins}W ${stat.losses}L`} />
+            </div>
+          )}
+          {stat?.best > 0 && (
+            <div className="hidden sm:block">
+              <Stat label="Best" value={stat.best} accent={game.accent} />
+            </div>
+          )}
+          <button
+            onClick={() => favourite(game.id)}
+            aria-pressed={fav}
+            aria-label="Favourite"
+            className={`hidden sm:block p-2 no-tap ${fav ? "text-volt-700" : "text-cream-500 hover:text-cream-100"}`}
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill={fav ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinejoin="round"
+            >
               <path d="m12 3 2.7 5.8 6.3.8-4.6 4.4 1.2 6.3L12 17.3 6.4 20.3l1.2-6.3L3 9.6l6.3-.8z" />
             </svg>
           </button>
-          {game.modes.includes('online') && (
+          {game.modes.includes("online") && (
             <div className="hidden sm:block">
-              <Button size="sm" variant="blue" onClick={() => { sfx('select'); nav(`/together?game=${game.id}`); }} icon={<Icon name="users" size={13} />}>Play online</Button>
+              <Button
+                size="sm"
+                variant="blue"
+                onClick={() => {
+                  sfx("select");
+                  nav(`/together?game=${game.id}`);
+                }}
+                icon={<Icon name="users" size={13} />}
+              >
+                Play online
+              </Button>
             </div>
           )}
           {onRestart && (
-            <Button size="sm" variant="ghost" className="btn-iconish" aria-label="Restart"
-              onClick={onRestart} icon={<Icon name="rotate" size={13} />}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="btn-iconish"
+              aria-label="Restart"
+              onClick={onRestart}
+              icon={<Icon name="rotate" size={13} />}
+            >
               <span className="hidden sm:inline">Restart</span>
             </Button>
           )}
@@ -88,24 +222,34 @@ export default function SoloShell({
 
       {/* Controls rail. On a phone these settings were eating 300+ px above the
           board — on Spark Quiz they pushed two of the four answers off-screen
-          while the timer ran. They collapse by default below `sm` and stay
-          exactly as they were from `sm` up. */}
+          while the timer ran. They used to collapse below `sm` only, which left
+          the *tablet* band paying 57 px for a row of segmented buttons: on an
+          834 px iPad that is most of the difference between a 601 px table and a
+          640 px one. They collapse below `lg` now, where a game screen has the
+          least room, and are simply present from `lg` up as they always were.
+          Pinned *under* the title bar from `lg` up, and not pinned at all below
+          it: this rail was `relative`, so a scroll put the title bar on top of the
+          controls; 57 px of solid paper over the row you were trying to read. Two
+          sticky bars need two offsets, and a third would need a third. */}
       {controls && (
-        <div className="relative border-b border-ink-700 bg-ink-850/60">
+        <div className="solo-settings lg:sticky lg:top-[calc(var(--topbar-h)+57px)] z-20 border-b border-ink-700 bg-ink-850/60">
           <div className="mx-auto max-w-[1340px] px-[var(--shell-pad)]">
             <button
               type="button"
               onClick={() => setSettingsOpen((v) => !v)}
               aria-expanded={settingsOpen}
               aria-controls="solo-settings"
-              className="sm:hidden w-full flex items-center justify-between gap-2 py-2 min-h-[40px] text-cream-300"
+              className="lg:hidden w-full flex items-center justify-between gap-2 py-2 min-h-[40px] text-cream-300"
             >
               <span className="eyebrow">Game settings</span>
-              <Icon name={settingsOpen ? 'chevron-up' : 'chevron-down'} size={15} />
+              <Icon
+                name={settingsOpen ? "chevron-up" : "chevron-down"}
+                size={15}
+              />
             </button>
             <div
               id="solo-settings"
-              className={`${settingsOpen ? 'flex' : 'hidden'} sm:flex items-center gap-3 flex-wrap pb-2.5 sm:py-2.5`}
+              className={`${settingsOpen ? "flex" : "hidden"} lg:flex items-center gap-3 flex-wrap pb-2.5 lg:py-2.5`}
             >
               {controls}
             </div>
@@ -127,41 +271,80 @@ export default function SoloShell({
           pushed the rulebook and Pikachu's line down the page in three loose
           bands. The empty `1fr` row absorbs that slack instead, so the small print
           stacks tightly under the HUD. */}
-      <div className={`relative flex-1 mx-auto w-full ${wide ? 'max-w-[1340px]' : 'max-w-[1120px]'} px-[var(--shell-pad)] py-2 sm:py-5`}>
-        <div className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:grid-rows-[auto_auto_auto_1fr] lg:gap-x-7 lg:items-start">
+      <div
+        className={`relative flex-1 mx-auto w-full ${wide ? "max-w-[1340px]" : "max-w-[1120px]"} px-[var(--shell-pad)] py-2 sm:py-5`}
+      >
+        <div
+          className="lg:grid lg:grid-cols-[320px_minmax(0,1fr)] lg:grid-rows-[auto_auto_auto_1fr] lg:gap-x-7 lg:items-start"
+          style={
+            stacked && stackedCol.game
+              ? ({
+                  "--game-col": `${stackedCol.game}px`,
+                  "--board-col": `${stackedCol.board}px`,
+                } as CSSProperties)
+              : undefined
+          }
+        >
           {/* The HUD used to stretch the full 1120 px column above a board that is
               at most ~660 px, which read as a wide pale band over a small board.
               Narrow screens centre it to roughly the board's width. */}
           {hud && (
-            <div className={`hud-strip mb-2 sm:mb-4 sm:mx-auto ${wide ? 'sm:max-w-[1180px]' : 'sm:max-w-[880px]'} lg:col-start-1 lg:row-start-1 lg:mx-0 lg:mb-0 lg:max-w-none`}>{hud}</div>
+            <div
+              className={`hud-strip mb-2 sm:mb-4 sm:mx-auto ${wide ? "sm:max-w-[1180px]" : "sm:max-w-[880px]"} lg:col-start-1 lg:row-start-1 lg:mx-0 lg:mb-0 lg:max-w-none ${stacked ? "game-full-row" : ""}`}
+            >
+              {hud}
+            </div>
           )}
           {/* the game */}
-          <div className="flex flex-col items-center gap-3 sm:gap-5 lg:col-start-2 lg:row-span-4 lg:row-start-1">{children}</div>
+          <div
+            ref={gameCol}
+            className={`flex flex-col items-center gap-3 sm:gap-5 lg:col-start-2 lg:row-span-4 lg:row-start-1 ${stacked ? "game-full-row" : ""}`}
+          >
+            {children}
+          </div>
           {/* the rulebook sits under the board, closed: it never pushes the game down
               the screen, and it is where a puzzled player is already looking */}
-          <div className={`mt-3 sm:mt-5 w-full max-w-[560px] mx-auto lg:mx-0 lg:max-w-none lg:col-start-1 lg:mt-4 ${hud ? 'lg:row-start-2' : 'lg:row-start-1'}`}>
+          <div
+            className={`mt-3 sm:mt-5 w-full max-w-[560px] mx-auto lg:mx-0 lg:max-w-none lg:col-start-1 lg:mt-4 ${stacked ? "game-full-row stacked-follow" : ""} ${hud ? "lg:row-start-2" : "lg:row-start-1"}`}
+          >
             <HowToPlay gameId={game.id} gameTitle={game.title} />
           </div>
           {(mascotLine || footer) && (
-            <div className={`mt-3 sm:mt-7 flex flex-col-reverse sm:flex-row items-center gap-3 sm:gap-4 justify-center lg:mt-4 lg:flex-col lg:items-start lg:justify-start lg:gap-3 lg:col-start-1 ${hud ? 'lg:row-start-3' : 'lg:row-start-2'}`}>
+            <div
+              className={`mt-3 sm:mt-7 flex flex-col-reverse sm:flex-row items-center gap-3 sm:gap-4 justify-center lg:mt-4 lg:flex-col lg:items-start lg:justify-start lg:gap-3 lg:col-start-1 ${stacked ? "game-full-row stacked-follow" : ""} ${hud ? "lg:row-start-3" : "lg:row-start-2"}`}
+            >
               {mascotLine && (
                 <div className="flex items-end gap-2 lg:flex-col lg:items-start lg:gap-2">
                   {/* wrapped, not classed: PikachuMascot hardcodes `inline-block`,
                       which beats an unprefixed `hidden` in the cascade and renders
                       both copies at once. */}
-                  <span className="sm:hidden"><PikachuMascot state={mascot} size={58} /></span>
-                  <span className="hidden sm:inline-block"><PikachuMascot state={mascot} size={92} /></span>
+                  <span className="sm:hidden">
+                    <PikachuMascot state={mascot} size={58} />
+                  </span>
+                  <span className="hidden sm:inline-block">
+                    <PikachuMascot state={mascot} size={92} />
+                  </span>
                   {/* role=status: this line is where the game says "chain jump
                       available", "check", "your turn" — without a live region the
                       only people who get that information are the ones watching. */}
-                  <div className="panel notch-sm px-3 py-2 max-w-[34ch]"><p role="status" className="text-[12.5px] text-cream-100 font-semibold leading-snug">{mascotLine}</p></div>
+                  <div className="panel notch-sm px-3 py-2 max-w-[34ch]">
+                    <p
+                      role="status"
+                      className="text-[12.5px] text-cream-100 font-semibold leading-snug"
+                    >
+                      {mascotLine}
+                    </p>
+                  </div>
                 </div>
               )}
               {footer}
             </div>
           )}
           {/* slack, not content: see the note above */}
-          <div aria-hidden className="hidden lg:block lg:col-start-1 lg:row-start-4" />
+          <div
+            aria-hidden
+            className="hidden lg:block lg:col-start-1 lg:row-start-4"
+          />
         </div>
       </div>
     </div>
@@ -170,19 +353,42 @@ export default function SoloShell({
 
 /* ------------------------------------------------------------------ mode + difficulty rail */
 export function ModeRail({
-  mode, setMode, modes, difficulty, setDifficulty, showDifficulty = true, extra,
+  mode,
+  setMode,
+  modes,
+  difficulty,
+  setDifficulty,
+  showDifficulty = true,
+  extra,
 }: {
-  mode: string; setMode: (m: any) => void; modes: { value: string; label: string }[];
-  difficulty?: Difficulty; setDifficulty?: (d: Difficulty) => void; showDifficulty?: boolean; extra?: ReactNode;
+  mode: string;
+  setMode: (m: any) => void;
+  modes: { value: string; label: string }[];
+  difficulty?: Difficulty;
+  setDifficulty?: (d: Difficulty) => void;
+  showDifficulty?: boolean;
+  extra?: ReactNode;
 }) {
   return (
     <>
       <span className="eyebrow">Mode</span>
-      <Segmented value={mode} onChange={setMode} options={modes} size="sm" label="Game mode" />
+      <Segmented
+        value={mode}
+        onChange={setMode}
+        options={modes}
+        size="sm"
+        label="Game mode"
+      />
       {showDifficulty && difficulty && setDifficulty && (
         <>
           <span className="eyebrow ml-1">AI level</span>
-          <Segmented value={difficulty} onChange={setDifficulty} options={DIFFS} size="sm" label="AI difficulty" />
+          <Segmented
+            value={difficulty}
+            onChange={setDifficulty}
+            options={DIFFS}
+            size="sm"
+            label="AI difficulty"
+          />
         </>
       )}
       {extra}
@@ -195,8 +401,13 @@ export function useAiTurn(active: boolean, compute: () => void, delay = 420) {
   useEffect(() => {
     if (!active) return;
     let cancelled = false;
-    const t = setTimeout(() => { if (!cancelled) compute(); }, delay);
-    return () => { cancelled = true; clearTimeout(t); };
+    const t = setTimeout(() => {
+      if (!cancelled) compute();
+    }, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [active, compute, delay]);
 }
 
@@ -205,10 +416,18 @@ export function useSeries(bestOf: number) {
   const [draws, setDraws] = useState(0);
   const need = Math.floor(bestOf / 2) + 1;
   const decided = wins[0] >= need || wins[1] >= need;
-  const reset = () => { setWins([0, 0]); setDraws(0); };
+  const reset = () => {
+    setWins([0, 0]);
+    setDraws(0);
+  };
   const record = (w: 0 | 1 | null) => {
     if (w === null) setDraws((d) => d + 1);
-    else setWins((p) => { const n = [...p] as [number, number]; n[w] += 1; return n; });
+    else
+      setWins((p) => {
+        const n = [...p] as [number, number];
+        n[w] += 1;
+        return n;
+      });
   };
   return { wins, draws, need, decided, record, reset };
 }

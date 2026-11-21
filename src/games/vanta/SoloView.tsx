@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  ACTION_LABEL, EVENT_LABEL, MAX_ROUNDS, OBJECTIVES, PREDICTIONS, RELAYS, RELAY_WIN_COUNT, RELAY_WIN_STREAK,
+  ACTION_LABEL, MAX_ROUNDS, OBJECTIVES, PREDICTIONS, RELAYS, RELAY_WIN_COUNT, RELAY_WIN_STREAK,
   INFLUENCE_TO_WIN, createInitialState, objectiveById, vantaRules, relayWinBlurb, type VantaPlan, type VantaState,
 } from './rules';
 import { choosePlan, type VantaStrength } from './ai';
@@ -9,9 +9,9 @@ import {
   LEAF, LINE, LINE_STRONG, MINT, MINT_LIGHT, seatColor, seatDeep,
 } from './theme';
 import { rankFor, vantaRating } from './rank';
-import VantaBoard from '../../components/boards/VantaBoard';
+import VantaBoard, { VantaHud } from '../../components/boards/VantaBoard';
 import SoloShell from '../../components/SoloShell';
-import { Button, Icon, Panel, Segmented, Stat } from '../../components/ui';
+import { Button, Icon, Segmented } from '../../components/ui';
 import { ResultOverlay } from '../../components/Overlays';
 import { useStore } from '../../lib/store';
 import type { GameMeta } from '../types';
@@ -251,13 +251,12 @@ export default function VantaSolo({ game }: { game: GameMeta }) {
   }
 
   const done = redacted.over;
-  const foeInfluence = state.influence[1] ?? 0;
-  const myRelays = RELAYS.filter((r) => state.owner[r] === 0 && state.anchored[r]).length;
 
   return (
     <SoloShell
       game={game}
       wide
+      stacked
       mascot={done ? (state.winner === 0 ? 'victory' : state.winner === 1 ? 'defeated' : 'thinking') : thinking ? 'thinking' : 'competitive'}
       mascotLine={thinking ? 'They are reading the table…' : speak(coach ?? coachLine(state, 0, level), 'You', 'They')}
       onRestart={() => begin()}
@@ -273,25 +272,6 @@ export default function VantaSolo({ game }: { game: GameMeta }) {
             options={ROUND_CHOICES.map((r) => ({ value: r, label: String(r) }))} />
           <Button size="sm" variant="ghost" onClick={() => begin()} icon={<Icon name="rotate" size={13} />}>New table</Button>
         </>
-      }
-      hud={
-        <Panel className="vanta-hud p-2 sm:p-3 flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
-          <Stat label="You" value={state.influence[0]} accent={BUTTER_DEEP} />
-          <Stat label="AI" value={foeInfluence} accent={BLUSH_DEEP} />
-          <Stat label="Round" value={`${state.round}/${state.maxRounds ?? MAX_ROUNDS}`} />
-          <Stat label="Relays" value={`${myRelays}/5`} accent={LEAF} />
-          {state.event && (
-            <span className="px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm"
-              style={{ background: MINT_LIGHT, color: LEAF, border: `2px solid ${MINT}` }}
-              title={EVENT_LABEL[state.event.kind].detail}>
-              {EVENT_LABEL[state.event.kind].title}
-            </span>
-          )}
-          <span className="px-2.5 py-1 text-[10.5px] font-extrabold uppercase tracking-wider notch-sm"
-            style={{ background: thinking || state.plans[0] ? MINT_LIGHT : BUTTER_LIGHT, color: thinking || state.plans[0] ? LEAF : BUTTER_DEEP }}>
-            {done ? 'Match over' : state.plans[0] ? 'Plan locked' : thinking ? 'Resolving' : 'Your plan'}
-          </span>
-        </Panel>
       }
       footer={
         <div className="panel notch-sm px-3 py-2 w-full max-w-[34ch]">
@@ -318,6 +298,20 @@ export default function VantaSolo({ game }: { game: GameMeta }) {
         onMove={(m) => lock(m as VantaPlan)}
         interactive={!done && !thinking && !state.plans[0]}
         names={['You', 'AI']}
+        /* The counters are the board's: from `lg` up it puts them over the table
+           in the table's own column, on a phone under the table. As a slab in the
+           shell's sidebar they shared the window's width with nothing but
+           themselves — a 974 px strip over a 582 px table. */
+        hud={
+          <VantaHud
+            align="start"
+            state={state}
+            youSlot={0}
+            names={['You', 'AI']}
+            thinking={thinking && !state.plans[0]}
+            done={done}
+          />
+        }
       />
 
       {done && (

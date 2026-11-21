@@ -2,12 +2,12 @@ import {
   createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode,
 } from 'react';
 import { loadIdentity, saveIdentity, type Identity } from './identity';
-import { loadSettings, saveSettings, applySettingsToDocument, suggestQuality, type Settings } from './settings';
+import { readSettings, saveSettings, applySettingsToDocument, suggestQuality, type Settings } from './settings';
 import {
   loadProgress, saveProgress, recordMatch, toggleFavourite, noteVisit, unlockAchievement,
   mergeRemoteStats, type ProgressState, type MatchRecord, type Achievement, type GameStat,
 } from './progress';
-import { play, setVolumes, unlockAudio, startMusic } from './audio';
+import { duckMenuMusic, gameVolume, play, setVolumes, unlockAudio, startMusic } from './audio';
 import * as jukebox from './jukebox';
 import { fetchRemoteUserData, pushRemoteMatch, upsertRemoteProfile, supabaseEnabled } from './supabase';
 import { flushFeedbackQueue } from './feedback';
@@ -34,6 +34,9 @@ interface Store {
   cloud: boolean;
   /** pull cloud career stats in and keep the better of each field */
   syncStats: (remote: Record<string, Partial<GameStat>> | null | undefined) => void;
+  /** true while a cartridge or emulator owns the screen */
+  inGame: boolean;
+  setInGame: (v: boolean) => void;
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -42,10 +45,17 @@ const INTRO_KEY = 'pikachu.intro.v1';
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [identity, setIdentityState] = useState<Identity>(() => loadIdentity());
   const [settings, setSettingsState] = useState<Settings>(() => {
-    const s = loadSettings();
-    if (!localStorage.getItem('pikachu.settings.v1')) s.quality = suggestQuality();
+    /* `readSettings` reports whether this device has ever saved anything: only a
+       first visit gets the new "music off" default, so upgrading does not mute
+       someone who had already chosen a volume. */
+    const { settings: s, saved } = readSettings(localStorage.getItem('pikachu.settings.v1'));
+    if (!saved) s.quality = suggestQuality();
     return s;
   });
+  /* In a game: the menu bed steps aside, the emulator bus opens. The cartridge is
+     an iframe with its own audio graph, so this flag is also what AppShell reads
+     to tell it the TV is on. */
+  const [inGame, setInGame] = useState(false);
   const [progress, setProgress] = useState<ProgressState>(() => loadProgress());
   /* Mirrors `progress` synchronously. Progress mutations have side effects
      (toasts, cloud writes), so they must happen OUTSIDE the state updater —
@@ -58,7 +68,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [introSeen, setIntroSeenState] = useState<boolean>(() => sessionStorage.getItem(INTRO_KEY) === '1');
   const timers = useRef<Map<string, number>>(new Map());
 
-  useEffect(() => { applySettingsToDocument(settings); setVolumes({ music: settings.music, sfx: settings.sfx, muted: settings.muted }); }, [settings]);
+  useEffect(() => {
+    applySettingsToDocument(settings);
+    setVolumes({ music: settings.music, sfx: settings.sfx, game: settings.gameAudio, muted: settings.muted });
+  }, [settings]);
+
+  /* Launching a cartridge silences the menu bed and hands the speakers to the
+     emulator; leaving it gives the bed back (if the player has music on). The bed
+     is faded rather than cut, so there is no click. */
+  useEffect(() => {
+    if (inGame) duckMenuMusic(true);
+    else if (audioReady) duckMenuMusic(false);
+  }, [inGame, audioReady]);
 
   /* A note written while cloud sync was off stays in localStorage and says so. This is
      the other half of that promise: the first time the app runs with a working Supabase
@@ -88,7 +109,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const unlock = () => {
       unlockAudio();
       setAudioReady(true);
-      setVolumes({ music: settings.music, sfx: settings.sfx, muted: settings.muted });
+      setVolumes({ music: settings.music, sfx: settings.sfx, game: settings.gameAudio, muted: settings.muted });
       window.removeEventListener('pointerdown', unlock);
       window.removeEventListener('keydown', unlock);
     };
@@ -204,7 +225,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const value = useMemo<Store>(() => ({
     identity, setIdentity, settings, setSettings, progress, finishMatch, favourite, visit, award,
     toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen, cloud: supabaseEnabled(), syncStats,
-  }), [identity, setIdentity, settings, setSettings, progress, finishMatch, favourite, visit, award, toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen, syncStats]);
+    inGame, setInGame,
+  }), [identity, setIdentity, settings, setSettings, progress, finishMatch, favourite, visit, award, toasts, toast, dismiss, sfx, audioReady, introSeen, setIntroSeen, syncStats, inGame]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
@@ -222,11 +244,16 @@ export function useStore() {
  * silent and the jukebox owns the music bus instead — the two never overlap.
  */
 export function useAmbience(track: 'hub' | 'match' | null) {
-  const { audioReady, settings } = useStore();
+  const { audioReady, settings, inGame } = useStore();
   useEffect(() => {
+    /* A cartridge is running: the menu bed stays down, whatever the mixer says.
+       Without this guard the next settings change would fade the music back up
+       over the game — the "sounds that keep playing after leaving the player"
+       complaint, in reverse. */
+    if (inGame) { startMusic(null); return; }
     if (!audioReady || settings.muted || settings.music <= 0) return;
     if (settings.musicMode === 'off') { startMusic(null); return; }
     if (settings.musicMode === 'uploads') return;   // jukebox is driving
     startMusic(track);
-  }, [track, audioReady, settings.muted, settings.music, settings.musicMode]);
+  }, [track, audioReady, settings.muted, settings.music, settings.musicMode, inGame]);
 }

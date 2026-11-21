@@ -19,6 +19,7 @@ const Music = lazy(() => import('./screens/Music'));
 const Achievements = lazy(() => import('./screens/Achievements'));
 const Profile = lazy(() => import('./screens/Profile'));
 const SettingsScreen = lazy(() => import('./screens/Settings'));
+const Account = lazy(() => import('./screens/Account'));
 const Feedback = lazy(() => import('./screens/Feedback'));
 const Privacy = lazy(() => import('./screens/Privacy'));
 const Retro = lazy(() => import('./screens/Retro'));
@@ -114,6 +115,7 @@ function Shell() {
             <Route path="/achievements" element={<Achievements />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/account" element={<Account />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/feedback" element={<Feedback />} />
             <Route path="/privacy" element={<Privacy />} />

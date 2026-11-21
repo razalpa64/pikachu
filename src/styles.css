@@ -144,8 +144,17 @@ button { font-family: inherit; }
 /* --------- focus --------- */
 /* Keyboard focus uses blush-600, not blush-400: the lighter pink measured
    2.5:1 on the paper background, under the 3:1 WCAG 2.2 asks of a focus
-   indicator; the deeper rose measures 5.5:1 and still reads pink. */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+   indicator; the deeper rose measures 5.5:1 and still reads pink.
+
+   Not on a text field, though. A field that is focused because somebody called
+   `.focus()` — which every form here does on mount, and which Chrome grants
+   `:focus-visible` — got a 3 px rose box that reads as "this field is wrong".
+   Text fields already show focus twice (the wrapper's border turns volt, and
+   the caret is in them); the ring is for controls that have nowhere else to
+   put it. `:where()` keeps this at zero specificity so a component can opt
+   back in. */
+:where(a, button, select, textarea, [tabindex]):focus-visible,
+:where(input:not([type="text"], [type="email"], [type="password"], [type="search"], [type="number"], [type="tel"], [type="url"])):focus-visible {
   outline: 3px solid var(--color-blush-600);
   outline-offset: 2px;
   border-radius: 12px;
@@ -931,7 +940,77 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
   letter-spacing: .07em;
   white-space: nowrap;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: .8cqw;
+  max-width: 92%;
+  white-space: normal;
+  text-align: center;
 }
+/* A failure has to be readable and clickable, so it is a card rather than a pill. */
+.gb-screen-error {
+  top: 50%;
+  transform: translate(-50%, -50%);
+  flex-direction: column;
+  padding: 2cqw 2.4cqw;
+  border-radius: 1.6cqw;
+  font-size: 1.55cqw;
+  line-height: 1.45;
+  letter-spacing: .01em;
+  font-weight: 600;
+  background: rgba(6, 12, 40, .9);
+  border: 1px solid rgba(255, 173, 198, .5);
+}
+.gb-screen-error strong { font-size: 1.75cqw; color: #ffd6e2; }
+.gb-note-actions { display: flex; gap: .8cqw; flex-wrap: wrap; justify-content: center; }
+.gb-note-retry {
+  pointer-events: auto;
+  border: 1px solid rgba(219, 228, 255, .45);
+  background: rgba(219, 228, 255, .12);
+  color: #eaf0ff;
+  font: inherit;
+  font-size: 1.5cqw;
+  font-weight: 700;
+  padding: .5cqw 1.3cqw;
+  border-radius: 999px;
+  cursor: pointer;
+  min-height: 40px;
+  transition: background .15s ease, transform .15s ease;
+}
+.gb-note-retry:hover { background: rgba(219, 228, 255, .24); }
+.gb-note-retry:active { transform: scale(.96); }
+.gb-note-retry:focus-visible { outline: 2px solid #ffd6e2; outline-offset: 2px; }
+@media (max-width: 700px) {
+  .gb-screen-note { font-size: 11px; padding: 6px 10px; }
+  .gb-screen-error { font-size: 12px; padding: 12px 14px; width: min(320px, 88%); }
+  .gb-screen-error strong { font-size: 13px; }
+  .gb-note-retry { font-size: 12px; padding: 8px 12px; }
+}
+
+/* ---------- the one confirm dialog ---------- */
+.gb-confirm { width: min(400px, 100%); }
+.gb-confirm-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; flex-wrap: wrap; }
+.gb-confirm-cancel,
+.gb-confirm-go {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 10px 16px;
+  min-height: 44px;
+  border-radius: 12px;
+  cursor: pointer;
+  border: 2px solid var(--color-ink-500);
+  transition: transform .12s ease, background .15s ease;
+}
+/* `color` is set with the same weight as the base rule above, so it wins: the
+   plain `color: inherit` made this button white-on-white once it was focused,
+   because the focus ring and the field colours came from different places. */
+.gb-confirm-cancel { background: #fffaf1 !important; color: #4a3327 !important; }
+.gb-confirm-go { background: var(--color-volt-400, #fbc02d); color: #3d2c1f; border-color: #c98a12; }
+.gb-confirm-cancel:hover { background: #f6e8d4; }
+.gb-confirm-go:hover { background: #ffd75e; }
+.gb-confirm-cancel:active, .gb-confirm-go:active { transform: scale(.97); }
+.gb-confirm-cancel:focus-visible, .gb-confirm-go:focus-visible { outline: 3px solid #f2779a; outline-offset: 2px; }
 
 /* The plastic lives in one wrapper so the windowed layout and the fullscreen
    layout can share a DOM: here it is a transparent overlay sitting exactly on
@@ -2215,6 +2294,58 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
    page and an app on a touch screen, and it costs one rule. */
 @media (hover: none) {
   .no-tap:active { transform: scale(.96); }
+}
+
+/* ------------------------------------------------------------ press feedback
+   A short, cheap answer to a press on *every* button, not just the ones that
+   remembered `.no-tap`. Two rules, both on `:active`:
+     - a 96 % scale, which reads as "yes, that registered" without moving enough
+       to shift a neighbour;
+     - a 60 ms colour step on the pressed surface.
+   `transform` and `background-color` only — no layout, no shadow, so this is
+   safe to leave on while a game is running in an iframe beside it.
+
+   It is scoped away from the handheld and the game pads, whose own press states
+   are the point of those surfaces and would fight this one. */
+button:not([data-no-press]):not(.gb-face-btn):not(.gb-hit):not(.gb-system-btn):not(:disabled) {
+  transition: transform .09s cubic-bezier(.3, .8, .4, 1), background-color .12s linear;
+}
+@media (hover: hover) {
+  button:not([data-no-press]):not(.gb-face-btn):not(.gb-hit):not(.gb-system-btn):not(:disabled):active {
+    transform: scale(.975);
+  }
+}
+@media (hover: none) {
+  button:not([data-no-press]):not(.gb-face-btn):not(.gb-hit):not(.gb-system-btn):not(:disabled):active {
+    transform: scale(.96);
+  }
+}
+
+/* A menu that opens grows in from its trigger rather than appearing. 120 ms is
+   under the threshold where a person waits for an animation to finish. */
+@keyframes menu-pop {
+  from { opacity: 0; transform: translate3d(0, -4px, 0) scale(.985) }
+  to   { opacity: 1; transform: none }
+}
+.menu-pop { animation: menu-pop .13s cubic-bezier(.25, .9, .35, 1) both; }
+
+/* The loader that means "working", not "broken": three dots on a slow pulse. */
+@keyframes dot-pulse { 0%, 80%, 100% { opacity: .25 } 40% { opacity: 1 } }
+.dots-pulse > i { animation: dot-pulse 1.2s ease-in-out infinite; }
+.dots-pulse > i:nth-child(2) { animation-delay: .15s; }
+.dots-pulse > i:nth-child(3) { animation-delay: .3s; }
+
+/* With animation off (the Settings switch, or the OS preference) all three stop
+   dead — including the press scale, which is an animation like any other. */
+html[data-motion="off"] button:not(:disabled):active,
+html[data-motion="off"] .menu-pop,
+html[data-motion="off"] .dots-pulse > i { transform: none; animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-motion="auto"] button:not(:disabled) { transition: none; }
+  html[data-motion="auto"] button:not(:disabled):active { transform: none; }
+  html[data-motion="auto"] .menu-pop,
+  html[data-motion="auto"] .dots-pulse > i { animation: none; }
 }
 
 /* ---------------------------------------------------------------- the pad */

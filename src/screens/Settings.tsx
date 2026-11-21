@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
-import { DEFAULT_SETTINGS, suggestQuality, type Quality, type MusicMode } from '../lib/settings';
+import { DEFAULT_SETTINGS, suggestQuality, type MusicMode, type Quality, type Settings as SettingsShape } from '../lib/settings';
 import {
   signInWithEmail, signUpWithPassword, signInWithPassword, signOut,
   fetchRemoteUserData, supabase, supabaseEnabled,
@@ -145,6 +145,10 @@ export default function Settings() {
     } finally { setSending(false); }
   };
 
+  /* "Off" is three separate facts — the master mute, a zero fader, or a source of
+     none — and the UI should say so once instead of three times. */
+  const musicOff = settings.muted || settings.music <= 0 || settings.musicMode === 'off';
+
   return (
     <div className="mx-auto max-w-[900px] px-[var(--shell-pad)] py-7">
       <div className="flex items-end gap-4 mb-6 flex-wrap">
@@ -162,12 +166,40 @@ export default function Settings() {
       <SectionTitle eyebrow="Sound" title="Audio" />
       <Panel className="p-4 mt-3.5 space-y-4">
         <Toggle checked={!settings.muted} onChange={(v) => setSettings({ muted: !v })} label="Sound enabled" />
-        <Slider label="Music" value={settings.music} disabled={settings.muted}
-          onChange={(v) => setSettings({ music: v })} />
-        <Slider label="Effects" value={settings.sfx} disabled={settings.muted}
-          onChange={(v) => setSettings({ sfx: v })} onCommit={() => sfx('place')} />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Slider label="Menu music" value={settings.music} disabled={settings.muted}
+              onChange={(v) => setSettings({ music: v })} valueLabel={musicOff ? 'Off' : undefined} />
+            <p className="text-[11px] text-cream-400 mt-1">
+              {musicOff
+                ? 'Off — the arcade is quiet until you ask it to play.'
+                : settings.musicMode === 'uploads'
+                  ? 'Playing your own uploaded tracks.'
+                  : 'The built-in synth bed.'}
+            </p>
+          </div>
+          <div>
+            <Slider label="Interface sounds" value={settings.sfx} disabled={settings.muted}
+              onChange={(v) => setSettings({ sfx: v })} onCommit={() => sfx('place')} />
+            <p className="text-[11px] text-cream-400 mt-1">Clicks, confirms and the big moments. Separate from music.</p>
+          </div>
+          <div>
+            <Slider label="Game audio" value={settings.gameAudio} disabled={settings.muted}
+              onChange={(v) => setSettings({ gameAudio: v })} />
+            <p className="text-[11px] text-cream-400 mt-1">Cartridges and DOS titles only. Muting the menu never touches it.</p>
+          </div>
+          <div className="flex items-end">
+            <div className="w-full rounded-lg border border-ink-600 bg-ink-800 px-3 py-2">
+              <span className="eyebrow block mb-1.5">Music source</span>
+              <Segmented value={settings.musicMode}
+                onChange={(v) => setSettings({ musicMode: v as SettingsShape['musicMode'] })}
+                label="Music source"
+                options={[{ value: 'off', label: 'Off' }, { value: 'pads', label: 'Synth' }, { value: 'uploads', label: 'My files' }]} />
+            </div>
+          </div>
+        </div>
         <p className="text-[11.5px] text-cream-400">
-          Interface sounds are synthesised live in the browser; the big moments use seven real Pokémon cries (about 43 KB in total), loaded the first time you need them. Nothing plays until your first click or keypress, as browsers require.
+          Menu music starts only after you touch the page, and stops while a game is running. Interface sounds are synthesised live in the browser; the big moments use seven real Pokémon cries (about 43 KB in total), loaded the first time you need them.
         </p>
       </Panel>
 
@@ -409,13 +441,15 @@ function Row({ k, v }: { k: string; v: string }) {
   );
 }
 
-function Slider({ label, value, onChange, onCommit, disabled }: {
+function Slider({ label, value, onChange, onCommit, disabled, valueLabel }: {
   label: string; value: number; onChange: (v: number) => void; onCommit?: () => void; disabled?: boolean;
+  /** Shown instead of the percentage — `0 %` reads like a bug on a fader that is deliberately off. */
+  valueLabel?: string;
 }) {
   return (
     <label className={`block ${disabled ? 'opacity-50' : ''}`}>
       <span className="flex justify-between eyebrow mb-1.5">
-        <span>{label}</span><span className="tabnum">{Math.round(value * 100)}%</span>
+        <span>{label}</span><span className="tabnum">{valueLabel ?? `${Math.round(value * 100)}%`}</span>
       </span>
       <input type="range" min={0} max={1} step={0.05} value={value} disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))} onPointerUp={onCommit}

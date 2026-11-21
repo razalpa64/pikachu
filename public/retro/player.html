@@ -227,6 +227,27 @@
     return emu.getBaseFileName() + ".state";
   }
 
+  /* Every button this page has pressed and not yet released.
+     A thumb that leaves with the tab, or a window that loses focus mid-run, used
+     to leave the core believing a direction was still held — the character walks
+     into a wall until you press and release it again. releaseAll clears them. */
+  var held = {};
+
+  function releaseAll() {
+    var emu = emulator();
+    var gm = emu && emu.gameManager;
+    /* The keys are cleared whether or not there is a core to tell. A frame that
+       is paused, mid-fetch or already torn down has `gameManager === null`, and
+       an early return there would keep the key marked held forever — the exact
+       stuck-input this function exists to prevent. */
+    Object.keys(held).forEach(function (k) {
+      if (gm) {
+        try { gm.simulateInput(0, Number(k), 0); } catch (e) { /* core already gone */ }
+      }
+      delete held[k];
+    });
+  }
+
   function handleCommand(msg) {
     var emu = emulator();
     if (!emu || !emu.gameManager) return;
@@ -295,7 +316,17 @@
            it sends button indices straight through to the core. */
         if (msg.value && typeof msg.value.index === "number") {
           try { gm.simulateInput(0, msg.value.index, msg.value.pressed ? 1 : 0); } catch (e) {}
+          if (msg.value.pressed) held[msg.value.index] = 1;
+          else delete held[msg.value.index];
         }
+        break;
+      case "releaseAll":
+        releaseAll();
+        break;
+      case "setVolume":
+        /* The app's "Game audio" fader. Separate from `mute`, which is the
+           in-player toggle: the fader is the ceiling, the toggle is the switch. */
+        emu.setVolume(Math.max(0, Math.min(1, Number(msg.value) || 0)));
         break;
       case "focus":
         if (emu.elements && emu.elements.parent) {
@@ -304,6 +335,9 @@
         break;
     }
   }
+
+  window.addEventListener("blur", releaseAll);
+  window.addEventListener("pagehide", releaseAll);
 
   window.addEventListener("message", function (event) {
     if (event.origin !== location.origin) return;

@@ -762,3 +762,110 @@ export async function coverFromTitle(title: string, accent: string): Promise<Blo
 export function resetRetroLibrary() {
   void import('./retro').then((m) => m.resetRetroLibrary());
 }
+
+/* ------------------------------------------------------------- activity log
+
+   What the desk changed and who changed it. Written by a Postgres trigger on the
+   tables themselves, so a change made with curl or the SQL editor is recorded
+   just like one made here; this module only reads it back. */
+
+export interface ActivityRow {
+  id: number;
+  actor: string | null;
+  actorName: string;
+  /** `retro_games.update`, `site_content.create`, … */
+  action: string;
+  subjectTable: string | null;
+  subjectId: string | null;
+  summary: string;
+  at: string;
+  detail: Record<string, unknown>;
+}
+
+/** A verb the reader can understand, in the order a person says it. */
+export function describeActivity(action: string): string {
+  const [table = '', verb = ''] = action.split('.');
+  const nouns: Record<string, string> = {
+    retro_games: 'listing',
+    site_content: 'site copy',
+    admin_users: 'roster',
+  };
+  const verbs: Record<string, string> = {
+    create: 'added',
+    update: 'edited',
+    delete: 'removed',
+  };
+  const noun = nouns[table] ?? table.replace(/_/g, ' ');
+  const v = verbs[verb] ?? verb;
+  return `${v} ${noun}`.trim();
+}
+
+/** The changed keys, for the one-line "price set 12.00 → 9.00" summary. */
+export function activityDiff(detail: Record<string, unknown>): string[] {
+  const out: string[] = [];
+  for (const [key, value] of Object.entries(detail)) {
+    if (key === 'after' || key === 'before') continue;
+    const change = value as { from?: unknown; to?: unknown } | null;
+    if (!change || typeof change !== 'object') continue;
+    const from = formatValue(change.from);
+    const to = formatValue(change.to);
+    out.push(`${key.replace(/_/g, ' ')}: ${from} → ${to}`);
+  }
+  return out;
+}
+
+function formatValue(v: unknown): string {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'string') return v.length > 40 ? `${v.slice(0, 39)}…` : v;
+  if (typeof v === 'boolean') return v ? 'on' : 'off';
+  if (typeof v === 'object') return '…';
+  return String(v);
+}
+
+/** Newest first, capped — the log is read as a page, not as a database. */
+export async function loadActivity(limit = 60): Promise<ActivityRow[]> {
+  const sb = await supabase();
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from('admin_activity')
+    .select('id,actor,actor_name,action,subject_table,subject_id,summary,at,detail')
+    .order('at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => ({
+    id: Number(r.id),
+    actor: (r.actor as string) ?? null,
+    actorName: String(r.actor_name ?? ''),
+    action: String(r.action ?? ''),
+    subjectTable: (r.subject_table as string) ?? null,
+    subjectId: (r.subject_id as string) ?? null,
+    summary: String(r.summary ?? ''),
+    at: String(r.at ?? ''),
+    detail: (r.detail as Record<string, unknown>) ?? {},
+  }));
+}
+
+export interface RosterRow {
+  userId: string;
+  email: string;
+  displayName: string;
+  note: string;
+  addedAt: string;
+  lastSignIn: string | null;
+}
+
+/** The allowlist, readable only by someone already on it (security definer). */
+export async function loadRoster(): Promise<RosterRow[]> {
+  const sb = await supabase();
+  if (!sb) return [];
+  const { data, error } = await sb.rpc('list_admins');
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r: Record<string, unknown>) => ({
+    userId: String(r.user_id ?? ''),
+    email: String(r.email ?? ''),
+    displayName: String(r.display_name ?? ''),
+    note: String(r.note ?? ''),
+    addedAt: String(r.added_at ?? ''),
+    lastSignIn: r.last_sign_in ? String(r.last_sign_in) : null,
+  }));
+}

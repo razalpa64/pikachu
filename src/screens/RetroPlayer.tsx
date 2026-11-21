@@ -134,7 +134,7 @@ export default function RetroPlayer() {
   const { id = '' } = useParams();
   const nav = useNavigate();
   const loc = useLocation();
-  const { sfx } = useStore();
+  const { sfx, setInGame, settings } = useStore();
   const boot = (loc.state ?? undefined) as Boot;
   const isLocal = id === 'local';
 
@@ -145,6 +145,10 @@ export default function RetroPlayer() {
   const [muted, setMuted] = useState(false);
   const [panel, setPanel] = useState<'none' | 'keys' | 'about'>('none');
   const [stalled, setStalled] = useState(false);
+  /* Bumped by "Try again": it is the iframe's key, so a failed mount is thrown
+     away and replaced rather than being poked at through postMessage. */
+  const [attempt, setAttempt] = useState(0);
+  const [failure, setFailure] = useState<string | null>(null);
   /* `/retro/local` reached by a reload or a direct link has no route state. The
      cartridge is in this browser's own store, so it is recovered from there
      rather than given up on. */
@@ -158,6 +162,9 @@ export default function RetroPlayer() {
      browser says no, the stage covers the viewport itself instead. */
   const [nativeFull, setNativeFull] = useState(false);
   const [inPageFull, setInPageFull] = useState(false);
+  /* Which destructive action is waiting for a yes. One dialog for both, because
+     they ask the same question: you are about to lose the last few minutes. */
+  const [confirming, setConfirming] = useState<'restart' | 'exit' | null>(null);
   const full = nativeFull || inPageFull;
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -220,10 +227,24 @@ export default function RetroPlayer() {
           break;
         }
         case 'volume': setMuted((data.value ?? 1) === 0); break;
-        case 'error':
-          if (data.message === 'no-save') say('No saved state for this cartridge yet');
-          else say('The emulator could not do that');
+        case 'error': {
+          const code = String(data.message ?? '');
+          if (code === 'no-save') { say('No saved state for this cartridge yet'); break; }
+          /* Two different failures wearing one label before: a ROM that will not
+             boot, and a command the core refused. Only the first is worth a
+             retry button. */
+          if (/boot|load|rom|fetch|core/i.test(code) || code === '') {
+            setFailure(
+              /fetch|network|core/i.test(code)
+                ? 'The emulator core could not be fetched. That is usually a dropped connection — try again.'
+                : 'This cartridge would not start. The file may be damaged or not a Game Boy image at all.',
+            );
+            setStatus('error');
+          } else {
+            say('The emulator could not do that');
+          }
           break;
+        }
       }
     };
     window.addEventListener('message', onMessage);
@@ -236,6 +257,39 @@ export default function RetroPlayer() {
     const t = window.setTimeout(() => setStalled(true), 9000);
     return () => window.clearTimeout(t);
   }, [status]);
+
+  /* The "Game audio" fader reaches the emulator directly: the frame has its own
+     audio graph, so no amount of Web Audio mixing here can touch it. Sent on
+     every change and once the core reports itself running. */
+  useEffect(() => {
+    if (status !== 'running' && status !== 'paused') return;
+    sendDirect({ channel: RETRO_CHANNEL, type: 'cmd', cmd: 'setVolume', value: settings.muted ? 0 : settings.gameAudio });
+  }, [settings.gameAudio, settings.muted, status]);
+
+  /* A running cartridge owns the speakers: the store fades the menu bed down and
+     opens the emulator bus. Cleared on unmount as well as on error, so a back
+     button never leaves the arcade silent. */
+  useEffect(() => {
+    if (blocked) return;
+    setInGame(true);
+    return () => setInGame(false);
+  }, [blocked, setInGame]);
+
+  /* No stuck inputs: a tab hidden mid-press, or the window losing focus while a
+     thumb is on the D-pad, must release every held button. The frame cannot see
+     the parent's blur, so it is told. */
+  useEffect(() => {
+    if (blocked) return;
+    const release = () => sendDirect({ channel: RETRO_CHANNEL, type: 'cmd', cmd: 'releaseAll' });
+    const onHide = () => { if (document.visibilityState === 'hidden') release(); };
+    window.addEventListener('blur', release);
+    document.addEventListener('visibilitychange', onHide);
+    return () => {
+      window.removeEventListener('blur', release);
+      document.removeEventListener('visibilitychange', onHide);
+      release();
+    };
+  }, [blocked]);
 
   /* The console owns the viewport: nothing behind it should scroll while you
      are three dungeons into a cartridge. The guard screens are ordinary pages,
@@ -258,6 +312,10 @@ export default function RetroPlayer() {
     if (!win) return;
     win.postMessage({ channel: RETRO_CHANNEL, type: 'cmd', cmd, value }, window.location.origin);
   }, []);
+
+  function sendDirect(msg: Record<string, unknown>) {
+    iframeRef.current?.contentWindow?.postMessage(msg, window.location.origin);
+  }
 
   useEffect(() => {
     if (!isLocal || boot?.file) { setRecovering(false); return; }
@@ -351,7 +409,7 @@ export default function RetroPlayer() {
     { id: 'pause', label: status === 'paused' ? 'Resume' : 'Pause', icon: status === 'paused' ? 'play' : 'pause', disabled: !started, run: () => { send('toggle'); sfx('click'); } },
     { id: 'save', label: 'Save', icon: 'save', disabled: !started, run: () => { send('saveState'); sfx('click'); } },
     { id: 'load', label: 'Load', icon: 'load', disabled: !started, run: () => { send('loadState'); sfx('click'); } },
-    { id: 'restart', label: 'Restart', icon: 'rotate', disabled: !started, run: () => { send('restart'); say('Cartridge restarted'); sfx('toggle'); } },
+    { id: 'restart', label: 'Restart', icon: 'rotate', disabled: !started, run: () => { setConfirming('restart'); sfx('click'); } },
     { id: 'mute', label: muted ? 'Unmute' : 'Mute', icon: muted ? 'mute' : 'volume', disabled: false, run: () => { send('mute', !muted); setMuted((m) => !m); sfx('toggle'); } },
     { id: 'shot', label: 'Capture', icon: 'camera', disabled: !started, run: () => { send('screenshot'); sfx('click'); } },
     { id: 'full', label: 'Fullscreen', icon: 'expand', disabled: false, run: toggleFullscreen },
@@ -401,7 +459,11 @@ export default function RetroPlayer() {
     <div className="gb-stage" ref={stageRef} data-status={status} data-full={full ? 'on' : 'off'}>
       {/* ---------------- slim header: where you are, how to leave ---------------- */}
       <header className="gb-head">
-        <button onClick={() => { sfx('click'); nav('/retro'); }} className="gb-chip" aria-label="Back to the shelf">
+        <button
+          onClick={() => { sfx('click'); if (started) setConfirming('exit'); else nav('/retro'); }}
+          className="gb-chip"
+          aria-label="Back to the shelf"
+        >
           <Icon name="back" size={14} />
           <span className="gb-chip-word">Shelf</span>
         </button>
@@ -470,6 +532,7 @@ export default function RetroPlayer() {
                 narrowed inside the LCD instead of being stretched to fill it. */}
             <div className="gb-screen" data-system={cartridge?.kind === 'gb' && isLocal ? 'gb' : 'gba'}>
               <iframe
+                key={attempt}
                 ref={iframeRef}
                 src={src}
                 title={`${title} — Game Boy Advance emulator`}
@@ -480,6 +543,33 @@ export default function RetroPlayer() {
               {(status === 'booting' || status === 'loading') && (
                 <div className="gb-screen-note">
                   {stalled ? 'Fetching the GBA core — first launch only' : 'Starting the emulator'}
+                  {stalled && (
+                    <button
+                      type="button"
+                      className="gb-note-retry"
+                      onClick={() => { sfx('click'); setAttempt((n) => n + 1); setStalled(false); setStatus('booting'); }}
+                    >
+                      Try again
+                    </button>
+                  )}
+                </div>
+              )}
+              {failure && (
+                <div className="gb-screen-note gb-screen-error" role="alert">
+                  <strong>That cartridge did not start</strong>
+                  <span>{failure}</span>
+                  <span className="gb-note-actions">
+                    <button
+                      type="button"
+                      className="gb-note-retry"
+                      onClick={() => { sfx('click'); setFailure(null); setStatus('booting'); setStalled(false); setAttempt((n) => n + 1); }}
+                    >
+                      Try again
+                    </button>
+                    <button type="button" className="gb-note-retry" onClick={() => { sfx('click'); nav('/retro'); }}>
+                      Back to shelf
+                    </button>
+                  </span>
                 </div>
               )}
             </div>
@@ -573,6 +663,55 @@ export default function RetroPlayer() {
           <Icon name="expand" size={15} />
           <span aria-hidden>Exit fullscreen</span>
         </button>
+      )}
+
+      {/* ---------------- the one dialog ---------------- */}
+      {confirming && (
+        <div className="gb-plate-wrap" role="presentation" onClick={() => setConfirming(null)}>
+          <div
+            className="gb-plate gb-confirm"
+            role="dialog"
+            aria-modal="true"
+            aria-label={confirming === 'restart' ? 'Restart the cartridge?' : 'Leave the game?'}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="gb-plate-head">
+              <h2>{confirming === 'restart' ? 'Restart the cartridge?' : 'Leave the game?'}</h2>
+              <button onClick={() => setConfirming(null)} aria-label="Cancel" className="gb-plate-x">
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+            <p className="gb-plate-note">
+              {confirming === 'restart'
+                ? 'Anything since your last save state is lost. Battery saves already written to the cartridge are kept.'
+                : 'Anything since your last save state is lost. The cartridge stays on the shelf.'}
+            </p>
+            <div className="gb-confirm-actions">
+              <button type="button" className="gb-confirm-cancel" onClick={() => { sfx('click'); setConfirming(null); }} autoFocus>
+                Keep playing
+              </button>
+              <button
+                type="button"
+                className="gb-confirm-go"
+                onClick={() => {
+                  sfx('toggle');
+                  if (confirming === 'restart') {
+                    setAttempt((n) => n + 1);
+                    setFailure(null);
+                    setStatus('booting');
+                    say('Cartridge restarted');
+                    setConfirming(null);
+                  } else {
+                    setConfirming(null);
+                    nav('/retro');
+                  }
+                }}
+              >
+                {confirming === 'restart' ? 'Restart' : 'Leave'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ---------------- plates ---------------- */}

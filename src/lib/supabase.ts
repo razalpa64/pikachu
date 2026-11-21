@@ -188,6 +188,34 @@ export async function signOut() {
   await (await supabase())?.auth.signOut();
 }
 
+/**
+ * Ask the provider to email a recovery link.
+ *
+ * The reply is deliberately the same whether or not the address exists: telling
+ * an anonymous visitor "no account with that address" is a free way to find out
+ * who plays here. `redirectTo` is the app's own `/account?mode=reset` page, which
+ * Supabase returns to with a recovery token in the URL.
+ */
+export async function sendPasswordReset(email: string) {
+  const sb = await supabase();
+  if (!sb) throw new Error('Cloud sync is not configured.');
+  const address = email.trim();
+  if (!address) throw new Error('Enter the email address on the account.');
+  const { error } = await sb.auth.resetPasswordForEmail(address, {
+    redirectTo: `${location.origin}/account?mode=reset`,
+  });
+  if (error) throw error;
+}
+
+/** Finish a recovery: called on `/account?mode=reset` after the token lands. */
+export async function setNewPassword(password: string) {
+  const sb = await supabase();
+  if (!sb) throw new Error('Cloud sync is not configured.');
+  if (!password || password.length < 8) throw new Error('At least 8 characters.');
+  const { error } = await sb.auth.updateUser({ password });
+  if (error) throw error;
+}
+
 export async function fetchRemoteUserData(): Promise<{ name?: string; mascot?: string; stats?: Record<string, any> } | null> {
   const sb = await supabase();
   if (!sb) return null;

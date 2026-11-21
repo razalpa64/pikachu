@@ -359,14 +359,29 @@ html[data-quality="performance"] .noise::before { display: none; }
 html[data-quality="performance"] .scanlines::after { display: none; }
 html[data-quality="performance"] .hearts::before { display: none; }
 html[data-quality="performance"] .blur-heavy { backdrop-filter: none !important; }
-/* A sticky bar is 92 % opaque *because* the blur behind it does the rest. With
-   the blur switched off on the performance tier the same bar became a window
-   that card art ghosted through while you scrolled, so the chrome goes fully
-   opaque instead of see-through. Scoped to the wide layout: the phone chrome is
-   unchanged. */
-@media (min-width: 1024px) {
-  html[data-quality="performance"] .sticky-chrome { background-color: var(--color-ink-900) !important; }
+/* A sticky bar drawn as an 88–92 % tint is only legible *because* the blur behind
+   it does the rest. The moment the blur goes — the performance tier switches it
+   off, and plenty of engines never painted it — the same bar becomes a window:
+   on a game screen you could read the settings rail scrolling *through* the title
+   row. So the tint is no longer the default. Every sticky bar is opaque paper,
+   and it relaxes to the glass tint only where `backdrop-filter` is really going
+   to be painted. Unlayered on purpose: these are the base coat, and the Tailwind
+   `bg-*` utilities on the same elements are a request, not the rule. */
+.sticky-chrome { background-color: var(--color-ink-900); }
+.solo-bar { background-color: var(--color-ink-850); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  html:not([data-quality="performance"]) .sticky-chrome {
+    background-color: color-mix(in oklab, var(--color-ink-900) 92%, transparent);
+  }
+  html:not([data-quality="performance"]) .solo-bar {
+    background-color: color-mix(in oklab, var(--color-ink-850) 90%, transparent);
+  }
 }
+/* belt and braces for the tier that has no blur at all */
+html[data-quality="performance"] .sticky-chrome { background-color: var(--color-ink-900); }
+html[data-quality="performance"] .solo-bar { background-color: var(--color-ink-850); }
+/* the settings rail sticks under the title bar, so it needs the same coat */
+html[data-quality="performance"] .solo-settings { background-color: var(--color-ink-850); }
 html[data-quality="balanced"] .fx-heavy { opacity: .6; }
 
 /* safe areas */
@@ -508,6 +523,52 @@ input[type="range"]:focus-visible::-moz-range-thumb { outline: 3px solid var(--c
     justify-content: center !important;
   }
 }
+/* ---------------------------------------------------------------- stacked solo band
+   A solo game that draws its own readouts next to its board (VANTA) needs the
+   page to line up with an object whose width it decides for itself, and it needs
+   more room than the shell's fixed sidebar leaves: on a 1440 px screen the board
+   column was 924 px while the board plus its rail needed 1000, so the table was
+   height-fitted to 582 px with empty paper beside the rail.
+
+   Below `lg` there is no sidebar at all. The game's own row takes the full width
+   and the small print under it is inset so that its edge and the board's edge are
+   the same line — 834 px used to give four different left edges in one screen.
+
+   From `lg` up the game gets the whole grid row instead (see `.game-full-row`),
+   because a board that is fitted to the height it can afford needs *width*, and
+   the shell's 320 px sidebar was exactly the width it was short of.
+
+   `--board-col` and `--game-col` are published by the game from its own
+   measurement (the table, and the table plus its rail); the fallbacks keep the
+   column usable before the first measure, and in jsdom. */
+@media (max-width: 1023px) {
+  .stacked-follow {
+    width: auto;
+    max-width: none;
+    margin-inline: max(var(--shell-pad), calc((100% - var(--board-col, 560px)) / 2));
+  }
+}
+@media (min-width: 1024px) {
+  .game-full-row {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .stacked-follow {
+    width: min(100%, var(--game-col, 960px));
+    margin-inline: auto;
+  }
+  /* Pikachu and "Your read" were a column in the 320 px sidebar; at the game's
+     own width they belong on one line, otherwise a 900 px band of paper opens
+     between them and the rulebook above. */
+  .stacked-follow {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: 16px;
+  }
+  .stacked-follow > div { flex-direction: row; align-items: flex-end; gap: 10px; }
+}
+
 @layer components {
 
 /* ============================================================

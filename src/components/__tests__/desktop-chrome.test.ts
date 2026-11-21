@@ -81,14 +81,22 @@ describe('the performance tier', () => {
     expect(CSS).toMatch(/html\[data-quality="performance"\] \.blur-heavy \{ backdrop-filter: none !important; \}/);
   });
 
-  it('turns the glass solid instead of leaving a window, on the wide layout only', () => {
-    // A 92 %-opaque bar is only legible because of the blur behind it. With the
-    // blur switched off the same bar let card art ghost through while scrolling,
-    // so it goes fully opaque — but only from `lg` up, because the phone chrome
-    // is unchanged.
-    expect(CSS).toMatch(
-      /@media \(min-width: 1024px\) \{\s*html\[data-quality="performance"\] \.sticky-chrome \{ background-color: var\(--color-ink-900\) !important; \}\s*\}/,
-    );
+  it('never leaves a sticky bar as a window, whatever the tier or the engine', () => {
+    // A 92 %-opaque bar is only legible because the blur behind it does the rest.
+    // With the blur off — the performance tier, an older browser, a phone in
+    // battery saver — that same bar let the settings rail scroll *through* the
+    // title row, so on a game screen you could read "Advanced" inside the word
+    // VANTA while the controls were pinned under a solid strip.
+    //
+    // The fix is no longer "make it opaque on one tier": the solid paper is the
+    // base coat for every bar, and the glass tint is granted only where
+    // `backdrop-filter` will really be painted.
+    expect(CSS).toMatch(/\.sticky-chrome \{ background-color: var\(--color-ink-900\); \}/);
+    expect(CSS).toMatch(/\.solo-bar \{ background-color: var\(--color-ink-850\); \}/);
+    expect(CSS).toMatch(/@supports \(\(backdrop-filter: blur\(1px\)\) or \(-webkit-backdrop-filter: blur\(1px\)\)\)/);
+    expect(CSS).toMatch(/html:not\(\[data-quality="performance"\]\) \.sticky-chrome/);
+    // and the tier with no blur at all is still explicitly solid
+    expect(CSS).toMatch(/html\[data-quality="performance"\] \.sticky-chrome \{ background-color: var\(--color-ink-900\); \}/);
     const chrome = FILES.filter((f) => readFileSync(f, 'utf8').includes('sticky-chrome'));
     expect(chrome.length).toBeGreaterThanOrEqual(5);
   });

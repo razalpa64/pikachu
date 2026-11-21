@@ -14,7 +14,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import VantaBoard, { VANTA_SPLIT_MIN } from '../boards/VantaBoard';
+import VantaBoard, { VANTA_SPLIT_MIN, VANTA_STAGE_MAX, vantaFit } from '../boards/VantaBoard';
 import { StoreProvider } from '../../lib/store';
 import {
   RELAYS, CORES, START_AGENTS, createInitialState, neighbours, objectiveById, squareName, targetsFor, vantaRules,
@@ -247,6 +247,72 @@ describe('VANTA board', () => {
        the cards overhang a height-fitted board. */
     expect(VANTA_SPLIT_MIN).toBeGreaterThanOrEqual(600);
     expect(VANTA_SPLIT_MIN + 318).toBeLessThanOrEqual(1100);
+  });
+});
+
+/**
+ * The arrangement rule, in px.
+ *
+ * Every number here came from a real browser at a real screen size, and each one
+ * is a bug that shipped: a board squeezed by the height while a taller rail sat
+ * beside it, a composer 200 px below the fold, a 640 px board on a screen that
+ * could afford it but was told not to.
+ */
+describe('VANTA’s arrangement rule', () => {
+  /* 118 px is where the table's host starts under the site header and the game
+     bar; 76 is the counter strip the component draws above the table itself */
+  const at = (col: number, vh: number, head = 76) => vantaFit({ col, top: 118, vh, head });
+
+  it('never splits a narrow column, whatever the height', () => {
+    for (const col of [320, 430, 600, 759]) {
+      expect(at(col, 900).split, `col ${col}`).toBe(false);
+    }
+  });
+
+  it('leaves room for the composer under a stacked table', () => {
+    /* 768 × 1024 is where a 180–260 px reserve drew a 640 px table and put
+       "Lock plan" 57 px below the fold. The board is fitted against the rail
+       that actually has to sit under it. */
+    const fit = at(722, 1024);
+    expect(fit.split).toBe(false);
+    expect(fit.reserve).toBeGreaterThanOrEqual(316);
+    expect(118 + 76 + fit.board + fit.reserve).toBeLessThanOrEqual(1024);
+  });
+
+  it('suits a big tablet better stacked than split', () => {
+    /* 834 × 1112: split gives a 450 px board beside a 318 px rail (the rail is
+       then taller than the board); stacked gives 640 px. The old rule split it. */
+    const fit = at(784, 1112);
+    expect(fit.split).toBe(false);
+    expect(fit.board).toBeGreaterThan(560);
+    expect(fit.board).toBeLessThanOrEqual(VANTA_STAGE_MAX);
+  });
+
+  it('keeps the composer reachable on a short laptop', () => {
+    /* 1024 × 800 is the screen the stacked layout broke: a 560 px board under the
+       counters and two cards put the Lock button at y = 1012 on an 800 px screen.
+       Split, the rail starts level with the board, so the whole composer is on
+       the first screen — `board` is already fitted with the strip's height taken
+       off, so this is the number the player actually sees. */
+    const fit = at(963, 800);
+    expect(fit.split).toBe(true);
+    expect(118 + 76 + fit.board).toBeLessThanOrEqual(800);
+    expect(fit.board).toBeGreaterThan(400);
+  });
+
+  it('still prefers the bigger board when both arrangements fit', () => {
+    const fit = at(1272, 900);
+    expect(fit.split).toBe(true);
+    /* 1440 × 900: height is the binding constraint, not the width. The board was
+       582 px at the 560 px ceiling and is 620+ now. */
+    expect(fit.board).toBeGreaterThan(560);
+  });
+
+  it('reports the board it actually fits, so the rail can sit against it', () => {
+    const fit = at(963, 800);
+    expect(fit.board).toBeLessThanOrEqual(VANTA_STAGE_MAX);
+    expect(fit.board).toBeGreaterThan(240);
+    expect(fit.reserve).toBeGreaterThan(0);
   });
 });
 

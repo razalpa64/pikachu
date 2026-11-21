@@ -12,7 +12,6 @@ import {
   loadSiteContent,
   saveSiteContent,
   setGameStatus,
-  signInAdmin,
   slugify,
   updateGame,
   uploadGame,
@@ -20,7 +19,7 @@ import {
   type RetroRow,
   type UploadDraft,
 } from '../lib/admin';
-import { describeAuthError, notOnRosterProblem, type AdminAuthProblem, type RawAuthError } from '../lib/adminAuth';
+import { notOnRosterProblem, type AdminAuthProblem } from '../lib/adminAuth';
 import { cartridgeKind, resetRetroLibrary } from '../lib/retro';
 import {
   BUNDLE_MESSAGE,
@@ -38,7 +37,7 @@ import {
 } from '../lib/dos';
 import { readZipDirectory, readZipEntry } from '../lib/zip';
 import { resetSiteContent } from '../lib/content';
-import { signInWithEmail, signOut, supabase } from '../lib/supabase';
+import { signOut, supabase } from '../lib/supabase';
 import {
   activityDiff, describeActivity, loadActivity, loadRoster,
   type ActivityRow, type RosterRow,
@@ -151,18 +150,31 @@ export default function Admin() {
     );
   }
 
+  /* Not signed in: this page does not own a login form.
+     It used to `return <SignIn />` — a second, differently-shaped sign-in box
+     (no create-account, no recovery, an extra magic-link door) that existed
+     nowhere else in the app. Two login windows is one too many, and the one
+     nobody could find was the one that worked. `/account` is the single door;
+     it signs in, asks the database whether this account is on the roster, and
+     sends the answer here. `?next=/admin` is what brings a non-admin back to
+     this page to be told so, rather than being silently dropped on the home
+     screen. */
   if (phase === 'locked') {
-    const ready = adminReadiness();
     return (
-      <SignIn
-        projectHost={ready.projectHost}
-        onDone={(result) => {
-          setWho(result.name);
-          setIdentity({ id: result.userId ?? null, email: result.email ?? null });
-          setProblem(result.problem ?? null);
-          setPhase(result.admin ? 'ready' : result.ok ? 'denied' : 'locked');
-        }}
-      />
+      <div className="mx-auto max-w-[560px] px-[var(--shell-pad)] py-16">
+        <Panel className="p-5 text-center space-y-3">
+          <p className="text-[13px] text-cream-200 font-bold">Sign in to continue</p>
+          <p className="text-[12.5px] text-cream-400">
+            This page needs an account. Sign in with the same form everyone uses.
+          </p>
+          <Button
+            onClick={() => nav('/account?next=/admin')}
+            icon={<Icon name="user" size={14} />}
+          >
+            Go to sign in
+          </Button>
+        </Panel>
+      </div>
     );
   }
 
@@ -276,157 +288,6 @@ function DoorShell({
     </div>
   );
 }
-
-function SignIn({
-  onDone, projectHost,
-}: {
-  onDone: (result: { ok: boolean; admin: boolean; name: string; userId?: string | null; email?: string | null; problem?: AdminAuthProblem }) => void;
-  projectHost: string | null;
-}) {
-  const [account, setAccount] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [problem, setProblem] = useState<AdminAuthProblem | null>(null);
-  const [tried, setTried] = useState<string[]>([]);
-  /* The second way in. A password can be forgotten, mistyped or rotated; an
-     emailed link only needs an inbox, and it produces the same session. */
-  const [link, setLink] = useState<'idle' | 'sending' | 'sent'>('idle');
-  const [linkProblem, setLinkProblem] = useState<AdminAuthProblem | null>(null);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setProblem(null);
-    setTried([]);
-    setLink('idle');
-    setLinkProblem(null);
-    const result = await signInAdmin(account, password);
-    setBusy(false);
-    setTried(result.tried ?? []);
-    if (!result.ok) {
-      setProblem(result.problem ?? { code: 'unknown', title: 'Sign-in failed', body: 'Nothing was returned.' });
-      return;
-    }
-    setPassword('');
-    onDone(result);
-  };
-
-  const sendLink = async () => {
-    setLink('sending');
-    setLinkProblem(null);
-    try {
-      await signInWithEmail(account.trim());
-      setLink('sent');
-    } catch (error) {
-      setLink('idle');
-      setLinkProblem(describeAuthError(error as RawAuthError));
-    }
-  };
-
-  return (
-    <div className="mx-auto max-w-[430px] px-[var(--shell-pad)] py-14">
-      <Panel className="p-5">
-        <p className="eyebrow mb-1">Restricted</p>
-        <h1 className="display text-[24px] text-cream-100 leading-tight">Sign in to continue</h1>
-        <p className="text-[12.5px] text-cream-400 mt-2">
-          This page only opens for accounts on the admin roster.
-          {projectHost && <> Project <span className="font-mono text-[11px] text-cream-300">{projectHost}</span>.</>}
-        </p>
-        <form onSubmit={submit} className="mt-4 space-y-3">
-          <Field label="Email or username">
-            <input
-              className={inputClass}
-              value={account}
-              onChange={(e) => setAccount(e.target.value)}
-              autoComplete="username"
-              spellCheck={false}
-              autoFocus
-            />
-          </Field>
-          <Field label="Password">
-            <input
-              className={inputClass}
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-            />
-          </Field>
-          {problem && (
-            <div role="alert" className="border-[1.5px] border-blush-300 bg-blush-100 rounded-lg p-3">
-              <p className="text-[12.5px] font-extrabold text-cream-100">{problem.title}</p>
-              <p className="text-[12px] text-cream-300 mt-1 leading-relaxed">{problem.body}</p>
-              {problem.hint && <p className="text-[11.5px] text-cream-500 mt-1.5 leading-relaxed">{problem.hint}</p>}
-              {projectHost && (
-                <p className="text-[11px] text-cream-500 mt-1.5">
-                  Asked project <span className="font-mono">{projectHost}</span> — if the account was created
-                  in a different Supabase project, this is the wrong one.
-                </p>
-              )}
-              {tried.length > 0 && problem.code === 'invalid_credentials' && (
-                <p className="text-[11.5px] text-cream-500 mt-1.5">
-                  Tried: {tried.map((t) => <span key={t} className="font-mono">{t}</span>).reduce<React.ReactNode[]>(
-                    (acc, node, i) => (i ? [...acc, ', ', node] : [node]), [],
-                  )}
-                </p>
-              )}
-            </div>
-          )}
-          <Button type="submit" disabled={busy} className="w-full justify-center">
-            {busy ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
-
-        <div className="mt-4 border-t-[1.5px] border-black/10 pt-3">
-          {link === 'sent' ? (
-            <div role="status">
-              <p className="text-[12.5px] font-extrabold text-cream-100">Link sent to {account.trim()}</p>
-              <p className="text-[12px] text-cream-400 mt-1 leading-relaxed">
-                Open it on this device, then come back to <span className="font-mono">/admin</span> — the link
-                signs this browser in and the desk asks the roster who you are.
-              </p>
-              <p className="text-[11px] text-cream-500 mt-1 leading-relaxed">
-                Nothing yet? Supabase's built-in mailer allows only a few messages an hour, and a project with
-                no SMTP configured sends none at all.
-              </p>
-            </div>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                className="w-full justify-center"
-                disabled={link === 'sending' || !account.includes('@')}
-                onClick={sendLink}
-              >
-                {link === 'sending' ? 'Sending…' : 'Email me a sign-in link instead'}
-              </Button>
-              <p className="text-[11px] text-cream-500 mt-1.5 leading-relaxed">
-                {account.includes('@')
-                  ? 'No password needed. The link only works in this browser, and only for the address above.'
-                  : 'Type the full email address first — a link has to be sent somewhere real.'}
-              </p>
-              {linkProblem && (
-                <p role="alert" className="text-[11.5px] text-blush-300 mt-1.5">
-                  {linkProblem.title}. {linkProblem.hint ?? linkProblem.body}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-        <p className="text-[11px] text-cream-500 mt-4 leading-relaxed">
-          A bare username is looked up as <span className="font-mono">name@pikachu.arcade</span> — an account
-          created in the dashboard with a real address needs the whole address typed out. Forgot the password?
-          Use the link above, or run{' '}
-          <code className="font-mono text-[11px] text-volt-700">npm run admin:doctor</code> to see exactly
-          which account this project holds.
-        </p>
-      </Panel>
-    </div>
-  );
-}
-
-/* ----------------------------------------------------------- retro shelf */
 
 function ShelfDesk() {
   const { toast } = useStore();

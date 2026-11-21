@@ -129,7 +129,15 @@ export default function Account() {
       return;
     }
     sfx('win');
-    toast({ kind: 'success', title: `Signed in as ${display}` });
+    /* Signed in, but not on the roster, and they were asking for /admin: send
+       them back there. That page already explains, in one sentence and with the
+       account's own id, why the desk is shut — which is more use than dropping
+       them on the home screen with no idea what happened. */
+    if (next.startsWith('/admin')) {
+      toast({ kind: 'info', title: `Signed in as ${display}`, body: 'This account does not have access to that page.' });
+    } else {
+      toast({ kind: 'success', title: `Signed in as ${display}` });
+    }
     nav(next, { replace: true });
   }, [nav, next, setIdentity, sfx, syncStats, toast]);
 

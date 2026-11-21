@@ -11,6 +11,14 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
+
+/* A recording `useNavigate`, so "went to the account page with a way back" is an
+   assertion rather than an inference from the URL bar jsdom does not have. */
+const nav = vi.hoisted(() => ({ to: vi.fn() }));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => nav.to };
+});
 import { StoreProvider } from '../../lib/store';
 
 /* `vi.hoisted` because `vi.mock` is hoisted above these declarations, and the
@@ -120,75 +128,45 @@ describe('/admin door', () => {
     expect(t).toContain('VITE_SUPABASE_PUBLISHABLE_KEY');
   });
 
-  it('shows the form, the project, and how a bare username is read', async () => {
+  /* The door is not a form any more.
+     `/admin` used to render its own `SignIn` — a second, differently shaped
+     sign-in box with a magic-link control and no create-account or recovery —
+     while `/account` had the real one. Two login windows, and the one players
+     could find was the one that could not do the job. This pins the replacement
+     rule: signed out, the page offers a way to the single account page and
+     nothing else. */
+  it('does not grow a second login form of its own', async () => {
     state.getUser.mockResolvedValue({ data: { user: null } });
     await mount();
     expect(text()).toContain('Sign in to continue');
-    expect(text()).toContain('demo.supabase.co');
-    expect(text()).toContain('name@pikachu.arcade');
+    expect(text()).toContain('the same form everyone uses');
+    /* No password box, no username box, no form element. */
+    expect(document.querySelector('input')).toBeNull();
+    expect(document.querySelector('form')).toBeNull();
+    /* And no trace of the account address rule, which only a form would need. */
+    expect(text()).not.toContain('name@pikachu.arcade');
   });
 
-  it('says the password and the address did not match — and which address was tried', async () => {
+  it('sends a signed-out visitor to /account with the way back attached', async () => {
     state.getUser.mockResolvedValue({ data: { user: null } });
-    state.signIn.mockResolvedValue({ data: { user: null }, error: { message: 'Invalid login credentials', status: 400 } });
+    nav.to.mockReset();
     await mount();
-    await signInWith('Razal', 'wrong');
-    const t = text();
-    expect(t).toContain('do not match an account');
-    expect(t).toMatch(/razal@pikachu\.arcade/);
-    /* Still on the form: a failed attempt must not look like a refusal. */
-    expect(t).toContain('Sign in to continue');
+    const go = [...document.querySelectorAll('button')].find((b) => /go to sign in/i.test(b.textContent ?? ''));
+    expect(go).toBeTruthy();
+    await act(async () => { go!.click(); });
+    expect(nav.to).toHaveBeenCalledWith('/account?next=/admin');
   });
 
-  it('offers an emailed link when the password does not match, and sends it', async () => {
-    state.getUser.mockResolvedValue({ data: { user: null } });
-    state.signIn.mockResolvedValue({ data: { user: null }, error: { message: 'Invalid login credentials', status: 400 } });
-    state.sendLink.mockResolvedValue(undefined);
-    await mount();
-    await signInWith('razalpa64@gmail.com', 'wrong');
-
-    /* The escape hatch exists, and names the project it asked, because a second
-       Supabase project is a common reason an account "does not exist". */
-    expect(text()).toContain('Email me a sign-in link instead');
-    expect(text()).toContain('demo.supabase.co');
-
-    const linkButton = Array.from(document.querySelectorAll('button'))
-      .find((b) => /sign-in link/i.test(b.textContent ?? ''))!;
-    await act(async () => { linkButton.dispatchEvent(new MouseEvent('click', { bubbles: true })); });
-    await flush();
-
-    expect(state.sendLink).toHaveBeenCalledWith('razalpa64@gmail.com');
-    expect(text()).toContain('Link sent to razalpa64@gmail.com');
-    expect(text()).toContain('/admin');
-  });
-
-  it('will not send a link to a bare username', async () => {
-    state.getUser.mockResolvedValue({ data: { user: null } });
-    await mount();
-    const linkButton = () => Array.from(document.querySelectorAll('button'))
-      .find((b) => /sign-in link/i.test(b.textContent ?? '')) as HTMLButtonElement;
-    expect(linkButton().disabled).toBe(true);
-    expect(text()).toMatch(/full email address first/i);
-  });
-
-  it('tells you to confirm an unconfirmed email, not to try again', async () => {
-    state.getUser.mockResolvedValue({ data: { user: null } });
-    state.signIn.mockResolvedValue({ data: { user: null }, error: { message: 'Email not confirmed', code: 'email_not_confirmed' } });
-    await mount();
-    await signInWith('razalpa64@gmail.com', 'Razal@2006');
-    expect(text()).toContain('has not confirmed its email');
-    expect(text()).toContain('--fix');
-  });
-
-  it('hands over the exact SQL when the account is not on the roster', async () => {
-    state.getUser.mockResolvedValue({ data: { user: null } });
-    state.signIn.mockResolvedValue({ data: { user: { id: 'u-9', email: 'razalpa64@gmail.com', user_metadata: { display_name: 'Razal' } } }, error: null });
+  /* The roster refusal is still this page's job — it is the answer to "I signed
+     in, why am I still here" — and it still hands over the SQL, because the fix
+     for the most common cause is one insert. */
+  it('hands over the exact SQL when the signed-in account is not on the roster', async () => {
+    state.getUser.mockResolvedValue({ data: { user: { id: 'u-9', email: 'razalpa64@gmail.com', user_metadata: { display_name: 'Razal' } } } });
     state.rpc.mockResolvedValue({ data: false, error: null });
     await mount();
-    await signInWith('razalpa64@gmail.com', 'Razal@2006');
     const t = text();
     expect(t).toContain('not on the roster');
-    expect(t).toContain("insert into public.admin_users");
+    expect(t).toContain('insert into public.admin_users');
     expect(t).toContain("'u-9'");
     expect(t).toContain('Sign in as someone else');
   });

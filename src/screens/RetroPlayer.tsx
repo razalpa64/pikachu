@@ -66,6 +66,16 @@ const STATUS_COPY: Record<PlayerStatus, { label: string; tone: string }> = {
  * that slides off the button still releases it, so a D-pad arm can never stick
  * down and walk the player into a wall.
  */
+/**
+ * Every mounted pad button, so a page-level release can clear their local state.
+ *
+ * Without this the frame releases everything on blur while the buttons still
+ * believe they are held — the next lift then sends a release for a press that no
+ * longer exists, and the one after that is ignored. Same reasoning as the frame's
+ * own `held` map, one layer up.
+ */
+const BUTTONS = new Set<{ holding: React.RefObject<number | null> }>();
+
 function DeviceButton({
   index,
   send,
@@ -81,15 +91,36 @@ function DeviceButton({
   style?: React.CSSProperties;
   children?: React.ReactNode;
 }) {
+  /* What this button is currently holding down.
+     Up, cancel and leave all fire for one physical lift, so the core was getting
+     the same release two or three times. The core survives it, but each duplicate
+     is a frame's worth of work mid-game, and a second `pressed: true` (a pointer
+     captured from another thumb) would double-press. One id is enough: this is a
+     pad, and a button cannot be held by two thumbs at once in any useful way. */
+  const holding = useRef<number | null>(null);
+
+  useEffect(() => {
+    const entry = { holding };
+    BUTTONS.add(entry);
+    return () => { BUTTONS.delete(entry); };
+  }, []);
+
   const press = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    if (holding.current !== null && holding.current !== e.pointerId) return;
     // The press is sent first: capture is a nicety for thumbs that slide off,
     // and a synthetic pointer (a test, an assistive tool) has no id to capture.
+    holding.current = e.pointerId;
     send('input', { index, pressed: true });
     try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch { /* no live pointer */ }
   };
   const release = (e: React.PointerEvent<HTMLButtonElement>) => {
+    /* `pointerleave` fires *before* `pointerup` when a thumb slides off, and it
+       carries the same id — so the check is on the id, not on "has anything been
+       released yet". */
+    if (holding.current !== e.pointerId) return;
     e.preventDefault();
+    holding.current = null;
     send('input', { index, pressed: false });
   };
   /* A pointer is not the only way to press a button. Space/Enter hold the
@@ -98,12 +129,15 @@ function DeviceButton({
   const keyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== ' ' && e.key !== 'Enter') return;
     e.preventDefault();
-    if (e.repeat) return;
+    if (e.repeat || holding.current !== null) return;
+    holding.current = -1;   // a key is not a pointer, and has no id
     send('input', { index, pressed: true });
   };
   const keyUp = (e: React.KeyboardEvent<HTMLButtonElement>) => {
     if (e.key !== ' ' && e.key !== 'Enter') return;
     e.preventDefault();
+    if (holding.current !== -1) return;
+    holding.current = null;
     send('input', { index, pressed: false });
   };
 
@@ -280,7 +314,13 @@ export default function RetroPlayer() {
      the parent's blur, so it is told. */
   useEffect(() => {
     if (blocked) return;
-    const release = () => sendDirect({ channel: RETRO_CHANNEL, type: 'cmd', cmd: 'releaseAll' });
+    const release = () => {
+      /* Reset every button's local "held" flag to match: the frame has just let
+         everything go, so a lift that arrives afterwards must not send a release
+         for a press that no longer exists. */
+      BUTTONS.forEach((b) => { if (b.holding.current !== null) b.holding.current = null; });
+      sendDirect({ channel: RETRO_CHANNEL, type: 'cmd', cmd: 'releaseAll' });
+    };
     const onHide = () => { if (document.visibilityState === 'hidden') release(); };
     window.addEventListener('blur', release);
     document.addEventListener('visibilitychange', onHide);

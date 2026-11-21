@@ -100,6 +100,22 @@ function KeyButton({
     if (held.current) onSend(spec, 'up');
   }, [onSend, spec]);
 
+  /* The same guarantee for a *window* that loses the press.
+     `pointercancel` covers a system gesture, but not a thumb that is still down
+     when the tab is backgrounded, the browser loses focus to another app, or an
+     on-screen keyboard slides up. In those the browser sends no further pointer
+     events at all, so the key stayed down and the character kept walking.
+     `held` is the flag, so this is a no-op for keys nobody is touching. */
+  useEffect(() => {
+    const letGo = () => stop();
+    window.addEventListener('blur', letGo);
+    document.addEventListener('visibilitychange', letGo);
+    return () => {
+      window.removeEventListener('blur', letGo);
+      document.removeEventListener('visibilitychange', letGo);
+    };
+  }, [stop]);
+
   const start = (e: React.PointerEvent<HTMLButtonElement>) => {
     e.preventDefault();
     if (held.current) return;

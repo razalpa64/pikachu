@@ -187,6 +187,13 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <Icon name={settings.muted ? 'mute' : 'volume'} size={18} />
           </button>
 
+          <button
+            onClick={() => { sfx('click'); nav('/account'); }}
+            aria-label="Account — sign in or create one"
+            className="hidden lg:grid xl:hidden place-items-center w-9 h-9 rounded-full border-2 border-ink-500 bg-white text-cream-100 hover:border-volt-400 hover:text-volt-700 no-tap active:scale-90 transition-transform"
+          >
+            <Icon name="user" size={16} />
+          </button>
           <button onClick={() => { sfx('click'); nav('/profile'); }} className="hidden xl:flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full border-2 border-ink-500 bg-white hover:border-blush-300 hover:bg-blush-100 no-tap">
             <img src={MASCOT_ART[identity.mascot] ?? MASCOT_ART.classic} alt="" width={24} height={24} className="w-6 h-6 object-contain" />
             <span className="text-left leading-none">
@@ -262,6 +269,20 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <span className="block text-[11px] text-blush-600 font-bold">Level {lvl.level} · {progress.xp} XP</span>
           </span>
           <Icon name="back" size={16} className="rotate-180 text-cream-400" />
+        </button>
+
+        <button
+          onClick={() => go('/account')}
+          className="mt-3 w-full flex items-center gap-3 p-3 rounded-2xl border-2 border-ink-500 bg-white text-left active:scale-[.99] transition-transform no-tap"
+        >
+          <span className="w-9 h-9 grid place-items-center rounded-full bg-volt-100 text-volt-700 shrink-0">
+            <Icon name="user" size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] font-extrabold text-cream-100">Account</span>
+            <span className="block text-[11px] text-cream-400">Sign in, create an account, or recover a password</span>
+          </span>
+          <Icon name="back" size={15} className="rotate-180 text-cream-400" />
         </button>
 
         <div className="mt-3 grid grid-cols-3 gap-2">

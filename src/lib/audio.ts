@@ -27,12 +27,23 @@ let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let sfxBus: GainNode | null = null;
 let musicBus: GainNode | null = null;
+/**
+ * Emulator audio has its own bus, so "game audio" is a real third control.
+ *
+ * It used to share the music node, which meant muting the menu bed to hear a
+ * cartridge also muted the cartridge, and raising the cartridge drowned the
+ * interface. Three sources, three gains, one master mute.
+ */
+let gameBus: GainNode | null = null;
 let musicStop: (() => void) | null = null;
 let unlocked = false;
-let vol = { music: 0.35, sfx: 0.7, muted: false };
+let vol = { music: 0, sfx: 0.7, game: 0.8, muted: false };
 let currentTrack: string | null = null;
 /** Set by the jukebox while it owns the music bus, so volume changes still apply. */
 let externalMusic = false;
+/** Announcements (the store mirrors them into a data attribute for the UI). */
+type BusEvent = { bus: 'music' | 'sfx' | 'game'; value: number };
+let busListeners: ((e: BusEvent) => void)[] = [];
 
 function ac(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -43,6 +54,7 @@ function ac(): AudioContext | null {
     master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
     sfxBus = ctx.createGain(); sfxBus.gain.value = vol.sfx; sfxBus.connect(master);
     musicBus = ctx.createGain(); musicBus.gain.value = 0; musicBus.connect(master);
+    gameBus = ctx.createGain(); gameBus.gain.value = vol.game; gameBus.connect(master);
   }
   return ctx;
 }
@@ -82,13 +94,41 @@ function fireOpeningCry() {
 }
 export function isUnlocked() { return unlocked; }
 
-export function setVolumes(next: { music: number; sfx: number; muted: boolean }) {
-  vol = next;
+/**
+ * The three faders, applied with ramps rather than jumps.
+ *
+ * `setTargetAtTime` with a 40 ms constant is fast enough to feel immediate and
+ * slow enough not to click — a `gain.value = x` on a running graph produces an
+ * audible pop every time a slider moves, which is the "volume jump" complaint.
+ */
+export function setVolumes(next: { music: number; sfx: number; game?: number; muted: boolean }) {
+  vol = { ...vol, ...next };
   if (!ctx || !master || !sfxBus || !musicBus) return;
   const t = ctx.currentTime;
   master.gain.setTargetAtTime(next.muted ? 0 : 1, t, 0.04);
   sfxBus.gain.setTargetAtTime(next.sfx, t, 0.04);
   musicBus.gain.setTargetAtTime(currentTrack || externalMusic ? next.music : 0, t, 0.25);
+  gameBus?.gain.setTargetAtTime(vol.game, t, 0.06);
+  busListeners.forEach((fn) => fn({ bus: 'sfx', value: next.sfx }));
+}
+
+/** Fade the menu bed out without touching the mixer — what a game launch does. */
+export function duckMenuMusic(down: boolean) {
+  const c = ac();
+  if (!c || !musicBus) return;
+  const target = down ? 0 : currentTrack || externalMusic ? vol.music : 0;
+  musicBus.gain.setTargetAtTime(vol.muted ? 0 : target, c.currentTime, down ? 0.18 : 0.5);
+}
+
+/** The output the emulator frame should mirror, or 0 when this bus is muted. */
+export function gameVolume() {
+  return vol.muted ? 0 : vol.game;
+}
+
+/** Subscribe to bus changes (used to keep the settings UI honest without polling). */
+export function onBusChange(fn: (e: BusEvent) => void) {
+  busListeners = [...busListeners, fn];
+  return () => { busListeners = busListeners.filter((f) => f !== fn); };
 }
 
 /* ------------------------------------------------------------ real cries

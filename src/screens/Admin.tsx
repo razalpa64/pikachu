@@ -39,6 +39,10 @@ import {
 import { readZipDirectory, readZipEntry } from '../lib/zip';
 import { resetSiteContent } from '../lib/content';
 import { signInWithEmail, signOut, supabase } from '../lib/supabase';
+import {
+  activityDiff, describeActivity, loadActivity, loadRoster,
+  type ActivityRow, type RosterRow,
+} from '../lib/admin';
 import { Button, ConfirmDialog, CopyField, Icon, Panel, SectionTitle, Segmented, Stat, Toggle } from '../components/ui';
 import { useStore } from '../lib/store';
 
@@ -53,7 +57,7 @@ import { useStore } from '../lib/store';
  */
 
 type Phase = 'checking' | 'offline' | 'locked' | 'broken' | 'denied' | 'ready';
-type Tab = 'shelf' | 'dos' | 'copy';
+type Tab = 'shelf' | 'dos' | 'copy' | 'log';
 
 const LICENCES = ['MIT', 'GPL-3.0-only', 'GPL-3.0-or-later', 'MPL-2.0', 'Zlib', 'BSD-2-Clause', 'Apache-2.0', 'CC-BY-4.0'];
 
@@ -213,10 +217,11 @@ export default function Admin() {
           { value: 'shelf', label: 'GBA shelf' },
           { value: 'dos', label: 'DOS desk' },
           { value: 'copy', label: 'Site copy' },
+          { value: 'log', label: 'Activity' },
         ]}
       />
 
-      {tab === 'shelf' ? <ShelfDesk /> : tab === 'dos' ? <DosDesk /> : <CopyDesk />}
+      {tab === 'shelf' ? <ShelfDesk /> : tab === 'dos' ? <DosDesk /> : tab === 'copy' ? <CopyDesk /> : <ActivityDesk />}
     </div>
   );
 }
@@ -1371,6 +1376,128 @@ function CopyDesk() {
             </div>
           ))}
         </div>
+      </Panel>
+    </div>
+  );
+}
+
+/**
+ * Activity — what the desk did, and who is allowed to do it.
+ *
+ * The log is written by a Postgres trigger, not by this page, so it is a record
+ * of what actually happened rather than a record of what the UI remembered to
+ * report. Reading it is the first thing to do when a cartridge goes missing from
+ * the shelf: it names the row, the verb and the person.
+ */
+function ActivityDesk() {
+  const [rows, setRows] = useState<ActivityRow[] | null>(null);
+  const [roster, setRoster] = useState<RosterRow[] | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+
+  useEffect(() => {
+    let alive = true;
+    setProblem(null);
+    Promise.all([loadActivity(80), loadRoster()])
+      .then(([a, r]) => { if (alive) { setRows(a); setRoster(r); } })
+      .catch((e: unknown) => {
+        if (!alive) return;
+        setRows([]);
+        setRoster([]);
+        setProblem(e instanceof Error ? e.message : 'The log could not be read.');
+      });
+    return () => { alive = false; };
+  }, [reload]);
+
+  const when = (iso: string) => {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '—';
+    const mins = Math.round((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    if (mins < 60 * 48) return `${Math.round(mins / 60)} h ago`;
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  return (
+    <div className="space-y-5">
+      <Panel className="p-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-[14px] font-extrabold text-cream-100">Who can open this desk</h2>
+            <p className="text-[12px] text-cream-400 mt-0.5">
+              Membership is a row in <code className="font-mono">public.admin_users</code>. It cannot be written from a
+              browser, and this page can only read it.
+            </p>
+          </div>
+          <Button size="sm" variant="ghost" onClick={() => setReload((n) => n + 1)} icon={<Icon name="rotate" size={12} />}>
+            Refresh
+          </Button>
+        </div>
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full text-[12px]">
+            <thead>
+              <tr className="text-left text-cream-400 uppercase tracking-wider text-[10px]">
+                <th className="py-1.5 pr-3">Name</th>
+                <th className="py-1.5 pr-3">Email</th>
+                <th className="py-1.5 pr-3">On the roster since</th>
+                <th className="py-1.5">Last sign-in</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(roster ?? []).map((r) => (
+                <tr key={r.userId} className="border-t border-ink-600">
+                  <td className="py-1.5 pr-3 font-bold text-cream-100">{r.displayName || '—'}</td>
+                  <td className="py-1.5 pr-3 font-mono text-[11px] text-cream-300">{r.email}</td>
+                  <td className="py-1.5 pr-3 text-cream-300">{when(r.addedAt)}</td>
+                  <td className="py-1.5 text-cream-300">{r.lastSignIn ? when(r.lastSignIn) : 'never'}</td>
+                </tr>
+              ))}
+              {roster && roster.length === 0 && (
+                <tr><td colSpan={4} className="py-2 text-cream-400">The roster is empty — which would mean nobody at all can open this page.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
+
+      <Panel className="p-4">
+        <h2 className="text-[14px] font-extrabold text-cream-100">Recent changes</h2>
+        <p className="text-[12px] text-cream-400 mt-0.5">
+          Recorded by the database on the way in, so it includes changes made outside this page.
+        </p>
+        {problem && <p className="mt-3 text-[12.5px] text-[#ffadc6]" role="alert">{problem}</p>}
+        {!rows && !problem && <p className="mt-3 text-[12.5px] text-cream-400">Reading the log…</p>}
+        {rows && rows.length === 0 && !problem && (
+          <p className="mt-3 text-[12.5px] text-cream-400">
+            Nothing yet. Add a cartridge or edit the site copy and it will appear here.
+          </p>
+        )}
+        <ul className="mt-3 space-y-2">
+          {(rows ?? []).map((r) => {
+            const diff = activityDiff(r.detail);
+            return (
+              <li key={r.id} className="rounded-xl border border-ink-600 bg-ink-800 px-3 py-2">
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                  <p className="text-[12.5px] font-bold text-cream-100">
+                    {r.actorName || 'The database'} <span className="text-cream-400 font-normal">{describeActivity(r.action)}</span>
+                    {r.subjectId && <span className="font-mono text-[11px] text-cream-400"> · {r.subjectId.slice(0, 8)}</span>}
+                  </p>
+                  <time className="text-[11px] text-cream-400" dateTime={r.at}>{when(r.at)}</time>
+                </div>
+                {diff.length > 0 && (
+                  <ul className="mt-1 space-y-0.5">
+                    {diff.slice(0, 4).map((line) => (
+                      <li key={line} className="text-[11.5px] text-cream-300 font-mono">{line}</li>
+                    ))}
+                    {diff.length > 4 && <li className="text-[11px] text-cream-400">and {diff.length - 4} more…</li>}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
+        </ul>
       </Panel>
     </div>
   );

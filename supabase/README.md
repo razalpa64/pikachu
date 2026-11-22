@@ -6,6 +6,10 @@ progress lives in `localStorage`.
 
 Supabase adds one thing: **cross-device sync** of your profile, finished matches and per-game stats.
 
+> **Doing this for the first time?** [`docs/supabase-setup.md`](../docs/supabase-setup.md)
+> is the same thing as numbered clicks, every value to paste, and a
+troubleshooting table by symptom. This file is the reference; that one is the guide.
+
 ## Setup
 
 1. Create a project at <https://supabase.com>.

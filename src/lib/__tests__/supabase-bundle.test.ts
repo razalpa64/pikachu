@@ -197,6 +197,25 @@ describe('supabase/all.sql', () => {
     expect(path.rows[0].pg_get_constraintdef).toContain("platform = 'dos'");
   });
 
+  it('keeps the setup guide honest about the repo', () => {
+    /* docs/supabase-setup.md tells somebody to paste a file and run a script.
+       If either moves or is renamed, the guide is worse than useless — it fails
+       at the moment the reader has committed to following it. */
+    const doc = readFileSync(resolve(process.cwd(), 'docs/supabase-setup.md'), 'utf8');
+
+    expect(readFileSync(BUNDLE, 'utf8')).toContain('0007_admin_activity.sql');
+    expect(doc).toContain('supabase/all.sql');
+    expect(doc).toContain('npm run supabase:bundle');
+    expect(doc).toContain('npm run admin:doctor -- --setup');
+    expect(doc).toContain('npm run admin:doctor -- --project');
+    /* A guide is a file people copy from. No credential may ever land in it —
+       and `eyJhbGciOi` is the *header* of every Supabase JWT (it decodes to
+       {"alg":"HS256","typ":"JWT"}), so it is prose, not a secret. What must never
+       appear is a whole token: header, payload, signature. */
+    expect(doc).not.toMatch(/sb_secret_[A-Za-z0-9]/);
+    expect(doc).not.toMatch(/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/);
+  });
+
   it('warns nobody by forgetting the transaction wrapper', () => {
     const text = readFileSync(BUNDLE, 'utf8');
     expect(text.trimEnd().endsWith('commit;'), 'the bundle must end with commit').toBe(true);

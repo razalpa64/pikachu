@@ -21,6 +21,7 @@
     "smoke:dos": "tsx scripts/smoke-dos.ts",
     "typecheck": "tsc -b",
     "seo": "tsx scripts/seo.ts",
+    "supabase:bundle": "tsx scripts/supabase-bundle.ts",
     "prebuild": "npm run seo",
     "e2e:retro": "node scripts/e2e/retro.mjs",
     "e2e:carrom": "node scripts/e2e/online-carrom.mjs",

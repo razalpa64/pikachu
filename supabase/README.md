@@ -9,7 +9,25 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
 ## Setup
 
 1. Create a project at <https://supabase.com>.
-2. Open **SQL Editor** and run the migrations **in order**:
+2. **The one-paste way.** Open **SQL Editor** → **New query**, paste all of
+   [`all.sql`](all.sql), press **Run**. It is every migration in order inside a
+   single transaction: it applies completely or not at all, and re-running it on a
+   project that already has the schema changes nothing.
+
+   Then check it — this must return **12 rows**:
+
+   ```sql
+   select table_name from information_schema.tables
+    where table_schema = 'public' order by table_name;
+   ```
+
+   `all.sql` is **generated**, never hand-edited: `npm run supabase:bundle` rebuilds
+   it from `migrations/`, and a test executes both against real Postgres and
+   asserts they produce the same tables, columns, policies, functions, triggers
+   and storage bucket. `npm run supabase:bundle -- --check` fails if it is stale.
+
+3. **The step-by-step way**, if you would rather see each one land. Open **SQL
+   Editor** and run the migrations **in order**:
    [`0001_init.sql`](migrations/0001_init.sql) →
    [`0002_accounts_and_chat.sql`](migrations/0002_accounts_and_chat.sql) →
    [`0003_feedback.sql`](migrations/0003_feedback.sql) →
@@ -22,7 +40,7 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
    **Order matters** even though each file is idempotent on its own: `0006` alters a
    constraint `0004` creates, and `0007` adds a column and a trigger to tables from
    `0004`. Running them out of order fails on a missing relation.
-3. Copy `.env.example` to `.env` in the project root and fill in:
+4. Copy `.env.example` to `.env` in the project root and fill in:
 
    ```
    VITE_SUPABASE_URL=https://<your-project>.supabase.co

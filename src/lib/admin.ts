@@ -822,26 +822,40 @@ function formatValue(v: unknown): string {
   return String(v);
 }
 
-/** Newest first, capped — the log is read as a page, not as a database. */
+/**
+ * Newest first, capped — the log is read as a page, not as a database.
+ *
+ * This reads `admin_audit`, the table 0004 created and the desk has written to
+ * since. (An earlier draft of 0007 added a second table beside it; two logs of
+ * one thing is how a log stops being answerable.)
+ *
+ * `admin_audit` stores `target` and `detail` as text rather than a table/id pair,
+ * and names the actor by uuid only — so the display name is filled in from the
+ * roster when it is available, and the row is still readable when it is not.
+ */
 export async function loadActivity(limit = 60): Promise<ActivityRow[]> {
   const sb = await supabase();
   if (!sb) return [];
   const { data, error } = await sb
-    .from('admin_activity')
-    .select('id,actor,actor_name,action,subject_table,subject_id,summary,at,detail')
+    .from('admin_audit')
+    .select('id,actor,action,target,detail,changes,at')
     .order('at', { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
+  const names = new Map<string, string>();
+  try {
+    for (const r of await loadRoster()) names.set(r.userId, r.displayName || r.email);
+  } catch { /* the roster read is its own permission; the log stands without it */ }
   return (data ?? []).map((r) => ({
     id: Number(r.id),
     actor: (r.actor as string) ?? null,
-    actorName: String(r.actor_name ?? ''),
+    actorName: r.actor ? names.get(String(r.actor)) ?? '' : '',
     action: String(r.action ?? ''),
-    subjectTable: (r.subject_table as string) ?? null,
-    subjectId: (r.subject_id as string) ?? null,
-    summary: String(r.summary ?? ''),
+    subjectTable: null,
+    subjectId: (r.target as string) ?? null,
+    summary: String(r.detail ?? ''),
     at: String(r.at ?? ''),
-    detail: (r.detail as Record<string, unknown>) ?? {},
+    detail: (r.changes as Record<string, unknown>) ?? {},
   }));
 }
 

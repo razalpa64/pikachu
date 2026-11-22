@@ -14,8 +14,14 @@ Supabase adds one thing: **cross-device sync** of your profile, finished matches
    [`0002_accounts_and_chat.sql`](migrations/0002_accounts_and_chat.sql) →
    [`0003_feedback.sql`](migrations/0003_feedback.sql) →
    [`0004_admin.sql`](migrations/0004_admin.sql) →
-   [`0005_friends_and_safety.sql`](migrations/0005_friends_and_safety.sql). Each one is idempotent
+   [`0005_friends_and_safety.sql`](migrations/0005_friends_and_safety.sql) →
+   [`0006_dos.sql`](migrations/0006_dos.sql) →
+   [`0007_admin_activity.sql`](migrations/0007_admin_activity.sql). Each one is idempotent
    (`create … if not exists`, `drop policy if exists`), so re-running the whole set is safe.
+
+   **Order matters** even though each file is idempotent on its own: `0006` alters a
+   constraint `0004` creates, and `0007` adds a column and a trigger to tables from
+   `0004`. Running them out of order fails on a missing relation.
 3. Copy `.env.example` to `.env` in the project root and fill in:
 
    ```

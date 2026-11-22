@@ -25,6 +25,7 @@ const MIGRATIONS = [
   '0004_admin.sql',
   '0005_friends_and_safety.sql',
   '0006_dos.sql',
+  '0007_admin_activity.sql',
 ];
 
 /** The parts of a Supabase project that the migrations assume already exist. */
@@ -404,8 +405,10 @@ describe('uploaded cartridges', () => {
   it('lets the admin delete, and takes the audit trail with it', async () => {
     await asUser(ADMIN_ID, () => db.query(
       `insert into public.admin_audit (action, target) values ('retro.delete', 'unfinished')`));
+    /* Newest first: 0007 attaches a trigger to `retro_games`, so the rows above
+       this test also leave a mark, and `rows[0]` is no longer this insert. */
     const log = await asUser(ADMIN_ID, () => db.query<{ action: string; actor: string | null }>(
-      'select action, actor from public.admin_audit'));
+      `select action, actor from public.admin_audit where action = 'retro.delete' order by at desc limit 1`));
     expect(log.rows[0].action).toBe('retro.delete');
     expect(log.rows[0].actor, 'the log records who did it, from the session').toBe(ADMIN_ID);
 
@@ -413,6 +416,53 @@ describe('uploaded cartridges', () => {
     const left = await asUser(ADMIN_ID, () => db.query<{ n: number }>(
       'select count(*)::int as n from public.retro_games'));
     expect(left.rows[0].n).toBe(1);
+  });
+});
+
+describe('the audit log after 0007', () => {
+  it('records a change the app never reported, with the keys that moved', async () => {
+    await asUser(ADMIN_ID, () => db.query(
+      `insert into public.retro_games
+         (id, title, author, year, description, license, license_url, source_url, bytes, rom_path, cover_path, status)
+       values ('audited', 'Audited', 'Tester', 2001, 'd', 'MIT',
+               'https://example.com/l', 'https://example.com/s', 1024,
+               'audited/rom.gba', 'audited/cover.png', 'draft')`));
+
+    /* Edit a field the client's own audit() call would learn about only if the
+       page remembered to send it. The trigger does not need to be told. */
+    await asUser(ADMIN_ID, () => db.query(
+      `update public.retro_games set title = 'Audited Deluxe' where id = 'audited'`));
+
+    const rows = await asUser(ADMIN_ID, () => db.query<{ action: string; target: string; changes: Record<string, { from: unknown; to: unknown }> }>(
+      `select action, target, changes from public.admin_audit where target = 'audited' order by at desc`));
+
+    const edit = rows.rows.find((r) => r.action === 'retro_games.update');
+    expect(edit, 'the trigger logged the edit').toBeTruthy();
+    expect(edit!.changes.title).toEqual({ from: 'Audited', to: 'Audited Deluxe' });
+    /* Only what moved: the title, plus the `updated_at` the table maintains for
+       itself. Everything else — paths, licence, rights note, the whole
+       description — stays out of the log. */
+    expect(Object.keys(edit!.changes).sort()).toEqual(['title', 'updated_at']);
+  });
+
+  it('keeps the whole row out of the log', async () => {
+    const edit = await asUser(ADMIN_ID, () => db.query<{ changes: Record<string, unknown> }>(
+      `select changes from public.admin_audit
+        where target = 'audited' and action = 'retro_games.update' order by at desc limit 1`));
+    const keys = Object.keys(edit.rows[0].changes);
+    /* Paths, licence, rights note and source URL are never copied: the log says
+       what changed, it is not a shadow copy of the table. */
+    for (const never of ['rom_path', 'cover_path', 'license', 'rights_note', 'source_url']) {
+      expect(keys, `${never} must not be in the log`).not.toContain(never);
+    }
+  });
+
+  it('shows an ordinary signed-in account nothing at all', async () => {
+    const rows = await asUser('00000000-0000-4000-8000-0000000000ff', () =>
+      db.query('select * from public.admin_audit'));
+    /* RLS filters rather than raising, which is the better answer: a non-admin
+       learns that there is a log at most, never what is in it. */
+    expect(rows.rows).toHaveLength(0);
   });
 });
 

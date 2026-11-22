@@ -18,11 +18,6 @@ import type { MatchRecord, ProgressState } from './progress';
 
 const URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 
-/* Accept either the current publishable key or the legacy anon JWT. */
-const RAW_KEY =
-  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
-  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined);
-
 /**
  * Hard stop on a secret key reaching the browser.
  *
@@ -42,6 +37,25 @@ function isSecretKey(k: string): boolean {
   return false;
 }
 
+/**
+ * Strip whitespace and the trailing `]` a pasted-as-markdown key arrives with.
+ *
+ * `VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_abc…]` is a perfectly ordinary
+ * thing to end up with — copy from a chat message or a docs table and the
+ * closing bracket comes along. Without this the key is simply wrong, every
+ * request 401s, and the symptom is "cloud sync is not configured" or a
+ * never-ending spinner rather than anything that names the cause. The env var
+ * is a credential, not prose: trim it.
+ */
+const cleanKey = (k: string | undefined) => k?.trim().replace(/[\]\s]+$/, '') || undefined;
+
+const RAW_KEY = cleanKey(
+  (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined) ??
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined),
+);
+
+const URL_CLEAN = URL?.trim().replace(/\/+$/, '');
+
 const ANON = RAW_KEY && isSecretKey(RAW_KEY) ? undefined : RAW_KEY;
 
 if (RAW_KEY && !ANON) {
@@ -57,7 +71,7 @@ let booting: Promise<SupabaseClient | null> | null = null;
 let warned = false;
 
 export function supabaseEnabled(): boolean {
-  return Boolean(URL && ANON && /^https?:\/\//.test(URL));
+  return Boolean(URL_CLEAN && ANON && /^https?:\/\//.test(URL_CLEAN));
 }
 
 /**
@@ -75,12 +89,12 @@ export function supabaseConfigState(): {
   projectHost: string | null;
 } {
   let projectHost: string | null = null;
-  if (URL && /^https?:\/\//.test(URL)) {
-    try { projectHost = new globalThis.URL(URL).host; } catch { projectHost = null; }
+  if (URL_CLEAN && /^https?:\/\//.test(URL_CLEAN)) {
+    try { projectHost = new globalThis.URL(URL_CLEAN).host; } catch { projectHost = null; }
   }
   return {
     configured: supabaseEnabled(),
-    hasUrl: Boolean(URL && /^https?:\/\//.test(URL)),
+    hasUrl: Boolean(URL_CLEAN && /^https?:\/\//.test(URL_CLEAN)),
     hasKey: Boolean(ANON),
     secretRefused: Boolean(RAW_KEY && !ANON),
     projectHost,
@@ -98,7 +112,7 @@ export function supabase(): Promise<SupabaseClient | null> {
   if (!booting) {
     booting = import('@supabase/supabase-js')
       .then(({ createClient }) => {
-        client = createClient(URL!, ANON!, { auth: { persistSession: true, autoRefreshToken: true } });
+        client = createClient(URL_CLEAN!, ANON!, { auth: { persistSession: true, autoRefreshToken: true } });
         return client;
       })
       .catch((e) => {

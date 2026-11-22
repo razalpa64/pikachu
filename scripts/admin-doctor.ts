@@ -70,6 +70,17 @@ const anonKey =
   env.SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_ANON_KEY || '';
 const serviceKey = env.SUPABASE_SERVICE_ROLE_KEY || env.SUPABASE_SECRET_KEY || '';
 
+/**
+ * The `xxxx` in `https://xxxx.supabase.co`. Printed deliberately: a project ref
+ * is not a secret — it is in the URL of every deployed page — and when somebody
+ * has a dozen projects, "which one am I pointed at" is the first question, not
+ * the last. The key is still never printed, only its kind.
+ */
+function projectRef(raw: string): string {
+  const m = /^https:\/\/([a-z0-9-]+)\.supabase\.(co|in)$/i.exec(raw);
+  return m ? m[1] : '(not a supabase.co project URL)';
+}
+
 /** Classify a key without printing it: the prefix tells you what it is. */
 function keyKind(key: string): string {
   if (!key) return 'missing';
@@ -147,6 +158,7 @@ async function main() {
 
   /* 1 — configuration */
   say(Boolean(url), 'VITE_SUPABASE_URL', url || 'not set (copy .env.example to .env)');
+  if (url) console.log(`        project ref: ${projectRef(url)}   <- check this is the project you meant`);
   const anonKind = keyKind(anonKey);
   const anonOk = Boolean(anonKey) && anonKind !== 'secret (service-role class)' && anonKind !== 'missing';
   say(anonOk, 'publishable key', anonOk ? anonKind : `${anonKind} — the browser refuses secret keys`);
@@ -155,6 +167,21 @@ async function main() {
     console.log('\nNothing else can be checked until the build has a project URL and a publishable key.\n');
     process.exitCode = 1;
     return;
+  }
+
+  /* 1b — the project you *meant*. Answered before any request: a string
+         comparison does not need the network, and "you are pointed at the
+         wrong project" must not be hidden behind "the project did not answer". */
+  const expectProject = (value('--project') || env.EXPECT_PROJECT || '').trim();
+  if (expectProject) {
+    const actual = projectRef(url);
+    const wantRef = expectProject.replace(/^https?:\/\//, '').split('.')[0];
+    if (actual === wantRef) {
+      say(true, 'expected project', `yes — ${actual}`);
+    } else {
+      say(false, 'expected project', `you are pointed at ${actual}, not ${wantRef} — the env is not the project you think it is`);
+      process.exitCode = 1;
+    }
   }
 
   /* 2 — reachability */
